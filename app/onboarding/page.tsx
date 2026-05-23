@@ -1,114 +1,56 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { CycleSetup } from '@/components/onboarding/CycleSetup';
-import { CountersSetup } from '@/components/onboarding/CountersSetup';
-import { ObjectiveSetup } from '@/components/onboarding/ObjectiveSetup';
-import { CycleConfig, Counters } from '@/lib/types';
-import { saveUserData } from '@/lib/storage';
-import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
-
-type Step = 'cycle' | 'counters' | 'objective';
+// Server Component — le shell statique (logo, fond) est rendu en HTML immédiatement.
+import Image from 'next/image';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 
 export default function OnboardingPage() {
-  const router = useRouter();
-  const [step, setStep] = useState<Step>('cycle');
-  const [cycleConfig, setCycleConfig] = useState<CycleConfig | null>(null);
-  const [counters, setCounters] = useState<Counters | null>(null);
-
-  const steps: Step[] = ['cycle', 'counters', 'objective'];
-  const currentIndex = steps.indexOf(step);
-  const progress = ((currentIndex + 1) / steps.length) * 100;
-
-  const handleCycleComplete = (config: CycleConfig) => {
-    setCycleConfig(config);
-    setStep('counters');
-  };
-
-  const handleCountersComplete = (data: Counters) => {
-    setCounters(data);
-    setStep('objective');
-  };
-
-  const handleObjectiveComplete = (finalCounters: Counters) => {
-    if (!cycleConfig) return;
-
-    const success = saveUserData({
-      cycleConfig,
-      counters: finalCounters,
-      history: [],
-      lastUpdated: new Date().toISOString(),
-      isOnboarded: true,
-    });
-
-    if (success) {
-      toast.success('Configuration terminée !', {
-        description: 'Bienvenue sur Chronos',
-      });
-      router.push('/dashboard');
-    } else {
-      toast.error('Erreur lors de la sauvegarde');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950/20 to-slate-950">
-      {/* Background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-violet-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-pink-500/10 rounded-full blur-3xl" />
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{
+        background: `
+          radial-gradient(ellipse at 15% 40%, rgba(0,85,164,0.07) 0%, transparent 50%),
+          radial-gradient(ellipse at 85% 20%, rgba(239,65,53,0.05) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 90%, rgba(0,85,164,0.05) 0%, transparent 50%),
+          #f8f9fc
+        `,
+      }}
+    >
+      {/* Bandeau top avec safe-area (opaque, masque le contenu qui scrolle derrière) */}
+      <div className="shrink-0 safe-top" style={{ background: '#f8f9fc' }}>
+        <div className="h-1 w-full" style={{ background: 'linear-gradient(to right, #0055A4 33.3%, #ffffff 33.3%, #ffffff 66.6%, #EF4135 66.6%)' }} />
       </div>
 
-      <div className="relative z-10 container max-w-lg mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gradient mb-2">Chronos</h1>
-          <p className="text-muted-foreground">
-            Optimisez la gestion de vos congés
-          </p>
-        </div>
-
-        {/* Progress */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Étape {currentIndex + 1} / {steps.length}</span>
-            <span>
-              {step === 'cycle' && 'Cycle de travail'}
-              {step === 'counters' && 'Compteurs'}
-              {step === 'objective' && 'Objectif CET'}
-            </span>
+      <main className="flex-1 min-h-0 overflow-y-auto safe-x">
+        <div className="container max-w-lg mx-auto px-4 py-8 pb-safe-plus-4">
+          {/* Logo */}
+          <div className="text-center mb-6">
+            <Image
+              src="/icons/icon-192x192.png"
+              alt="Logo My Chronos"
+              width={88}
+              height={88}
+              priority
+              fetchPriority="high"
+              className="rounded-2xl mb-3 shadow-lg mx-auto"
+              style={{ boxShadow: '0 8px 24px rgba(0,85,164,0.25)' }}
+            />
+            <h1
+              className="text-4xl font-bold mb-2"
+              style={{
+                background: 'linear-gradient(135deg, #0055A4, #1a7de8 40%, #ffffff 50%, #EF4135 60%, #c0392b)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              My Chronos
+            </h1>
+            <p className="text-slate-500">Optimisez la gestion de vos congés</p>
           </div>
-          <Progress value={progress} className="h-2" />
+
+          <OnboardingWizard />
         </div>
-
-        {/* Steps */}
-        {step === 'cycle' && (
-          <CycleSetup
-            onNext={handleCycleComplete}
-            initialConfig={cycleConfig ?? undefined}
-          />
-        )}
-
-        {step === 'counters' && cycleConfig && (
-          <CountersSetup
-            cycleConfig={cycleConfig}
-            onNext={handleCountersComplete}
-            onBack={() => setStep('cycle')}
-            initialCounters={counters ?? undefined}
-          />
-        )}
-
-        {step === 'objective' && cycleConfig && counters && (
-          <ObjectiveSetup
-            cycleConfig={cycleConfig}
-            counters={counters}
-            onComplete={handleObjectiveComplete}
-            onBack={() => setStep('counters')}
-          />
-        )}
-      </div>
+      </main>
     </div>
   );
 }

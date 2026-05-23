@@ -5,6 +5,8 @@ import {
   CA_MAX_VERS_CET,
   RTC_RESERVES_CET,
   CF_PAR_SEMESTRE,
+  CET_PLAFOND,
+  CET_APPORT_ANNUEL_MAX,
 } from './constants';
 import { formatMinutes, getDaysUntil, getRTCLibres } from './calculations';
 
@@ -202,13 +204,13 @@ export function calculateDeadlineNotifications(
     }
   }
 
-  // 6. Objectif CET non atteint
-  if (counters.objectifCET > counters.cet && daysUntilCA <= NOTIFICATION_THRESHOLDS.warning) {
-    const cetManquant = counters.objectifCET - counters.cet;
+  // 6. Transfert CET possible avant la deadline
+  const cetDisponible = Math.min(CET_PLAFOND - counters.cet, CET_APPORT_ANNUEL_MAX);
+  if (cetDisponible > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.warning) {
     notifications.push({
-      id: 'cet-objectif',
-      title: 'Objectif CET',
-      message: `Il vous reste ${cetManquant} jours à transférer vers le CET pour atteindre votre objectif de ${counters.objectifCET} jours.`,
+      id: 'cet-transfert',
+      title: 'Transfert CET possible',
+      message: `Vous pouvez encore épargner ${cetDisponible} jour(s) au CET avant le 31/12. Pensez à optimiser vos transferts.`,
       priority: daysUntilCA <= 14 ? 'warning' : 'info',
       daysRemaining: daysUntilCA,
       deadline: caDeadline,

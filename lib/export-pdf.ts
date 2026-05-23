@@ -52,7 +52,7 @@ export function generateAnnualReportHTML(data: PDFReportData): string {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Chronos - Rapport Annuel ${year}</title>
+  <title>My Chronos - Rapport Annuel ${year}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -145,7 +145,7 @@ export function generateAnnualReportHTML(data: PDFReportData): string {
   <button class="print-btn no-print" onclick="window.print()">Imprimer / Sauvegarder PDF</button>
 
   <div class="header">
-    <h1>Rapport Annuel Chronos</h1>
+    <h1>Rapport Annuel My Chronos</h1>
     <div class="subtitle">Année ${year} - Généré le ${generatedAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
   </div>
 
@@ -279,7 +279,7 @@ export function generateAnnualReportHTML(data: PDFReportData): string {
   </div>
 
   <div class="footer">
-    <p>Document généré par Chronos - Gestion des congés policiers</p>
+    <p>Document généré par My Chronos - Gestion des congés policiers</p>
     <p>Ce document est un récapitulatif personnel et n'a pas de valeur administrative.</p>
   </div>
 </body>
@@ -299,7 +299,7 @@ export function generateCETReportHTML(data: PDFReportData): string {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Chronos - Récapitulatif CET ${year}</title>
+  <title>My Chronos - Récapitulatif CET ${year}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -431,7 +431,7 @@ export function generateCETReportHTML(data: PDFReportData): string {
   </div>
 
   <div class="footer">
-    <p>Chronos - Optimisation des congés policiers</p>
+    <p>My Chronos - Optimisation des congés policiers</p>
   </div>
 </body>
 </html>

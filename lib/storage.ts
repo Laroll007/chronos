@@ -7,7 +7,7 @@ import {
   DEFAULT_CYCLE_ALTERNE_A,
   DEFAULT_CYCLE_ALTERNE_B,
 } from './types';
-import { validateUserData as zodValidateUserData, validateExportData } from './validation';
+import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 
 // ============================================
@@ -32,7 +32,7 @@ export const DEFAULT_COUNTERS: Counters = {
   cf: 6552, // 109h12 en minutes
   cfConsoS1: 0,
   cfConsoS2: 0,
-  rtc: RTC_NET_ANNUEL, // 175h01 en minutes (net après JS)
+  rtc: 11229, // 187h09 en minutes (brut, l'utilisateur choisit s'il déduit la JS)
   rtcReservesCET: RTC_RESERVES_CET,
   hasRTT: false,
   rtt: undefined,
@@ -41,7 +41,18 @@ export const DEFAULT_COUNTERS: Counters = {
   hs: 0,
   cet: 0,
   objectifCET: 15,
-  journeeSolidariteAppliquee: true, // JS appliquée par défaut
+  journeeSolidariteAppliquee: false,
+  // Compteurs optionnels (autres corps / services)
+  hasARTT: false,
+  artt: undefined,
+  caAnterieur: 0,
+  caHPAnterieur: 0,
+  hasCET2008: false,
+  cet2008: undefined,
+  hasCongesBonifies: false,
+  congesBonifies: undefined,
+  congesBonifiesDateOuverture: undefined,
+  hsHistorique: 0,
 };
 
 export const DEFAULT_USER_DATA: UserData = {
@@ -74,25 +85,42 @@ export function isStorageAvailable(): boolean {
 
 /**
  * Migre les données utilisateur vers la nouvelle version (APORTT)
- * - Applique la journée de solidarité si pas encore fait
  * - Ajoute le pattern de cycle si absent
+ * - Initialise le flag journée de solidarité si absent
  */
 export function migrateUserData(data: UserData): UserData {
   let needsSave = false;
 
-  // Migration 1: Journée de solidarité sur RTC
+  // Migration 1: Initialiser le flag journée de solidarité si absent
   if (data.counters.journeeSolidariteAppliquee === undefined) {
-    // Si RTC est encore en brut (> 10501), appliquer la déduction JS
-    if (data.counters.rtc > RTC_NET_ANNUEL && data.counters.rtc <= 11229) {
-      data.counters.rtc = data.counters.rtc - JOURNEE_SOLIDARITE;
-    }
-    data.counters.journeeSolidariteAppliquee = true;
+    data.counters.journeeSolidariteAppliquee = false;
     needsSave = true;
   }
 
   // Migration 2: Pattern de cycle par défaut
   if (!data.cycleConfig.pattern && data.cycleConfig.heuresParJour === HEURES_PAR_JOUR) {
     data.cycleConfig.pattern = '2/2/3/2/2/3'; // Par défaut pour 12h08
+    needsSave = true;
+  }
+
+  // Migration 3: Initialiser les nouveaux compteurs optionnels si absents (rétrocompatibilité)
+  if (data.counters.hasARTT === undefined) { data.counters.hasARTT = false; needsSave = true; }
+  if (data.counters.caAnterieur === undefined) { data.counters.caAnterieur = 0; needsSave = true; }
+  if (data.counters.caHPAnterieur === undefined) { data.counters.caHPAnterieur = 0; needsSave = true; }
+  if (data.counters.hasCET2008 === undefined) { data.counters.hasCET2008 = false; needsSave = true; }
+  if (data.counters.hasCongesBonifies === undefined) { data.counters.hasCongesBonifies = false; needsSave = true; }
+  if (data.counters.hsHistorique === undefined) { data.counters.hsHistorique = 0; needsSave = true; }
+
+  // Migration 4: Reset annuel des compteurs périodiques
+  // caPosesHorsPeriode et caHP doivent être remis à 0 chaque année (règle APORTT)
+  const currentYear = new Date().getFullYear();
+  if ((data.lastResetYear ?? 0) < currentYear) {
+    data.counters.caPosesHorsPeriode = 0;
+    data.counters.caHP = 0;
+    data.counters.cfConsoS1 = 0;
+    data.counters.cfConsoS2 = 0;
+    data.counters.caConsommes = 0;
+    data.lastResetYear = currentYear;
     needsSave = true;
   }
 
@@ -115,7 +143,7 @@ export function loadUserData(): UserData | null {
     if (!data) return null;
 
     const parsed = JSON.parse(data);
-    const validation = zodValidateUserData(parsed);
+    const validation = nativeValidateUserData(parsed);
 
     if (!validation.success) {
       logger.warn('Données utilisateur invalides, tentative de récupération', {
@@ -381,7 +409,7 @@ export function importData(jsonData: string, merge: boolean = false): { success:
 
 /**
  * Validation legacy pour rétrocompatibilité
- * @deprecated Utiliser zodValidateUserData à la place
+ * @deprecated Utiliser validateUserData à la place
  */
 function legacyValidateUserData(data: unknown): data is UserData {
   if (!data || typeof data !== 'object') return false;
@@ -400,7 +428,7 @@ function legacyValidateUserData(data: unknown): data is UserData {
  * Valide la structure des données utilisateur (utilise Zod)
  */
 export function validateUserData(data: unknown): data is UserData {
-  const result = zodValidateUserData(data);
+  const result = nativeValidateUserData(data);
   if (result.success) return true;
 
   // Fallback sur validation legacy

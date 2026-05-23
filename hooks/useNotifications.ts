@@ -120,20 +120,52 @@ export function useNotifications({
     });
   }, []);
 
-  // Mettre à jour la permission si elle change
+  // Mettre à jour la permission si elle change (utilisation de l'API native + focus)
+  // Remplace le polling setInterval 10s qui drain la batterie iOS.
   useEffect(() => {
-    if (!isNotificationSupported()) return;
+    if (!isNotificationSupported() || typeof window === 'undefined') return;
 
-    // Vérifier périodiquement (au cas où l'utilisateur change dans les paramètres navigateur)
-    const interval = setInterval(() => {
+    const refresh = () => {
       const current = getNotificationPermission();
-      if (current.permission !== permissionState.permission) {
-        setPermissionState(current);
-      }
-    }, 10000);
+      setPermissionState((prev) =>
+        prev.permission === current.permission ? prev : current,
+      );
+    };
 
-    return () => clearInterval(interval);
-  }, [permissionState.permission]);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    // API moderne : PermissionStatus.onchange (Chrome/Safari récents, Firefox).
+    let permissionStatus: PermissionStatus | null = null;
+    let changeHandler: (() => void) | null = null;
+    const nav = navigator as Navigator & {
+      permissions?: { query: (d: { name: PermissionName }) => Promise<PermissionStatus> };
+    };
+    if (nav.permissions?.query) {
+      nav.permissions
+        .query({ name: 'notifications' as PermissionName })
+        .then((status) => {
+          permissionStatus = status;
+          changeHandler = refresh;
+          status.addEventListener('change', changeHandler);
+        })
+        .catch(() => {
+          // Fallback : on se contente du visibilitychange.
+        });
+    }
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refresh);
+      if (permissionStatus && changeHandler) {
+        permissionStatus.removeEventListener('change', changeHandler);
+      }
+    };
+  }, []);
 
   return {
     notifications,

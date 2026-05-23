@@ -1,4 +1,4 @@
-// Calendrier mensuel avec sélection de plage de dates
+// Calendrier mensuel avec sélection de plage style Booking 2026
 // PERF-002: Mémoïsé avec React.memo
 
 'use client';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate } from '@/lib/calculations';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
 
@@ -49,6 +49,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
     const sundays = days.filter((d) => d.isWorking && d.isSunday).length;
     return { working, sundays };
   }, [days]);
+
 
   // Ref pour les boutons des jours (navigation clavier)
   const dayButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -125,8 +126,13 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
     setMonth(today.getMonth());
   };
 
+  // Formater la date pour l'affichage
+  const formatDateShort = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+
   return (
-    <Card className="glass border-slate-200 h-full flex flex-col">
+    <Card className="glass h-full flex flex-col">
       <CardHeader className="pb-2 shrink-0">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -138,18 +144,83 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
               {stats.working}j travaillés
             </Badge>
             {stats.sundays > 0 && (
-              <Badge variant="secondary" className="bg-red-100 text-red-700 border border-red-200">
+              <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
                 {stats.sundays} dim
-              </Badge>
-            )}
-            {dateRange.workingDaysCount > 0 && (
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border border-emerald-200">
-                {dateRange.workingDaysCount}j sélectionnés
               </Badge>
             )}
           </div>
         </div>
+
+        {/* Barre de sélection style Booking */}
+        <div className="mt-3">
+          {dateRange.isSelecting ? (
+            // Mode sélection en cours
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium text-emerald-800">
+                    {formatDateShort(dateRange.selectedStart!)}
+                  </span>
+                </div>
+                <span className="text-emerald-400 text-xs">→</span>
+                <span className="text-xs sm:text-sm text-emerald-600">
+                  {dateRange.hoveredDate
+                    ? formatDateShort(dateRange.hoveredDate)
+                    : 'Choisir fin'
+                  }
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {dateRange.previewWorkingDays > 0 && (
+                  <Badge className="bg-emerald-500 text-white border-0 text-xs animate-in zoom-in-95 duration-150">
+                    {dateRange.previewWorkingDays}j
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={dateRange.reset}
+                  className="h-7 w-7 p-0 hover:bg-emerald-200 text-emerald-600"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : dateRange.selectedEnd ? (
+            // Sélection confirmée
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-300 animate-in fade-in-0 duration-200">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                <span className="text-xs sm:text-sm font-medium text-emerald-800">
+                  {formatDateShort(dateRange.selectedStart!)} → {formatDateShort(dateRange.selectedEnd)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge className="bg-emerald-600 text-white border-0 text-xs">
+                  {dateRange.workingDaysCount}j travaillés
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={dateRange.reset}
+                  className="h-7 w-7 p-0 hover:bg-emerald-200 text-emerald-700"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            // Aucune sélection
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+              <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">
+                Cliquez sur un jour pour commencer à poser
+              </span>
+            </div>
+          )}
+        </div>
       </CardHeader>
+
       <CardContent className="flex-1 flex flex-col">
         {/* Navigation */}
         <nav className="flex items-center justify-between mb-4" aria-label="Navigation du calendrier mensuel">
@@ -157,14 +228,14 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             variant="ghost"
             size="icon"
             onClick={goToPrevMonth}
-            className="h-8 w-8"
+            className="h-8 w-8 hover:bg-blue-50"
             aria-label="Mois précédent"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
           </Button>
           <button
             onClick={goToToday}
-            className="font-semibold hover:text-blue-600 transition-colors"
+            className="font-semibold hover:text-blue-600 transition-colors px-3 py-1 rounded-lg hover:bg-blue-50"
             aria-label={`Revenir au mois actuel. Actuellement : ${MOIS[month]} ${year}`}
           >
             {MOIS[month]} {year}
@@ -173,7 +244,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             variant="ghost"
             size="icon"
             onClick={goToNextMonth}
-            className="h-8 w-8"
+            className="h-8 w-8 hover:bg-blue-50"
             aria-label="Mois suivant"
           >
             <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -181,30 +252,31 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         </nav>
 
         {/* Jours de la semaine */}
-        <div className="grid grid-cols-7 gap-1 mb-2" role="row" aria-hidden="true">
+        <div className="grid grid-cols-7 gap-0 mb-1" role="row" aria-hidden="true">
           {JOURS_COURTS.map((jour) => (
             <div
               key={jour}
-              className="text-center text-xs font-medium text-muted-foreground py-2"
+              className="text-center text-xs font-medium text-slate-400 py-2"
             >
               {jour}
             </div>
           ))}
         </div>
 
-        {/* Grille des jours - Compact */}
-        <div className="grid grid-cols-7 gap-0.5 flex-1" role="grid" aria-label="Calendrier mensuel">
+        {/* Grille des jours - Style Booking avec plage continue */}
+        <div className="grid grid-cols-7 gap-y-1 flex-1" role="grid" aria-label="Calendrier mensuel">
           {emptyDays.map((_, index) => (
-            <div key={`empty-${index}`} className="h-8 md:h-10" role="gridcell" />
+            <div key={`empty-${index}`} className="h-10 md:h-11" role="gridcell" />
           ))}
           {days.map((day, index) => {
             const isCurrentMonth = day.date.getMonth() === month;
             const isInRange = dateRange.isDateInRange(day.date);
+            const isInPreview = dateRange.isInPreview(day.date);
+            const isStart = dateRange.isRangeStart(day.date);
+            const isEnd = dateRange.isRangeEnd(day.date);
             const isSelected = dateRange.isDateSelected(day.date);
-            const isHovered =
-              dateRange.hoveredDate &&
-              day.date.getTime() === dateRange.hoveredDate.getTime();
             const isPosted = hasPostedLeaveOnDate(day.date, history);
+            const isSingleDay = isStart && isEnd;
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -222,80 +294,102 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
 
+            // Calculer la position dans la semaine (0-6, lundi=0)
+            const dayOfWeek = day.date.getDay();
+            const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const isFirstOfWeek = adjustedDayOfWeek === 0;
+            const isLastOfWeek = adjustedDayOfWeek === 6;
+
             return (
-              <button
+              <div
                 key={index}
-                ref={(el) => { dayButtonsRef.current[index] = el; }}
-                onClick={() => dateRange.handleDateClick(day.date)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                onMouseEnter={() => {
-                  if (dateRange.selectedStart && !dateRange.selectedEnd) {
-                    dateRange.setHoveredDate(day.date);
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (dateRange.hoveredDate) {
-                    dateRange.setHoveredDate(null);
-                  }
-                }}
-                role="gridcell"
-                tabIndex={day.isToday ? 0 : -1}
-                aria-label={ariaLabel}
-                aria-selected={isSelected}
-                aria-current={day.isToday ? 'date' : undefined}
                 className={cn(
-                  'h-8 md:h-10 flex items-center justify-center rounded text-xs md:text-sm',
-                  'transition-all relative cursor-pointer',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2',
-                  // États de sélection - VERT
-                  {
-                    'ring-2 ring-emerald-500 ring-offset-1 ring-offset-background':
-                      isSelected,
-                    'ring-2 ring-emerald-400 ring-dashed': isHovered && !isSelected,
-                    'bg-emerald-100': isInRange && !isSelected,
+                  'relative h-10 md:h-11',
+                  // Fond de la plage - style continu
+                  (isInRange || isInPreview) && !isSingleDay && {
+                    'bg-emerald-100': !isInPreview,
+                    'bg-emerald-50': isInPreview,
                   },
-                  // Jour aujourd'hui - BLEU
-                  {
-                    'ring-2 ring-blue-500 ring-offset-1 ring-offset-background':
-                      day.isToday && !isSelected && !isHovered,
-                  },
-                  // Jour avec congé posé - EMERAUDE
-                  {
-                    'bg-emerald-200 ring-1 ring-emerald-400 text-emerald-800':
-                      isPosted && !isInRange && !isSelected,
-                  },
-                  // États travail/repos - ROUGE pour travail
-                  {
-                    'bg-red-100 text-red-700 font-semibold':
-                      day.isWorking && !isInRange && !isSelected && !isPosted,
-                    'text-slate-500 hover:bg-slate-100':
-                      !day.isWorking && !isInRange && !isSelected && !isPosted,
-                  },
-                  // Mois courant
-                  {
-                    'opacity-30': !isCurrentMonth,
+                  // Coins arrondis pour le fond de plage
+                  (isInRange || isInPreview) && !isSingleDay && {
+                    'rounded-l-full': isStart || isFirstOfWeek,
+                    'rounded-r-full': isEnd || isLastOfWeek,
                   }
                 )}
               >
-                {day.date.getDate()}
-              </button>
+                <button
+                  ref={(el) => { dayButtonsRef.current[index] = el; }}
+                  onClick={() => dateRange.handleDateClick(day.date)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  onMouseEnter={() => {
+                    if (dateRange.isSelecting) {
+                      dateRange.setHoveredDate(day.date);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (dateRange.hoveredDate) {
+                      dateRange.setHoveredDate(null);
+                    }
+                  }}
+                  role="gridcell"
+                  tabIndex={day.isToday ? 0 : -1}
+                  aria-label={ariaLabel}
+                  aria-selected={isSelected}
+                  aria-current={day.isToday ? 'date' : undefined}
+                  className={cn(
+                    'absolute inset-0.5 flex items-center justify-center text-sm font-medium',
+                    'transition-all duration-150 ease-out cursor-pointer',
+                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
+                    'hover:scale-110 hover:z-10',
+                    // Forme de base
+                    'rounded-full',
+                    // État par défaut (non sélectionné)
+                    !isInRange && !isInPreview && !isPosted && {
+                      // Jour travaillé
+                      'bg-blue-50 text-blue-700 hover:bg-blue-100': day.isWorking && isCurrentMonth,
+                      // Jour de repos
+                      'text-slate-400 hover:bg-slate-100': !day.isWorking && isCurrentMonth,
+                      // Hors mois
+                      'opacity-30': !isCurrentMonth,
+                    },
+                    // Aujourd'hui (non sélectionné)
+                    day.isToday && !isInRange && !isInPreview && !isPosted && 'ring-2 ring-blue-500 ring-offset-1',
+                    // Congé déjà posé
+                    isPosted && !isInRange && !isInPreview && 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-400',
+                    // Dans la plage (preview)
+                    isInPreview && !isStart && !isEnd && 'bg-transparent text-emerald-700',
+                    // Dans la plage (confirmée)
+                    isInRange && !isInPreview && !isStart && !isEnd && 'bg-transparent text-emerald-800',
+                    // Début de la plage
+                    isStart && !isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
+                    // Fin de la plage
+                    isEnd && !isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
+                    // Jour unique (début = fin)
+                    isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
+                    // Preview start/end
+                    isInPreview && (isStart || isEnd) && !dateRange.selectedEnd && 'bg-emerald-400 text-white shadow-md',
+                  )}
+                >
+                  {day.date.getDate()}
+                </button>
+              </div>
             );
           })}
         </div>
 
-        {/* Légende */}
-        <div className="flex items-center justify-center gap-3 md:gap-4 mt-3 text-xs shrink-0 flex-wrap">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-100 border border-red-200" />
-            <span className="text-slate-600">Travail</span>
+        {/* Légende minimaliste */}
+        <div className="flex items-center justify-center gap-4 mt-3 text-xs shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-100 border border-blue-200" />
+            <span className="text-slate-500">Travail</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-emerald-200 ring-1 ring-emerald-400" />
-            <span className="text-slate-600">Posé</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-200 border border-emerald-400" />
+            <span className="text-slate-500">Congé</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded ring-2 ring-emerald-500" />
-            <span className="text-slate-600">Sélection</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="text-slate-500">Sélection</span>
           </div>
         </div>
       </CardContent>

@@ -24,7 +24,8 @@ export interface WeekSchedule {
 export interface CycleConfig {
   type: CycleType;
   pattern?: CyclePattern; // Pattern de cycle (4/2, 2/2, 3/3, etc.)
-  heuresParJour: number; // en minutes (ex: 728 pour 12h08)
+  heuresParJour: number; // en minutes — APORTT: 12h08 (728). Hebdo: jour normal (ex: 7h53 = 473).
+  heuresJourCourt?: number; // en minutes — hebdo uniquement : durée du jour court (ex: 7h25 = 445)
   dateDebutCycle: string; // ISO date string
   semaineActuelle: WeekType;
   semaineA: WeekSchedule;
@@ -64,6 +65,30 @@ export interface Counters {
 
   // Journée de solidarité
   journeeSolidariteAppliquee?: boolean; // true si déduction JS appliquée sur RTC
+
+  // ─── Compteurs optionnels (autres corps / services) ───────────────────────
+
+  // ARTT - Aménagement et Réduction du Temps de Travail (en jours)
+  hasARTT: boolean;
+  artt?: number; // 20j/an, perdus au 31/12
+
+  // CA antérieurs (report N-1, deadline 30 avril de l'année N)
+  caAnterieur: number;
+
+  // CA HP antérieurs (report CA HP N-1, deadline 30 avril de l'année N)
+  caHPAnterieur: number;
+
+  // CET 2008 (stock historique gelé avant 2010, décret 2009-1065)
+  hasCET2008: boolean;
+  cet2008?: number;
+
+  // Congés bonifiés (fonctionnaires DOM/TOM, décret 2020-851)
+  hasCongesBonifies: boolean;
+  congesBonifies?: number; // 31j/24 mois (nouveau régime)
+  congesBonifiesDateOuverture?: string; // ISO date - début du cycle 24 mois
+
+  // HS Historique (compte gelé depuis janv. 2020, arrêté APORTT 2019)
+  hsHistorique: number; // en minutes, non soumis au plafond 160h
 }
 
 export interface UserData {
@@ -71,12 +96,14 @@ export interface UserData {
   counters: Counters;
   history: HistoryEntry[];
   lastUpdated: string; // ISO date string
+  lastResetYear?: number; // Année du dernier reset annuel des compteurs
   isOnboarded: boolean;
 }
 
 export interface HistoryEntry {
   id: string;
-  date: string; // ISO date string
+  date: string; // ISO date string (début de la période)
+  dateEnd?: string; // ISO date string (fin de la période, si différente de date)
   action: HistoryAction;
   type: CounterType;
   amount: number; // en minutes ou jours selon type
@@ -86,7 +113,9 @@ export interface HistoryEntry {
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction';
 
-export type CounterType = 'ca' | 'caHP' | 'cf' | 'rtc' | 'rtt' | 'rps' | 'hs' | 'cet';
+export type CounterType =
+  | 'ca' | 'caHP' | 'cf' | 'rtc' | 'rtt' | 'rps' | 'hs' | 'cet'
+  | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'cet2008' | 'congesBonifies' | 'hsHistorique';
 
 export type AlertType = 'success' | 'warning' | 'error' | 'info';
 export type AlertPriority = 'high' | 'medium' | 'low';
@@ -165,6 +194,25 @@ export interface Combination {
   isValid: boolean;
 }
 
+// ============================================
+// PLANNINGS COLLÈGUES
+// ============================================
+
+export interface ColleagueLeave {
+  id: string;
+  start: string; // 'YYYY-MM-DD'
+  end: string;   // 'YYYY-MM-DD'
+  label?: string;
+}
+
+export interface Colleague {
+  id: string;
+  name: string;
+  color: string; // hex '#rrggbb'
+  visible: boolean;
+  leaves: ColleagueLeave[];
+}
+
 // Constantes pour les valeurs par défaut
 export const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
   lundi: false,
@@ -172,6 +220,16 @@ export const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
   mercredi: false,
   jeudi: false,
   vendredi: false,
+  samedi: false,
+  dimanche: false,
+};
+
+export const DEFAULT_HEBDO_SCHEDULE: WeekSchedule = {
+  lundi: true,
+  mardi: true,
+  mercredi: true,
+  jeudi: true,
+  vendredi: true,
   samedi: false,
   dimanche: false,
 };

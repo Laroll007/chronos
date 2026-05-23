@@ -25,8 +25,8 @@ export function SimpleHeader({
   notificationCount = 0,
 }: SimpleHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="container max-w-7xl mx-auto px-4">
+    <header className="sticky top-0 z-50 w-full glass-strong safe-top">
+      <div className="container max-w-7xl mx-auto px-4 safe-x">
         <div className="flex h-14 items-center justify-between">
           {/* Bouton Profil (gauche) */}
           <Button
@@ -36,7 +36,9 @@ export function SimpleHeader({
             className="flex items-center gap-2"
           >
             <User className="w-5 h-5 text-blue-600" />
-            <span className="hidden sm:inline">Profil</span>
+            <div className="hidden sm:flex flex-col items-start leading-tight">
+              <span>Profil</span>
+            </div>
             {cycleInfo && (
               <div className="hidden md:flex items-center gap-2 ml-2">
                 <Badge
@@ -64,25 +66,25 @@ export function SimpleHeader({
           </Button>
 
           {/* Logo/Titre au centre */}
-          <div className="hidden md:block">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Chronos
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-gradient whitespace-nowrap">
+              My Chronos
             </h1>
           </div>
 
           {/* Boutons Notifications, Compteurs et Réglages (droite) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0 sm:gap-1 flex-shrink-0">
             {onNotificationsClick && (
               <Button
                 variant="ghost"
-                size="default"
+                size="icon"
                 onClick={onNotificationsClick}
-                className="flex items-center gap-2 relative"
+                className="relative h-9 w-9 flex items-center justify-center"
                 aria-label={`Notifications${notificationCount > 0 ? `, ${notificationCount} alertes` : ''}`}
               >
                 <Bell className="w-5 h-5 text-slate-600" />
                 {notificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium leading-none">
                     {notificationCount > 9 ? '9+' : notificationCount}
                   </span>
                 )}
@@ -90,25 +92,27 @@ export function SimpleHeader({
             )}
             <Button
               variant="ghost"
-              size="default"
               onClick={onCountersClick}
-              className="flex items-center gap-2"
+              className="h-9 w-9 sm:w-auto flex items-center justify-center gap-2 px-0 sm:px-3"
+              aria-label="Voir les compteurs"
             >
-              <BarChart3 className="w-5 h-5 text-blue-600" />
-              <span className="hidden sm:inline">Compteurs</span>
+              <BarChart3 className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <span className="hidden sm:inline text-sm">Compteurs</span>
             </Button>
             <Button
               variant="ghost"
-              size="default"
               onClick={onSettingsClick}
-              className="flex items-center gap-2"
+              className="h-9 w-9 sm:w-auto flex items-center justify-center gap-2 px-0 sm:px-3"
+              aria-label="Réglages"
             >
-              <Settings className="w-5 h-5 text-slate-600" />
-              <span className="hidden sm:inline">Réglages</span>
+              <Settings className="w-5 h-5 text-slate-600 flex-shrink-0" />
+              <span className="hidden sm:inline text-sm">Réglages</span>
             </Button>
           </div>
         </div>
       </div>
+      {/* Bande tricolore séparatrice */}
+      <div className="h-[3px] w-full" style={{ background: 'linear-gradient(to right, #0055A4 33.3%, #ffffff 33.3%, #ffffff 66.6%, #EF4135 66.6%)' }} />
     </header>
   );
 }

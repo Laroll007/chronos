@@ -1,6 +1,6 @@
-// Hook pour la sélection de plage de dates en 2 clics
+// Hook pour la sélection de plage de dates - UX style Booking 2026
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { CycleConfig } from '@/lib/types';
 import { countWorkingDays } from '@/lib/calculations';
 
@@ -9,20 +9,21 @@ export interface DateRangeSelection {
   selectedEnd: Date | null;
   hoveredDate: Date | null;
   workingDaysCount: number;
+  previewWorkingDays: number; // Jours en preview pendant le hover
   handleDateClick: (date: Date) => void;
   setHoveredDate: (date: Date | null) => void;
   isDateInRange: (date: Date) => boolean;
   isDateSelected: (date: Date) => boolean;
+  isRangeStart: (date: Date) => boolean;
+  isRangeEnd: (date: Date) => boolean;
+  isInPreview: (date: Date) => boolean;
   reset: () => void;
+  isSelecting: boolean; // True quand on a cliqué sur start mais pas encore sur end
 }
 
 /**
  * Hook pour gérer la sélection de plage de dates (2 clics)
- *
- * Logique:
- * 1. Premier clic : définit selectedStart, reset selectedEnd
- * 2. Survol après 1er clic : hoveredDate (preview visuel)
- * 3. Deuxième clic : définit selectedEnd (ou inverse si date < selectedStart)
+ * UX optimisée style Booking/Airbnb 2026
  */
 export function useDateRangePicker(
   cycleConfig: CycleConfig,
@@ -32,19 +33,49 @@ export function useDateRangePicker(
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
 
-  // Calcul du nombre de jours travaillés dans la plage
+  // État de sélection en cours
+  const isSelecting = selectedStart !== null && selectedEnd === null;
+
+  // Calcul du nombre de jours travaillés dans la plage confirmée
   const workingDaysCount = useMemo(() => {
     if (!selectedStart || !selectedEnd) return 0;
     return countWorkingDays(selectedStart, selectedEnd, cycleConfig);
   }, [selectedStart, selectedEnd, cycleConfig]);
 
+  // Calcul du nombre de jours en preview (pendant le hover)
+  const previewWorkingDays = useMemo(() => {
+    if (!selectedStart || !hoveredDate || selectedEnd) return 0;
+    const start = selectedStart <= hoveredDate ? selectedStart : hoveredDate;
+    const end = selectedStart <= hoveredDate ? hoveredDate : selectedStart;
+    return countWorkingDays(start, end, cycleConfig);
+  }, [selectedStart, hoveredDate, selectedEnd, cycleConfig]);
+
+  // Normaliser une date
+  const normalizeDate = useCallback((date: Date): Date => {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }, []);
+
+  // Obtenir les bornes de la plage (actuelle ou preview)
+  const getRangeBounds = useCallback((): { start: Date | null; end: Date | null } => {
+    if (!selectedStart) return { start: null, end: null };
+
+    const endDate = selectedEnd || hoveredDate;
+    if (!endDate) return { start: selectedStart, end: null };
+
+    // Toujours retourner dans le bon ordre
+    if (selectedStart <= endDate) {
+      return { start: selectedStart, end: endDate };
+    }
+    return { start: endDate, end: selectedStart };
+  }, [selectedStart, selectedEnd, hoveredDate]);
+
   /**
    * Gère le clic sur une date
    */
-  const handleDateClick = (date: Date) => {
-    // Normaliser la date (enlever les heures/minutes/secondes)
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
+  const handleDateClick = useCallback((date: Date) => {
+    const normalizedDate = normalizeDate(date);
 
     if (!selectedStart) {
       // Premier clic : définir le début
@@ -53,26 +84,23 @@ export function useDateRangePicker(
       setHoveredDate(null);
     } else if (!selectedEnd) {
       // Deuxième clic : définir la fin
-      if (normalizedDate >= selectedStart) {
-        setSelectedEnd(normalizedDate);
-        setHoveredDate(null);
+      let finalStart = selectedStart;
+      let finalEnd = normalizedDate;
 
-        // Calculer les jours travaillés et déclencher callback
-        const workingDays = countWorkingDays(selectedStart, normalizedDate, cycleConfig);
-        if (onRangeSelected) {
-          onRangeSelected(selectedStart, normalizedDate, workingDays);
-        }
-      } else {
-        // Si date < selectedStart, inverser
-        setSelectedEnd(selectedStart);
-        setSelectedStart(normalizedDate);
-        setHoveredDate(null);
+      // Inverser si nécessaire
+      if (normalizedDate < selectedStart) {
+        finalStart = normalizedDate;
+        finalEnd = selectedStart;
+      }
 
-        // Calculer les jours travaillés et déclencher callback
-        const workingDays = countWorkingDays(normalizedDate, selectedStart, cycleConfig);
-        if (onRangeSelected) {
-          onRangeSelected(normalizedDate, selectedStart, workingDays);
-        }
+      setSelectedStart(finalStart);
+      setSelectedEnd(finalEnd);
+      setHoveredDate(null);
+
+      // Calculer les jours travaillés et déclencher callback
+      const workingDays = countWorkingDays(finalStart, finalEnd, cycleConfig);
+      if (onRangeSelected) {
+        onRangeSelected(finalStart, finalEnd, workingDays);
       }
     } else {
       // Troisième clic : reset et recommencer
@@ -80,37 +108,41 @@ export function useDateRangePicker(
       setSelectedEnd(null);
       setHoveredDate(null);
     }
-  };
+  }, [selectedStart, selectedEnd, normalizeDate, cycleConfig, onRangeSelected]);
 
   /**
-   * Vérifie si une date est dans la plage sélectionnée (ou en preview)
+   * Vérifie si une date est dans la plage (confirmée ou preview)
    */
-  const isDateInRange = (date: Date): boolean => {
-    if (!selectedStart) return false;
+  const isDateInRange = useCallback((date: Date): boolean => {
+    const { start, end } = getRangeBounds();
+    if (!start || !end) return false;
 
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
+    const normalizedDate = normalizeDate(date);
+    return normalizedDate >= start && normalizedDate <= end;
+  }, [getRangeBounds, normalizeDate]);
 
-    const end = selectedEnd || hoveredDate;
-    if (!end) return false;
+  /**
+   * Vérifie si une date est en mode preview (pas encore confirmée)
+   */
+  const isInPreview = useCallback((date: Date): boolean => {
+    if (!selectedStart || selectedEnd || !hoveredDate) return false;
 
-    // Gérer l'ordre (start peut être > end pendant le survol)
-    const rangeStart = selectedStart <= end ? selectedStart : end;
-    const rangeEnd = selectedStart <= end ? end : selectedStart;
+    const normalizedDate = normalizeDate(date);
+    const start = selectedStart <= hoveredDate ? selectedStart : hoveredDate;
+    const end = selectedStart <= hoveredDate ? hoveredDate : selectedStart;
 
-    return normalizedDate >= rangeStart && normalizedDate <= rangeEnd;
-  };
+    return normalizedDate >= start && normalizedDate <= end;
+  }, [selectedStart, selectedEnd, hoveredDate, normalizeDate]);
 
   /**
    * Vérifie si une date est sélectionnée comme début ou fin
    */
-  const isDateSelected = (date: Date): boolean => {
+  const isDateSelected = useCallback((date: Date): boolean => {
     if (!selectedStart) return false;
 
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
+    const normalizedDate = normalizeDate(date);
 
-    if (selectedStart && normalizedDate.getTime() === selectedStart.getTime()) {
+    if (normalizedDate.getTime() === selectedStart.getTime()) {
       return true;
     }
 
@@ -119,26 +151,58 @@ export function useDateRangePicker(
     }
 
     return false;
-  };
+  }, [selectedStart, selectedEnd, normalizeDate]);
+
+  /**
+   * Vérifie si c'est le début de la plage
+   */
+  const isRangeStart = useCallback((date: Date): boolean => {
+    const { start } = getRangeBounds();
+    if (!start) return false;
+    return normalizeDate(date).getTime() === start.getTime();
+  }, [getRangeBounds, normalizeDate]);
+
+  /**
+   * Vérifie si c'est la fin de la plage
+   */
+  const isRangeEnd = useCallback((date: Date): boolean => {
+    const { end } = getRangeBounds();
+    if (!end) return false;
+    return normalizeDate(date).getTime() === end.getTime();
+  }, [getRangeBounds, normalizeDate]);
 
   /**
    * Reset la sélection
    */
-  const reset = () => {
+  const reset = useCallback(() => {
     setSelectedStart(null);
     setSelectedEnd(null);
     setHoveredDate(null);
-  };
+  }, []);
+
+  // Wrapper pour setHoveredDate avec normalisation
+  const handleSetHoveredDate = useCallback((date: Date | null) => {
+    if (date) {
+      setHoveredDate(normalizeDate(date));
+    } else {
+      setHoveredDate(null);
+    }
+  }, [normalizeDate]);
 
   return {
     selectedStart,
     selectedEnd,
     hoveredDate,
     workingDaysCount,
+    previewWorkingDays,
     handleDateClick,
-    setHoveredDate,
+    setHoveredDate: handleSetHoveredDate,
     isDateInRange,
     isDateSelected,
+    isRangeStart,
+    isRangeEnd,
+    isInPreview,
     reset,
+    isSelecting,
   };
 }

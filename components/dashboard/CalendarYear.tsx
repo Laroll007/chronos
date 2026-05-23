@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
-import { useMonthCalendar } from '@/hooks/useCycle';
+import { useMonthCalendar, computeMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -72,7 +72,7 @@ function MiniMonth({
   const emptyDays = Array(firstDayOfMonth).fill(null);
 
   return (
-    <div className="glass border-slate-200 rounded-lg p-1.5 md:p-2" role="region" aria-label={`Calendrier ${MOIS_COMPLETS[month]} ${year}`}>
+    <div className="glass rounded-lg p-1.5 md:p-2" role="region" aria-label={`Calendrier ${MOIS_COMPLETS[month]} ${year}`}>
       {/* Nom du mois */}
       <div className="text-center font-semibold text-[10px] md:text-xs mb-1" aria-hidden="true">{MOIS[month]}</div>
 
@@ -127,7 +127,7 @@ function MiniMonth({
                   'ring-1 ring-emerald-500': isSelected,
                   'bg-emerald-100': isInRange && !isSelected,
                 },
-                // Jour aujourd'hui - BLEU
+                // Jour aujourd'hui - INDIGO
                 {
                   'ring-1 ring-blue-500': day.isToday && !isSelected,
                 },
@@ -136,9 +136,9 @@ function MiniMonth({
                   'bg-emerald-200 text-emerald-800':
                     isPosted && !isInRange && !isSelected,
                 },
-                // États travail/repos - ROUGE pour travail
+                // États travail/repos - INDIGO pour travail
                 {
-                  'bg-red-100 text-red-700 font-bold':
+                  'bg-blue-100 text-blue-700 font-bold':
                     day.isWorking && !isInRange && !isSelected && !isPosted,
                   'text-slate-400': !day.isWorking && !isInRange && !isSelected && !isPosted,
                 },
@@ -167,7 +167,7 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
     let totalSundays = 0;
 
     for (let month = 0; month < 12; month++) {
-      const days = useMonthCalendar(cycleConfig, year, month);
+      const days = computeMonthCalendar(cycleConfig, year, month);
       totalWorking += days.filter((d) => d.isWorking).length;
       totalSundays += days.filter((d) => d.isWorking && d.isSunday).length;
     }
@@ -180,7 +180,7 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
   const goToThisYear = () => setYear(today.getFullYear());
 
   return (
-    <Card className="glass border-slate-200 h-full flex flex-col">
+    <Card className="glass h-full flex flex-col">
       <CardHeader className="pb-2 shrink-0">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -192,7 +192,7 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
               {yearStats.working}j travaillés
             </Badge>
             {yearStats.sundays > 0 && (
-              <Badge variant="secondary" className="bg-red-100 text-red-700 border border-red-200">
+              <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
                 {yearStats.sundays} dim
               </Badge>
             )}
@@ -239,7 +239,7 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
         {/* Légende */}
         <div className="flex items-center justify-center gap-3 md:gap-4 mt-3 text-xs shrink-0 flex-wrap">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-100 border border-red-200" />
+            <div className="w-3 h-3 rounded bg-blue-100 border border-blue-200" />
             <span className="text-slate-600">Travail</span>
           </div>
           <div className="flex items-center gap-1">

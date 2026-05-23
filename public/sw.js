@@ -1,9 +1,11 @@
 // Service Worker pour Chronos PWA
-const CACHE_NAME = 'chronos-v1';
+const CACHE_NAME = 'chronos-v11';
+const STATIC_CACHE = 'chronos-static-v7';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
   '/onboarding',
+  '/offline.html',
   '/manifest.json',
 ];
 
@@ -12,60 +14,95 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    })
+    }),
   );
-  // Activer immédiatement
-  self.skipWaiting();
+  // Ne PAS appeler self.skipWaiting() ici :
+  // on attend le message SKIP_WAITING du client pour contrôler la mise à jour
 });
 
-// Activation - nettoyage des anciens caches
+// Message du client pour déclencher l'activation
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Activation - nettoyage des anciens caches (tous ceux ≠ CACHE_NAME et ≠ STATIC_CACHE)
+// Volontairement PAS de self.clients.claim() ici : sur iOS Safari PWA, combiné à
+// l'event `controllerchange`, cela peut provoquer une boucle de reload à la
+// réouverture de la PWA. Le nouveau SW prendra le contrôle au prochain cold-start.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+          .filter((name) => name !== CACHE_NAME && name !== STATIC_CACHE)
+          .map((name) => caches.delete(name)),
       );
-    })
+    }),
   );
-  // Prendre le contrôle immédiatement
-  self.clients.claim();
 });
 
-// Fetch - stratégie Network First avec fallback cache
+function isVersionedStatic(url) {
+  return (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    /\.(png|jpg|jpeg|webp|avif|svg|ico|woff2|ttf)$/.test(url.pathname)
+  );
+}
+
+// Fetch - stratégies différenciées :
+// - /_next/static/*, /icons/*, fonts, images → Cache First (versionnés, safe)
+// - pages HTML et /api (hors POST) → Network First + fallback cache + /offline.html
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET
   if (event.request.method !== 'GET') return;
 
-  // Ignorer les requêtes vers des APIs externes
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
+  // Cache First pour assets versionnés
+  if (isVersionedStatic(url)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Network First pour pages/API GET
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Mettre en cache la réponse fraîche
         if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
       })
-      .catch(() => {
-        // Fallback vers le cache si offline
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Fallback vers la page d'accueil pour les navigations
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
           if (event.request.mode === 'navigate') {
-            return caches.match('/dashboard');
+            return caches.match('/offline.html').then(
+              (offline) =>
+                offline ??
+                new Response(
+                  '<!doctype html><meta charset=utf-8><title>Hors ligne</title><h1>Hors ligne</h1><p>Reconnectez-vous pour continuer.</p>',
+                  { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 503 },
+                ),
+            );
           }
           return new Response('Offline', { status: 503 });
-        });
-      })
+        }),
+      ),
   );
 });
 
@@ -75,7 +112,7 @@ self.addEventListener('push', (event) => {
 
   const data = event.data.json();
   const options = {
-    body: data.body || 'Nouvelle notification Chronos',
+    body: data.body || 'Nouvelle notification My Chronos',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-96x96.png',
     vibrate: [100, 50, 100],
@@ -85,7 +122,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Chronos', options)
+    self.registration.showNotification(data.title || 'My Chronos', options),
   );
 });
 
@@ -95,16 +132,14 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Si une fenêtre existe, la focus
       for (const client of clientList) {
         if (client.url.includes('/dashboard') && 'focus' in client) {
           return client.focus();
         }
       }
-      // Sinon ouvrir une nouvelle fenêtre
       if (clients.openWindow) {
         return clients.openWindow(event.notification.data?.url || '/dashboard');
       }
-    })
+    }),
   );
 });

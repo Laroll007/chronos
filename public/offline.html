@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#0055A4" />
+    <title>Hors ligne — My Chronos</title>
+    <link rel="icon" href="/favicon.ico" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f8f9fc;
+        color: #0f172a;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        max-width: 28rem;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+      }
+      .bar {
+        height: 4px;
+        width: 100%;
+        max-width: 12rem;
+        margin: 0 auto 2rem;
+        border-radius: 4px;
+        background: linear-gradient(to right, #0055a4 33%, #ffffff 33% 66%, #ef4135 66%);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin: 0 0 0.75rem;
+        color: #0f172a;
+      }
+      p {
+        color: #475569;
+        line-height: 1.5;
+        margin: 0 0 1rem;
+      }
+      button {
+        margin-top: 1.5rem;
+        background: linear-gradient(135deg, #0055a4, #1a7de8);
+        color: white;
+        border: 0;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:focus-visible {
+        outline: 3px solid #ef4135;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="bar" aria-hidden="true"></div>
+      <h1>Vous êtes hors ligne</h1>
+      <p>
+        My Chronos stocke vos données localement, mais le réseau est nécessaire
+        pour charger cette page. Vos compteurs resteront intacts à la reconnexion.
+      </p>
+      <p>Reconnectez-vous au réseau puis réessayez.</p>
+      <button type="button" onclick="window.location.reload()">
+        Réessayer
+      </button>
+    </main>
+  </body>
+</html>

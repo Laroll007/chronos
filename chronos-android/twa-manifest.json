@@ -1,0 +1,48 @@
+{
+  "packageId": "fr.mychronos.app",
+  "host": "mychronos.fr",
+  "name": "My Chronos - Gestion des Congés",
+  "launcherName": "My Chronos",
+  "display": "standalone",
+  "themeColor": "#0055A4",
+  "navigationColor": "#0f172a",
+  "navigationColorDark": "#0f172a",
+  "navigationDividerColor": "#0f172a",
+  "navigationDividerColorDark": "#0f172a",
+  "backgroundColor": "#0f172a",
+  "enableNotifications": false,
+  "startUrl": "/dashboard",
+  "iconUrl": "https://mychronos.fr/icons/icon-512x512.png",
+  "maskableIconUrl": "https://mychronos.fr/icons/icon-512x512.png",
+  "monochromeIconUrl": "https://mychronos.fr/icons/icon-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "chronos"
+  },
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "shortcuts": [
+    {
+      "name": "Calendrier",
+      "shortName": "Calendrier",
+      "url": "/dashboard",
+      "chosenIconUrl": "https://mychronos.fr/icons/icon-96x96.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://mychronos.fr/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://mychronos.fr/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "serviceAccountJsonFile": ""
+}

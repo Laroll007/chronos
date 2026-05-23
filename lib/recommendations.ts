@@ -8,6 +8,8 @@ import {
   RTC_LIBRES,
   HS_MAX_STOCKABLES,
   HEURES_PAR_JOUR,
+  CONGES_BONIFIES_EXPIRATION_MOIS,
+  CONGES_BONIFIES_REPORT_MAX_MOIS,
 } from './constants';
 import {
   formatMinutes,
@@ -59,6 +61,27 @@ export function generateRecommendations(
 
   // 7. HS LIMITE (priorité haute si proche)
   recommendations.push(...checkHSLimite(counters));
+
+  // 8. CA ANTÉRIEURS (deadline 30 avril — critique jan-avr)
+  recommendations.push(...checkCAAnterieurs(counters, currentDate, year));
+
+  // 9. CA HP ANTÉRIEURS (deadline 30 avril)
+  recommendations.push(...checkCAHPAnterieurs(counters, currentDate, year));
+
+  // 10. ARTT (perdus au 31/12)
+  if (counters.hasARTT && counters.artt !== undefined && counters.artt > 0) {
+    recommendations.push(...checkARTT(counters, currentDate, year));
+  }
+
+  // 11. CONGÉS BONIFIÉS (deadline selon date d'ouverture)
+  if (counters.hasCongesBonifies && counters.congesBonifies !== undefined && counters.congesBonifies > 0) {
+    recommendations.push(...checkCongesBonifies(counters, currentDate));
+  }
+
+  // 12. HS HISTORIQUE (pas de deadline légale — info si stock important)
+  if (counters.hsHistorique > 0) {
+    recommendations.push(...checkHSHistorique(counters));
+  }
 
   // Trier par priorité
   const priorityOrder: Record<AlertPriority, number> = {
@@ -140,18 +163,18 @@ function checkCAHPCondition(
   const month = currentDate.getMonth() + 1;
 
   // Période 1 : 01/01 - 30/04
+  // Priorité haute dès le début : CA à poser avant CF pour déclencher le bonus CA HP
   if (month >= 1 && month <= 4) {
     const caNeeded = getCANeededForHP(counters.caPosesHorsPeriode);
     if (caNeeded > 0) {
       const deadline = new Date(year, 3, 30); // 30 avril
       const daysRemaining = getDaysUntil(deadline, currentDate);
-      const urgency = calculateUrgencyPercent(daysRemaining, 120);
 
       recommendations.push({
         id: generateId(),
-        priority: urgency >= 70 ? 'high' : 'medium',
+        priority: 'high',
         action: `Poser ${caNeeded} CA avant le 30 avril`,
-        reason: `Pour obtenir les 2 CA Hors Période bonus (${daysRemaining}j restants)`,
+        reason: `${counters.caPosesHorsPeriode}/${CA_REQUIS_POUR_HP} CA posés hors période — ${daysRemaining}j pour obtenir les 2 CA HP bonus`,
         deadline: `${year}-04-30`,
         counterType: 'ca',
         amountToConsume: caNeeded,
@@ -159,8 +182,8 @@ function checkCAHPCondition(
     }
   }
 
-  // Période 2 : 01/11 - 31/12 (si période 1 non validée)
-  if (month >= 11 && counters.caHP === 0) {
+  // Période 2 : 01/11 - 31/12 (si condition jamais validée, indépendamment du solde caHP restant)
+  if (month >= 11 && counters.caPosesHorsPeriode < CA_REQUIS_POUR_HP) {
     const caNeeded = getCANeededForHP(counters.caPosesHorsPeriode);
     if (caNeeded > 0 && counters.ca >= caNeeded) {
       const deadline = new Date(year, 11, 31); // 31 décembre
@@ -279,6 +302,146 @@ function checkRTT(
   }
 
   return recommendations;
+}
+
+function checkCAAnterieurs(
+  counters: Counters,
+  currentDate: Date,
+  year: number
+): Recommendation[] {
+  if (counters.caAnterieur <= 0) return [];
+  const recommendations: Recommendation[] = [];
+  const deadline = new Date(year, 3, 30); // 30 avril
+  const daysRemaining = getDaysUntil(deadline, currentDate);
+  const month = currentDate.getMonth() + 1;
+
+  if (month <= 4) {
+    recommendations.push({
+      id: generateId(),
+      priority: daysRemaining <= 30 ? 'high' : 'medium',
+      action: `Poser ${counters.caAnterieur} CA antérieurs avant le 30 avril`,
+      reason: `Report N-1 — perdus après le 30 avril (${daysRemaining}j restants). Non convertibles au CET.`,
+      deadline: `${year}-04-30`,
+      counterType: 'caAnterieur',
+      amountToConsume: counters.caAnterieur,
+    });
+  } else {
+    // Après le 30 avril : les CA antérieurs sont expirés
+    recommendations.push({
+      id: generateId(),
+      priority: 'high',
+      action: `CA antérieurs expirés (${counters.caAnterieur}j)`,
+      reason: `La deadline du 30 avril est dépassée. Ces jours sont perdus — pensez à remettre le compteur à 0.`,
+      counterType: 'caAnterieur',
+    });
+  }
+  return recommendations;
+}
+
+function checkCAHPAnterieurs(
+  counters: Counters,
+  currentDate: Date,
+  year: number
+): Recommendation[] {
+  if (counters.caHPAnterieur <= 0) return [];
+  const recommendations: Recommendation[] = [];
+  const deadline = new Date(year, 3, 30); // 30 avril
+  const daysRemaining = getDaysUntil(deadline, currentDate);
+  const month = currentDate.getMonth() + 1;
+
+  if (month <= 4) {
+    recommendations.push({
+      id: generateId(),
+      priority: daysRemaining <= 30 ? 'high' : 'medium',
+      action: `Poser ${counters.caHPAnterieur} CA HP antérieurs avant le 30 avril`,
+      reason: `Bonus HP de l'année précédente — perdus après le 30 avril (${daysRemaining}j restants).`,
+      deadline: `${year}-04-30`,
+      counterType: 'caHPAnterieur',
+      amountToConsume: counters.caHPAnterieur,
+    });
+  } else {
+    recommendations.push({
+      id: generateId(),
+      priority: 'high',
+      action: `CA HP antérieurs expirés (${counters.caHPAnterieur}j)`,
+      reason: `La deadline du 30 avril est dépassée. Remettez le compteur à 0.`,
+      counterType: 'caHPAnterieur',
+    });
+  }
+  return recommendations;
+}
+
+function checkARTT(
+  counters: Counters,
+  currentDate: Date,
+  year: number
+): Recommendation[] {
+  const artt = counters.artt ?? 0;
+  if (artt <= 0) return [];
+  const deadline = new Date(year, 11, 31); // 31 décembre
+  const daysRemaining = getDaysUntil(deadline, currentDate);
+  const urgency = calculateUrgencyPercent(daysRemaining, 365);
+
+  return [{
+    id: generateId(),
+    priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
+    action: `Consommer ${artt}j d'ARTT avant le 31 décembre`,
+    reason: `Perdus au 31/12 s'ils ne sont pas posés (${daysRemaining}j restants)`,
+    deadline: `${year}-12-31`,
+    counterType: 'artt',
+    amountToConsume: artt,
+  }];
+}
+
+function checkCongesBonifies(
+  counters: Counters,
+  currentDate: Date
+): Recommendation[] {
+  const jours = counters.congesBonifies ?? 0;
+  if (jours <= 0) return [];
+
+  if (!counters.congesBonifiesDateOuverture) {
+    return [{
+      id: generateId(),
+      priority: 'medium',
+      action: `Planifier ${jours}j de congés bonifiés`,
+      reason: `Date d'ouverture du droit non renseignée — configurez-la pour un suivi de deadline précis.`,
+      counterType: 'congesBonifies',
+    }];
+  }
+
+  const ouverture = new Date(counters.congesBonifiesDateOuverture);
+  const expirationMs = CONGES_BONIFIES_EXPIRATION_MOIS + CONGES_BONIFIES_REPORT_MAX_MOIS;
+  const expiration = new Date(ouverture);
+  expiration.setMonth(expiration.getMonth() + expirationMs); // 48 mois max
+  const softDeadline = new Date(ouverture);
+  softDeadline.setMonth(softDeadline.getMonth() + CONGES_BONIFIES_EXPIRATION_MOIS); // 36 mois sans report
+
+  const daysRemaining = getDaysUntil(expiration, currentDate);
+  const daysToSoft = getDaysUntil(softDeadline, currentDate);
+
+  return [{
+    id: generateId(),
+    priority: daysRemaining <= 90 ? 'high' : daysToSoft <= 180 ? 'medium' : 'low',
+    action: `Planifier ${jours}j de congés bonifiés`,
+    reason: `Expire ${daysToSoft > 0 ? `dans ${daysToSoft}j` : 'bientôt'} (max ${daysRemaining}j avec report). Droit ouvert le ${ouverture.toLocaleDateString('fr-FR')}.`,
+    deadline: expiration.toISOString().split('T')[0],
+    counterType: 'congesBonifies',
+    amountToConsume: jours,
+  }];
+}
+
+function checkHSHistorique(counters: Counters): Recommendation[] {
+  const minutes = counters.hsHistorique;
+  if (minutes <= 0) return [];
+
+  return [{
+    id: generateId(),
+    priority: 'low',
+    action: `${formatMinutes(minutes)} de HS historiques disponibles`,
+    reason: `Stock antérieur à 2020. Récupération sur ordre de service ou indemnisation (13,25 €/h). Pas de deadline légale.`,
+    counterType: 'hsHistorique',
+  }];
 }
 
 function checkHSLimite(counters: Counters): Recommendation[] {

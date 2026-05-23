@@ -93,36 +93,43 @@ export function useCycle(cycleConfig: CycleConfig | null): CycleInfo | null {
 /**
  * Génère le calendrier du mois avec les jours travaillés
  */
+// Logique pure extraite — utilisable hors React (loops, calculs, etc.)
+export function computeMonthCalendar(
+  cycleConfig: CycleConfig | null,
+  year: number,
+  month: number
+): { date: Date; isWorking: boolean; isSunday: boolean; isToday: boolean }[] {
+  if (!cycleConfig) return [];
+
+  const today = new Date();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const days: { date: Date; isWorking: boolean; isSunday: boolean; isToday: boolean }[] = [];
+
+  const current = new Date(firstDay);
+  while (current <= lastDay) {
+    const date = new Date(current);
+    days.push({
+      date,
+      isWorking: isWorkingDay(date, cycleConfig),
+      isSunday: date.getDay() === 0,
+      isToday:
+        date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear(),
+    });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return days;
+}
+
 export function useMonthCalendar(
   cycleConfig: CycleConfig | null,
   year: number,
   month: number
 ): { date: Date; isWorking: boolean; isSunday: boolean; isToday: boolean }[] {
-  return useMemo(() => {
-    if (!cycleConfig) return [];
-
-    const today = new Date();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days: { date: Date; isWorking: boolean; isSunday: boolean; isToday: boolean }[] = [];
-
-    const current = new Date(firstDay);
-    while (current <= lastDay) {
-      const date = new Date(current);
-      days.push({
-        date,
-        isWorking: isWorkingDay(date, cycleConfig),
-        isSunday: date.getDay() === 0,
-        isToday:
-          date.getDate() === today.getDate() &&
-          date.getMonth() === today.getMonth() &&
-          date.getFullYear() === today.getFullYear(),
-      });
-      current.setDate(current.getDate() + 1);
-    }
-
-    return days;
-  }, [cycleConfig, year, month]);
+  return useMemo(() => computeMonthCalendar(cycleConfig, year, month), [cycleConfig, year, month]);
 }
 
 /**

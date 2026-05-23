@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-04-24",
+    "time": "18:44",
+    "score": 63.2,
+    "type": "frontend",
+    "scores": {
+      "performance": 75,
+      "securite": 57,
+      "accessibilite": 70,
+      "seo": 38,
+      "architecture": 77,
+      "frontend": 64,
+      "devops": 28,
+      "qualite_code": 74,
+      "resilience": 73,
+      "conformite": 42,
+      "produit": 68,
+      "contenu": 82
+    },
+    "stories_generated": 20,
+    "priorities": { "P0": 6, "P1": 7, "P2": 5, "P3": 2 },
+    "report_file": "ultrajury-2026-04-24-1844.md",
+    "backlog_file": "backlog-2026-04-24-1844.md"
+  }
+]

@@ -1,20 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useServiceWorkerUpdate } from '@/hooks/useServiceWorkerUpdate';
+import { UpdateBanner } from './UpdateBanner';
 
 export function ServiceWorkerRegistration() {
-  useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('SW registered:', registration.scope);
-        })
-        .catch((error) => {
-          console.error('SW registration failed:', error);
-        });
-    }
-  }, []);
+  const { updateAvailable, applyUpdate, dismissUpdate, dismissed } =
+    useServiceWorkerUpdate();
 
-  return null;
+  if (!updateAvailable || dismissed) return null;
+
+  return <UpdateBanner onUpdate={applyUpdate} onDismiss={dismissUpdate} />;
 }

@@ -69,9 +69,12 @@ const workingDayCache = new Map<string, boolean>();
 
 /**
  * Génère une clé de cache pour la config de cycle
+ * Inclut semaineA/B pour invalider le cache après modification du planning
  */
 function getCycleConfigHash(cycleConfig: CycleConfig): string {
-  return `${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}`;
+  const scheduleA = Object.values(cycleConfig.semaineA).map(v => v ? '1' : '0').join('');
+  const scheduleB = cycleConfig.semaineB ? Object.values(cycleConfig.semaineB).map(v => v ? '1' : '0').join('') : '';
+  return `${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}|${scheduleA}|${scheduleB}`;
 }
 
 /**
@@ -262,7 +265,7 @@ export function getCAParCycle(pattern?: CyclePattern): number {
 export function calculerRTCNet(
   rtcBrut: number,
   cyclePattern?: CyclePattern,
-  journeeSolidariteAppliquee: boolean = true
+  journeeSolidariteAppliquee: boolean = false
 ): { rtcNet: number; deductionJS: number; estExcluCompensationHS: boolean } {
   if (!journeeSolidariteAppliquee) {
     return { rtcNet: rtcBrut, deductionJS: 0, estExcluCompensationHS: false };
@@ -404,10 +407,8 @@ export function getCETApportMaxAnnee(cetActuel: number): number {
  */
 export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
   const apportMax = getCETApportMaxAnnee(counters.cet);
-  const besoin = Math.min(
-    counters.objectifCET - counters.cet,
-    apportMax
-  );
+  // Toujours cibler le maximum épargnable — pas d'objectif manuel
+  const besoin = apportMax;
 
   if (besoin <= 0) {
     return {
@@ -417,7 +418,7 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
       gainNetRTC: 0,
       joursEconomises: 0,
       joursPerdus: 0,
-      isOptimal: counters.cet >= counters.objectifCET,
+      isOptimal: true,
     };
   }
 
@@ -501,9 +502,27 @@ export function simulatePose(
       newCounters.ca -= amount;
       newCounters.caConsommes += amount;
       if (isInCAHPPeriod(date)) {
+        const wasBelow = newCounters.caPosesHorsPeriode < CA_REQUIS_POUR_HP;
         newCounters.caPosesHorsPeriode += amount;
-        newCounters.caHP = checkCAHPCondition(newCounters.caPosesHorsPeriode);
+        // N'accorder le bonus qu'au moment du franchissement du seuil
+        // (évite de réinitialiser caHP si déjà gagné et partiellement utilisé)
+        if (wasBelow && newCounters.caPosesHorsPeriode >= CA_REQUIS_POUR_HP) {
+          newCounters.caHP += CA_HP_BONUS;
+        }
       }
+      break;
+    }
+
+    case 'caHP': {
+      if (amount > counters.caHP) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CA HP insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.caHP} CA HP disponibles`,
+        };
+      }
+      newCounters.caHP -= amount;
       break;
     }
 
@@ -597,6 +616,121 @@ export function simulatePose(
       break;
     }
 
+    case 'cet': {
+      if (amount > counters.cet) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CET insuffisant' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.cet}j de CET disponibles`,
+        };
+      }
+      newCounters.cet -= amount;
+      break;
+    }
+
+    case 'artt': {
+      if (!counters.hasARTT || counters.artt === undefined) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'ARTT non configurés' }],
+          isValid: false,
+          errorMessage: 'Les ARTT ne sont pas activés sur votre profil',
+        };
+      }
+      if (amount > counters.artt) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'ARTT insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.artt}j d'ARTT disponibles`,
+        };
+      }
+      newCounters.artt = counters.artt - amount;
+      break;
+    }
+
+    case 'caAnterieur': {
+      if (amount > counters.caAnterieur) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CA antérieurs insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.caAnterieur}j de CA antérieurs disponibles`,
+        };
+      }
+      newCounters.caAnterieur -= amount;
+      break;
+    }
+
+    case 'caHPAnterieur': {
+      if (amount > counters.caHPAnterieur) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CA HP antérieurs insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.caHPAnterieur}j de CA HP antérieurs disponibles`,
+        };
+      }
+      newCounters.caHPAnterieur -= amount;
+      break;
+    }
+
+    case 'cet2008': {
+      if (!counters.hasCET2008 || counters.cet2008 === undefined) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CET 2008 non configuré' }],
+          isValid: false,
+          errorMessage: 'Le CET 2008 n\'est pas activé sur votre profil',
+        };
+      }
+      if (amount > counters.cet2008) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CET 2008 insuffisant' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.cet2008}j de CET 2008 disponibles`,
+        };
+      }
+      newCounters.cet2008 = counters.cet2008 - amount;
+      break;
+    }
+
+    case 'congesBonifies': {
+      if (!counters.hasCongesBonifies || counters.congesBonifies === undefined) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'Congés bonifiés non configurés' }],
+          isValid: false,
+          errorMessage: 'Les congés bonifiés ne sont pas activés sur votre profil',
+        };
+      }
+      if (amount > counters.congesBonifies) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'Congés bonifiés insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${counters.congesBonifies}j de congés bonifiés disponibles`,
+        };
+      }
+      newCounters.congesBonifies = counters.congesBonifies - amount;
+      break;
+    }
+
+    case 'hsHistorique': {
+      if (amount > counters.hsHistorique) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'HS historiques insuffisantes' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${formatMinutes(counters.hsHistorique)} de HS historiques disponibles`,
+        };
+      }
+      newCounters.hsHistorique -= amount;
+      break;
+    }
+
     default:
       return {
         newCounters: counters,
@@ -683,8 +817,28 @@ export function hasPostedLeaveOnDate(
   date: Date,
   history: HistoryEntry[]
 ): boolean {
-  const dateStr = date.toISOString().split('T')[0]; // Format YYYY-MM-DD
-  return history.some(
-    (entry) => entry.action === 'pose' && entry.date.startsWith(dateStr)
-  );
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  const dateTime = normalized.getTime();
+
+  return history.some((entry) => {
+    if (entry.action !== 'pose') return false;
+
+    const startDate = new Date(entry.date);
+    startDate.setHours(0, 0, 0, 0);
+    const startTime = startDate.getTime();
+
+    // Si pas de dateEnd, on vérifie juste la date de début
+    if (!entry.dateEnd) {
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+      return checkDate.getTime() === startTime;
+    }
+
+    const endDate = new Date(entry.dateEnd);
+    endDate.setHours(23, 59, 59, 999);
+    const endTime = endDate.getTime();
+
+    return dateTime >= startTime && dateTime <= endTime;
+  });
 }

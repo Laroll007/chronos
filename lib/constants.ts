@@ -13,6 +13,7 @@ export const HEURES_PAR_JOUR = 12 * 60 + 8; // 12h08 = 728 minutes
 export const CA_TOTAL_ANNUEL = 18; // jours (par défaut pour cycles 12h08)
 export const CA_MAX_VERS_CET = 5; // jours
 export const CA_REQUIS_POUR_HP = 8; // jours à poser hors période pour obtenir CA HP
+export const CA_HP_PALIER_1 = 4;   // seuil pour obtenir le 1er jour CA HP
 export const CA_HP_BONUS = 2; // jours bonus si condition remplie
 
 // CA par cycle (APORTT)
@@ -76,10 +77,27 @@ export const COEFFICIENTS_RPS = {
 };
 
 // ============================================
+// ARTT - AMÉNAGEMENT ET RÉDUCTION DU TEMPS DE TRAVAIL
+// ============================================
+export const ARTT_QUOTA_ANNUEL = 20; // jours/an (arrêté du 3 mai 2002 - police nationale)
+
+// ============================================
+// CONGÉS BONIFIÉS (décret n°2020-851 du 2 juillet 2020)
+// ============================================
+export const CONGES_BONIFIES_QUOTA = 31; // jours (nouveau régime post-2020)
+export const CONGES_BONIFIES_QUOTA_ANCIEN = 65; // jours (régime pré-2020)
+export const CONGES_BONIFIES_CYCLE_MOIS = 24; // tous les 24 mois
+export const CONGES_BONIFIES_EXPIRATION_MOIS = 36; // expire 36 mois après ouverture du droit
+export const CONGES_BONIFIES_REPORT_MAX_MOIS = 12; // report max : +12 mois = 48 mois max
+
+// ============================================
 // HEURES SUPPLÉMENTAIRES (HS)
 // ============================================
 export const HS_MAX_STOCKABLES = 160 * 60; // 160h = 9600 minutes
 export const HS_MAX_VERS_CET = 5; // jours max vers CET
+
+// HS Historique (compte gelé depuis 2020, décret 2020-1398)
+export const HS_HISTORIQUE_TAUX_HORAIRE = 13.25; // €/h brut (indemnisation campagnes)
 
 // ============================================
 // CET - COMPTE ÉPARGNE TEMPS
@@ -121,7 +139,7 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   rtc: {
     name: 'RTC',
-    description: 'Net après JS (brut 187h09 - 12h08). 83h30 à réserver pour CET.',
+    description: '83h30 à réserver pour CET. Perdus au 31/12.',
     unit: 'heures',
   },
   rtcReserves: {
@@ -154,56 +172,146 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
     description: 'Compte Épargne Temps. Plafond 60 jours.',
     unit: 'jours',
   },
+  artt: {
+    name: 'ARTT',
+    description: '20j/an. Perdus au 31/12 si non posés. (Arrêté 3 mai 2002)',
+    unit: 'jours',
+  },
+  caAnterieur: {
+    name: 'CA Antérieurs',
+    description: 'Report CA N-1. Deadline : 30 avril. Non convertibles en CET.',
+    unit: 'jours',
+  },
+  caHPAnterieur: {
+    name: 'CA HP Antérieurs',
+    description: 'Report CA HP N-1. Deadline : 30 avril. Non convertibles en CET.',
+    unit: 'jours',
+  },
+  cet2008: {
+    name: 'CET 2008',
+    description: 'Stock historique gelé (constitué avant 2010). Pas de deadline.',
+    unit: 'jours',
+  },
+  congesBonifies: {
+    name: 'Congés Bonifiés',
+    description: '31j tous les 2 ans (DOM/TOM). Expire 36 mois après ouverture du droit.',
+    unit: 'jours',
+  },
+  hsHistorique: {
+    name: 'HS Historique',
+    description: 'Stock antérieur à 2020. Récupération ou indemnisation (13,25 €/h).',
+    unit: 'heures',
+  },
 };
 
 // ============================================
-// COULEURS PAR COMPTEUR
+// COULEURS PAR COMPTEUR - Palette tricolore
 // ============================================
-export const COUNTER_COLORS: Record<string, { gradient: string; bg: string; text: string }> = {
+export const COUNTER_COLORS: Record<string, { gradient: string; bg: string; text: string; ring: string; glow: string }> = {
   ca: {
-    gradient: 'from-blue-500 to-cyan-500',
+    gradient: 'from-blue-600 to-blue-500',
     bg: 'bg-blue-50',
     text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
   },
   caHP: {
-    gradient: 'from-indigo-500 to-purple-500',
-    bg: 'bg-indigo-50',
-    text: 'text-indigo-600',
+    gradient: 'from-blue-600 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
   },
   cf: {
-    gradient: 'from-amber-500 to-orange-500',
-    bg: 'bg-amber-50',
-    text: 'text-amber-600',
+    gradient: 'from-blue-600 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
   },
   rtc: {
-    gradient: 'from-emerald-500 to-teal-500',
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-600',
+    gradient: 'from-blue-600 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
   },
   rtcReserves: {
-    gradient: 'from-blue-500 to-blue-600',
+    gradient: 'from-blue-600 to-blue-500',
     bg: 'bg-blue-50',
     text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
   },
   rtt: {
-    gradient: 'from-lime-500 to-green-500',
-    bg: 'bg-lime-50',
-    text: 'text-lime-600',
-  },
-  rps: {
-    gradient: 'from-slate-500 to-slate-600',
-    bg: 'bg-slate-50',
-    text: 'text-slate-600',
-  },
-  hs: {
-    gradient: 'from-red-500 to-orange-500',
-    bg: 'bg-red-50',
-    text: 'text-red-600',
-  },
-  cet: {
-    gradient: 'from-blue-500 to-blue-600',
+    gradient: 'from-blue-600 to-blue-500',
     bg: 'bg-blue-50',
     text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
+  },
+  rps: {
+    gradient: 'from-blue-600 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
+  },
+  hs: {
+    gradient: 'from-blue-600 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
+  },
+  cet: {
+    gradient: 'from-blue-600 to-blue-400',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
+  },
+  artt: {
+    gradient: 'from-slate-600 to-slate-500',
+    bg: 'bg-slate-50',
+    text: 'text-slate-600',
+    ring: 'ring-slate-500/30',
+    glow: 'shadow-slate-500/20',
+  },
+  caAnterieur: {
+    gradient: 'from-amber-600 to-amber-500',
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    ring: 'ring-amber-500/30',
+    glow: 'shadow-amber-500/20',
+  },
+  caHPAnterieur: {
+    gradient: 'from-orange-600 to-orange-500',
+    bg: 'bg-orange-50',
+    text: 'text-orange-700',
+    ring: 'ring-orange-500/30',
+    glow: 'shadow-orange-500/20',
+  },
+  cet2008: {
+    gradient: 'from-blue-700 to-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    ring: 'ring-blue-500/30',
+    glow: 'shadow-blue-500/20',
+  },
+  congesBonifies: {
+    gradient: 'from-emerald-600 to-emerald-500',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-700',
+    ring: 'ring-emerald-500/30',
+    glow: 'shadow-emerald-500/20',
+  },
+  hsHistorique: {
+    gradient: 'from-rose-600 to-rose-500',
+    bg: 'bg-rose-50',
+    text: 'text-rose-700',
+    ring: 'ring-rose-500/30',
+    glow: 'shadow-rose-500/20',
   },
 };
 
@@ -223,5 +331,5 @@ export const JOURS_SEMAINE = [
 // ============================================
 // VERSION APP
 // ============================================
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 export const STORAGE_KEY = 'chronos_data';
