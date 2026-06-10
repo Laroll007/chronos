@@ -32,9 +32,10 @@ import {
 interface CountersOverviewProps {
   counters: Counters;
   onUpdateCounters: (updates: Partial<Counters>) => void;
+  caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
 }
 
-export function CountersOverview({ counters, onUpdateCounters }: CountersOverviewProps) {
+export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL }: CountersOverviewProps) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
@@ -84,7 +85,7 @@ export function CountersOverview({ counters, onUpdateCounters }: CountersOvervie
       id: 'ca',
       label: 'Congés Annuels',
       value: counters.ca,
-      max: CA_TOTAL_ANNUEL,
+      max: caTotal,
       unit: 'jours',
       deadline: new Date(year, 11, 31),
       status: getStatus(daysUntilYear, counters.ca > 5),
@@ -106,34 +107,38 @@ export function CountersOverview({ counters, onUpdateCounters }: CountersOvervie
       });
     }
 
-    // CF Semestre courant
-    const cfRestant = getCFRemainingForSemester(
-      semester,
-      counters.cfConsoS1,
-      counters.cfConsoS2
-    );
-    result.push({
-      id: 'cf',
-      label: 'CF',
-      value: counters.cf,
-      max: CF_TOTAL_ANNUEL,
-      unit: 'heures',
-      deadline: semester === 1 ? new Date(year, 5, 30) : new Date(year, 11, 31),
-      status: getStatus(daysUntilSemester, cfRestant > 0),
-      description: `~54h36 à consommer ce semestre`,
-    });
+    // CF Semestre courant (masqué si l'agent n'a pas de CF)
+    if (counters.hasCF !== false) {
+      const cfRestant = getCFRemainingForSemester(
+        semester,
+        counters.cfConsoS1,
+        counters.cfConsoS2
+      );
+      result.push({
+        id: 'cf',
+        label: 'CF',
+        value: counters.cf,
+        max: CF_TOTAL_ANNUEL,
+        unit: 'heures',
+        deadline: semester === 1 ? new Date(year, 5, 30) : new Date(year, 11, 31),
+        status: getStatus(daysUntilSemester, cfRestant > 0),
+        description: `~54h36 à consommer ce semestre`,
+      });
+    }
 
-    // RTC (total)
-    result.push({
-      id: 'rtc',
-      label: 'RTC',
-      value: counters.rtc,
-      max: RTC_NET_ANNUEL,
-      unit: 'heures',
-      deadline: new Date(year, 11, 31),
-      status: getStatus(daysUntilYear, counters.rtc > 0),
-      description: counters.journeeSolidariteAppliquee ? 'Net après journée de solidarité' : 'Récupération Temps de Cycle',
-    });
+    // RTC (total) — masqué si l'agent n'a pas de RTC
+    if (counters.hasRTC !== false) {
+      result.push({
+        id: 'rtc',
+        label: 'RTC',
+        value: counters.rtc,
+        max: RTC_NET_ANNUEL,
+        unit: 'heures',
+        deadline: new Date(year, 11, 31),
+        status: getStatus(daysUntilYear, counters.rtc > 0),
+        description: counters.journeeSolidariteAppliquee ? 'Net après journée de solidarité' : 'Récupération Temps de Cycle',
+      });
+    }
 
     // RTT si applicable
     if (counters.hasRTT && counters.rtt !== undefined && counters.rtt > 0) {
@@ -273,7 +278,7 @@ export function CountersOverview({ counters, onUpdateCounters }: CountersOvervie
     }
 
     return result;
-  }, [counters]);
+  }, [counters, caTotal]);
 
   return (
     <>
@@ -285,6 +290,7 @@ export function CountersOverview({ counters, onUpdateCounters }: CountersOvervie
       <CounterDetailsModal
         counterId={detailsId}
         counters={counters}
+        caTotal={caTotal}
         onClose={() => setDetailsId(null)}
         onUpdate={onUpdateCounters}
       />

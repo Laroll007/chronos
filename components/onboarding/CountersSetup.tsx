@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Counters, CycleConfig } from '@/lib/types';
 import { COUNTER_LABELS, COUNTER_COLORS } from '@/lib/constants';
+import { getCATotalForCycle } from '@/lib/calculations';
 import { DEFAULT_COUNTERS } from '@/lib/storage';
 import { ChevronRight, ChevronLeft, Sparkles, ShieldCheck, ListChecks } from 'lucide-react';
 import { CounterHelpButton as HelpButton, CounterHelpModal as HelpModal } from '@/components/shared/CounterHelpModal';
@@ -122,7 +123,8 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
   },
 ];
 
-const DEFAULT_SELECTED: CounterKey[] = ['ca', 'cf', 'rtc', 'rps', 'hs', 'cet'];
+// Rien n'est pré-coché : l'utilisateur sélectionne lui-même les compteurs qu'il possède.
+const DEFAULT_SELECTED: CounterKey[] = [];
 
 // ============================================================
 // Composant principal
@@ -149,14 +151,11 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
   const [counters, setCounters] = useState<Counters>(initialCounters ?? EMPTY_COUNTERS);
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
-  // Pré-cochage : 6 compteurs quasi-universels + RTT si cycle hebdo
-  const initialSelected = useMemo(() => {
-    const set = new Set<CounterKey>(DEFAULT_SELECTED);
-    if (cycleConfig.type === 'hebdo') set.add('rtt');
-    return set;
-  }, [cycleConfig.type]);
+  // Nombre de CA annuels selon le cycle (hebdo = 25, sinon 18/23)
+  const caTotal = getCATotalForCycle(cycleConfig);
 
-  const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(initialSelected);
+  // Aucun pré-cochage : l'utilisateur coche lui-même ce qu'il possède
+  const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(new Set(DEFAULT_SELECTED));
 
   const updateCounter = (key: keyof Counters, value: number) =>
     setCounters((prev) => ({ ...prev, [key]: value }));
@@ -185,9 +184,9 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
         case 'ca':
           return isAdding ? prev : { ...prev, ca: 0, caPosesHorsPeriode: 0, caHP: 0 };
         case 'cf':
-          return isAdding ? prev : { ...prev, cf: 0 };
+          return { ...prev, hasCF: isAdding, cf: isAdding ? prev.cf : 0 };
         case 'rtc':
-          return isAdding ? prev : { ...prev, rtc: 0 };
+          return { ...prev, hasRTC: isAdding, rtc: isAdding ? prev.rtc : 0 };
         case 'rps':
           return isAdding ? prev : { ...prev, rps: 0 };
         case 'hs':
@@ -397,7 +396,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
               <div className={`${subClass} mt-1`}>{COUNTER_LABELS.ca.description}</div>
             </div>
             <div className="px-6 space-y-4">
-              <DaysInput label="CA restants" value={counters.ca} onChange={(v) => updateCounter('ca', v)} max={18} hint="Perdus au 31/12" colorKey="ca" />
+              <DaysInput label="CA restants" value={counters.ca} onChange={(v) => updateCounter('ca', v)} max={caTotal} hint="Perdus au 31/12" colorKey="ca" />
               <div>
                 <div className="flex items-center mb-2">
                   <span className="text-sm font-medium text-slate-600">CA posés hors période</span>
@@ -407,7 +406,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
                   label="CA posés hors période"
                   value={counters.caPosesHorsPeriode}
                   onChange={(v) => { updateCounter('caPosesHorsPeriode', v); updateCounter('caHP', v >= 8 ? 2 : 0); }}
-                  max={18}
+                  max={caTotal}
                   hint="01/01-30/04 ou 01/11-31/12 — Si ≥ 8 : bonus 2 CA HP"
                   colorKey="caHP"
                 />

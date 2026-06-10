@@ -16,6 +16,7 @@ import {
   HEURES_PAR_JOUR,
   CA_TOTAL_ANNUEL,
   CA_PAR_CYCLE,
+  CA_HEBDO,
   CA_MAX_VERS_CET,
   CA_REQUIS_POUR_HP,
   CA_HP_BONUS,
@@ -252,6 +253,25 @@ export function countWorkingDays(
 export function getCAParCycle(pattern?: CyclePattern): number {
   if (!pattern) return CA_TOTAL_ANNUEL;
   return CA_PAR_CYCLE[pattern] ?? CA_TOTAL_ANNUEL;
+}
+
+/**
+ * Retourne le nombre de CA annuels selon le cycle complet.
+ * Cycle hebdomadaire = 25 (régime général) ; sinon dépend du pattern.
+ */
+export function getCATotalForCycle(cycleConfig: CycleConfig): number {
+  if (cycleConfig.type === 'hebdo') return CA_HEBDO;
+  return getCAParCycle(cycleConfig.pattern);
+}
+
+/**
+ * Total d'heures travaillées sur la semaine (en minutes) — cycle hebdo.
+ * Retourne 0 si non applicable (cycle alterné sans map par jour).
+ */
+export function getWeeklyMinutes(cycleConfig: CycleConfig): number {
+  const h = cycleConfig.heuresSemaine;
+  if (!h) return 0;
+  return h.lundi + h.mardi + h.mercredi + h.jeudi + h.vendredi + h.samedi + h.dimanche;
 }
 
 // ============================================
@@ -811,34 +831,109 @@ export function getUrgencyColor(percent: number): 'success' | 'warning' | 'error
 }
 
 /**
+ * Vérifie si une date est couverte par une entrée d'historique d'une action donnée
+ */
+function dateMatchesEntry(date: Date, entry: HistoryEntry, action: HistoryEntry['action']): boolean {
+  if (entry.action !== action) return false;
+
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  const dateTime = normalized.getTime();
+
+  const startDate = new Date(entry.date);
+  startDate.setHours(0, 0, 0, 0);
+  const startTime = startDate.getTime();
+
+  if (!entry.dateEnd) {
+    return dateTime === startTime;
+  }
+
+  const endDate = new Date(entry.dateEnd);
+  endDate.setHours(23, 59, 59, 999);
+  return dateTime >= startTime && dateTime <= endDate.getTime();
+}
+
+/**
  * Vérifie si une date a au moins un congé posé
  */
 export function hasPostedLeaveOnDate(
   date: Date,
   history: HistoryEntry[]
 ): boolean {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  const dateTime = normalized.getTime();
+  return history.some((entry) => dateMatchesEntry(date, entry, 'pose'));
+}
 
-  return history.some((entry) => {
-    if (entry.action !== 'pose') return false;
+/**
+ * Vérifie si une date est marquée comme arrêt maladie (CMO)
+ */
+export function hasCMOOnDate(
+  date: Date,
+  history: HistoryEntry[]
+): boolean {
+  return history.some((entry) => dateMatchesEntry(date, entry, 'cmo'));
+}
 
-    const startDate = new Date(entry.date);
-    startDate.setHours(0, 0, 0, 0);
-    const startTime = startDate.getTime();
+/**
+ * Vérifie si une date est marquée comme astreinte / permanence
+ */
+export function hasAstreinteOnDate(
+  date: Date,
+  history: HistoryEntry[]
+): boolean {
+  return history.some((entry) => dateMatchesEntry(date, entry, 'astreinte'));
+}
 
-    // Si pas de dateEnd, on vérifie juste la date de début
-    if (!entry.dateEnd) {
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-      return checkDate.getTime() === startTime;
+export interface WorkedDaysBreakdown {
+  workingDays: number;   // jours travaillés (cycle + astreintes sur jours de repos)
+  leaveDays: number;     // jours travaillés couverts par un congé posé
+  cmoDays: number;       // jours travaillés couverts par un arrêt maladie (CMO)
+  astreinteDays: number; // jours de repos travaillés en astreinte / permanence
+  netWorkedDays: number; // jours réellement travaillés (workingDays - leaveDays - cmoDays)
+}
+
+/**
+ * Calcule les jours réellement travaillés sur une période :
+ * jours travaillés du cycle (+ astreintes posées sur des jours de repos),
+ * moins les congés posés, moins les CMO.
+ * Un congé posé prime sur un CMO si les deux couvrent le même jour.
+ */
+export function computeWorkedDays(
+  startDate: Date,
+  endDate: Date,
+  cycleConfig: CycleConfig,
+  history: HistoryEntry[]
+): WorkedDaysBreakdown {
+  let workingDays = 0;
+  let leaveDays = 0;
+  let cmoDays = 0;
+  let astreinteDays = 0;
+
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  while (current <= end) {
+    if (isWorkingDay(current, cycleConfig)) {
+      workingDays++;
+      if (hasPostedLeaveOnDate(current, history)) {
+        leaveDays++;
+      } else if (hasCMOOnDate(current, history)) {
+        cmoDays++;
+      }
+    } else if (hasAstreinteOnDate(current, history)) {
+      // Jour normalement en repos mais travaillé en astreinte → compté comme travaillé
+      workingDays++;
+      astreinteDays++;
     }
+    current.setDate(current.getDate() + 1);
+  }
 
-    const endDate = new Date(entry.dateEnd);
-    endDate.setHours(23, 59, 59, 999);
-    const endTime = endDate.getTime();
-
-    return dateTime >= startTime && dateTime <= endTime;
-  });
+  return {
+    workingDays,
+    leaveDays,
+    cmoDays,
+    astreinteDays,
+    netWorkedDays: workingDays - leaveDays - cmoDays,
+  };
 }

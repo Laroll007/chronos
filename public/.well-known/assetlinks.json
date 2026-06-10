@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.mychronos.app",
+      "sha256_cert_fingerprints": [
+        "60:8D:4D:FC:D8:1D:42:70:B5:3B:9F:0A:13:01:DB:22:B8:D7:89:57:60:8B:2F:CB:A1:83:EA:E5:98:F1:F5:E3",
+        "05:1E:77:76:A1:76:2B:9B:FD:F8:A9:B4:C3:54:25:54:23:22:BD:1E:20:57:09:6D:FD:91:59:05:1C:F4:6C:8B"
+      ]
+    }
+  }
+]

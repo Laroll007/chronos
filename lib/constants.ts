@@ -25,6 +25,9 @@ export const CA_PAR_CYCLE: Record<string, number> = {
   'vacation_forte': 18, // Vacation Forte (9h31)
 };
 
+// Cycle hebdomadaire (régime général : 5 semaines de congés)
+export const CA_HEBDO = 25; // jours/an pour le cycle hebdomadaire
+
 // ============================================
 // CRÉDITS FÉRIÉS (CF)
 // ============================================
@@ -331,5 +334,5 @@ export const JOURS_SEMAINE = [
 // ============================================
 // VERSION APP
 // ============================================
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.3.0';
 export const STORAGE_KEY = 'chronos_data';

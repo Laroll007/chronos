@@ -103,10 +103,10 @@ export function SimpleHeader({
               variant="ghost"
               onClick={onSettingsClick}
               className="h-9 w-9 sm:w-auto flex items-center justify-center gap-2 px-0 sm:px-3"
-              aria-label="Réglages"
+              aria-label="Paramètres"
             >
               <Settings className="w-5 h-5 text-slate-600 flex-shrink-0" />
-              <span className="hidden sm:inline text-sm">Réglages</span>
+              <span className="hidden sm:inline text-sm">Paramètres</span>
             </Button>
           </div>
         </div>

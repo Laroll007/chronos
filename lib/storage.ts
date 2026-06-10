@@ -6,6 +6,7 @@ import {
   DEFAULT_WEEK_SCHEDULE,
   DEFAULT_CYCLE_ALTERNE_A,
   DEFAULT_CYCLE_ALTERNE_B,
+  DEFAULT_HEBDO_HEURES,
 } from './types';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
@@ -32,8 +33,10 @@ export const DEFAULT_COUNTERS: Counters = {
   cf: 6552, // 109h12 en minutes
   cfConsoS1: 0,
   cfConsoS2: 0,
+  hasCF: true,
   rtc: 11229, // 187h09 en minutes (brut, l'utilisateur choisit s'il déduit la JS)
   rtcReservesCET: RTC_RESERVES_CET,
+  hasRTC: true,
   hasRTT: false,
   rtt: undefined,
   rps: 0,
@@ -110,6 +113,17 @@ export function migrateUserData(data: UserData): UserData {
   if (data.counters.hasCET2008 === undefined) { data.counters.hasCET2008 = false; needsSave = true; }
   if (data.counters.hasCongesBonifies === undefined) { data.counters.hasCongesBonifies = false; needsSave = true; }
   if (data.counters.hsHistorique === undefined) { data.counters.hsHistorique = 0; needsSave = true; }
+
+  // Migration 5: heuresSemaine pour cycle hebdo (depuis l'ancien modèle 4 longs + 1 court)
+  if (data.cycleConfig.type === 'hebdo' && !data.cycleConfig.heuresSemaine) {
+    const normal = data.cycleConfig.heuresParJour ?? DEFAULT_HEBDO_HEURES.lundi;
+    const court = data.cycleConfig.heuresJourCourt ?? DEFAULT_HEBDO_HEURES.vendredi;
+    data.cycleConfig.heuresSemaine = {
+      lundi: normal, mardi: normal, mercredi: normal, jeudi: normal,
+      vendredi: court, samedi: 0, dimanche: 0,
+    };
+    needsSave = true;
+  }
 
   // Migration 4: Reset annuel des compteurs périodiques
   // caPosesHorsPeriode et caHP doivent être remis à 0 chaque année (règle APORTT)

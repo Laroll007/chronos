@@ -29,6 +29,7 @@ import { AlertTriangle, Shield, TrendingUp, Info, Pencil, X } from 'lucide-react
 interface CounterDetailsModalProps {
   counterId: string | null;
   counters: Counters;
+  caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
   onClose: () => void;
   onUpdate: (updates: Partial<Counters>) => void;
 }
@@ -82,7 +83,7 @@ function Alert({ text, type }: { text: string; type: 'warning' | 'error' | 'info
 
 const TIME_COUNTERS = ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique'];
 
-export function CounterDetailsModal({ counterId, counters, onClose, onUpdate }: CounterDetailsModalProps) {
+export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_ANNUEL, onClose, onUpdate }: CounterDetailsModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputH, setInputH] = useState(0);
   const [inputM, setInputM] = useState(0);
@@ -184,7 +185,7 @@ export function CounterDetailsModal({ counterId, counters, onClose, onUpdate }: 
       }
 
       case 'ca': {
-        const initial = CA_TOTAL_ANNUEL;
+        const initial = caTotal;
         const consommes = counters.caConsommes;
         const epargnesCET = Math.max(0, initial - counters.ca - consommes);
         return (

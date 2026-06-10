@@ -20,6 +20,7 @@ interface CountersDrawerProps {
   counters: Counters;
   recommendations: Recommendation[];
   onUpdateCounters: (updates: Partial<Counters>) => void;
+  caTotal?: number;
 }
 
 export function CountersDrawer({
@@ -28,6 +29,7 @@ export function CountersDrawer({
   counters,
   recommendations,
   onUpdateCounters,
+  caTotal,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -72,7 +74,7 @@ export function CountersDrawer({
             <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
               Compteurs
             </h3>
-            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} />
+            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} />
           </div>
 
           {(highPriority.length > 0 || mediumPriority.length > 0) && (

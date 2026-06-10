@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Plus, X, Pencil, PiggyBank } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X, Pencil, PiggyBank, Thermometer, ShieldAlert } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OptimizationModalProps {
@@ -27,6 +27,8 @@ interface OptimizationModalProps {
   counters: Counters;
   onApply: (combination: Combination) => void;
   onEpargneCET?: (joursCA: number) => void;
+  onMarkCMO?: () => void;
+  onMarkAstreinte?: () => void;
 }
 
 export function OptimizationModal({
@@ -38,6 +40,8 @@ export function OptimizationModal({
   counters,
   onApply,
   onEpargneCET,
+  onMarkCMO,
+  onMarkAstreinte,
 }: OptimizationModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
@@ -45,6 +49,8 @@ export function OptimizationModal({
   const [customItems, setCustomItems] = useState<{ type: CounterType; amount: number }[]>([]);
   const [showCETEpargne, setShowCETEpargne] = useState(false);
   const [cetEpargneAmount, setCetEpargneAmount] = useState<number | ''>('');
+  const [showCMO, setShowCMO] = useState(false);
+  const [showAstreinte, setShowAstreinte] = useState(false);
   const maxCETEpargnable = Math.min(counters.ca, CET_PLAFOND - counters.cet);
 
   // Types disponibles avec soldes > 0 (en jours)
@@ -135,6 +141,8 @@ export function OptimizationModal({
       setCustomItems([]);
       setShowCETEpargne(false);
       setCetEpargneAmount('');
+      setShowCMO(false);
+      setShowAstreinte(false);
     }
   }, [isOpen]);
 
@@ -387,6 +395,74 @@ export function OptimizationModal({
                       >
                         <PiggyBank className="w-4 h-4" />
                         Épargner au CET
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section arrêt maladie (CMO) — aucun impact sur les compteurs */}
+            {onMarkCMO && !isCalculating && (
+              <div className="mb-6 border-b border-border pb-6">
+                <button
+                  onClick={() => setShowCMO(prev => !prev)}
+                  className="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
+                >
+                  <Thermometer className="w-4 h-4" />
+                  {showCMO ? "Masquer l'arrêt maladie" : 'Marquer un arrêt maladie (CMO)'}
+                </button>
+
+                {showCMO && (
+                  <div className="mt-4 p-4 rounded-lg bg-violet-50 border border-violet-200 space-y-3">
+                    <p className="text-xs text-violet-700 flex items-start gap-1.5">
+                      <Thermometer className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>L&apos;arrêt maladie (CMO) marque la période sur le calendrier <strong>sans toucher à vos compteurs</strong>. Les jours travaillés correspondants sont déduits du calcul des jours réellement travaillés.</span>
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          onMarkCMO();
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors flex items-center gap-2"
+                      >
+                        <Thermometer className="w-4 h-4" />
+                        Marquer en arrêt maladie
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section astreinte / permanence — ajoute des jours travaillés, pas d'impact compteur auto */}
+            {onMarkAstreinte && !isCalculating && (
+              <div className="mb-6 border-b border-border pb-6">
+                <button
+                  onClick={() => setShowAstreinte(prev => !prev)}
+                  className="flex items-center gap-2 text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  {showAstreinte ? "Masquer l'astreinte" : 'Poser une astreinte / permanence'}
+                </button>
+
+                {showAstreinte && (
+                  <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200 space-y-3">
+                    <p className="text-xs text-amber-700 flex items-start gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>L&apos;astreinte / permanence marque la période sur le calendrier et la <strong>compte comme jours travaillés</strong> (même un week-end), sans toucher aux compteurs. Saisissez vos HS générées manuellement.</span>
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          onMarkAstreinte();
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors flex items-center gap-2"
+                      >
+                        <ShieldAlert className="w-4 h-4" />
+                        Poser l&apos;astreinte
                       </button>
                     </div>
                   </div>

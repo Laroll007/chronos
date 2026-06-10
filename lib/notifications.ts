@@ -139,7 +139,7 @@ export function calculateDeadlineNotifications(
   // 2. Deadline RTC libres - 31 décembre
   const rtcLibres = getRTCLibres(counters.rtc);
 
-  if (daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info && rtcLibres > 0) {
+  if (counters.hasRTC !== false && daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info && rtcLibres > 0) {
     notifications.push({
       id: 'rtc-deadline',
       title: 'RTC libres à utiliser',
@@ -153,7 +153,7 @@ export function calculateDeadlineNotifications(
   }
 
   // 3. Alerte RTC réservés entamés
-  if (counters.rtc < RTC_RESERVES_CET) {
+  if (counters.hasRTC !== false && counters.rtc < RTC_RESERVES_CET) {
     const rtcManquants = RTC_RESERVES_CET - counters.rtc;
     notifications.push({
       id: 'rtc-reserves-alert',
@@ -171,7 +171,7 @@ export function calculateDeadlineNotifications(
   const daysUntilS1 = getDaysUntil(s1Deadline, currentDate);
   const semester = currentDate.getMonth() < 6 ? 1 : 2;
 
-  if (semester === 1 && daysUntilS1 > 0 && daysUntilS1 <= NOTIFICATION_THRESHOLDS.info) {
+  if (counters.hasCF !== false && semester === 1 && daysUntilS1 > 0 && daysUntilS1 <= NOTIFICATION_THRESHOLDS.info) {
     const cfRestantS1 = Math.max(0, CF_PAR_SEMESTRE - counters.cfConsoS1);
 
     if (cfRestantS1 > CF_PAR_SEMESTRE * 0.3) { // Plus de 30% non utilisés
@@ -188,7 +188,7 @@ export function calculateDeadlineNotifications(
   }
 
   // 5. Deadline CF S2 - 31 décembre
-  if (semester === 2 && daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info) {
+  if (counters.hasCF !== false && semester === 2 && daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info) {
     const cfRestantS2 = Math.max(0, CF_PAR_SEMESTRE - counters.cfConsoS2);
 
     if (cfRestantS2 > CF_PAR_SEMESTRE * 0.3) {

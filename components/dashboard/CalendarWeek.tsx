@@ -11,7 +11,7 @@ import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
-import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate } from '@/lib/calculations';
+import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate } from '@/lib/calculations';
 
 interface CalendarWeekProps {
   cycleConfig: CycleConfig;
@@ -229,6 +229,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isEnd = dateRange.isRangeEnd(day.date);
             const isSelected = dateRange.isDateSelected(day.date);
             const isPosted = hasPostedLeaveOnDate(day.date, history);
+            const isCMO = !isPosted && hasCMOOnDate(day.date, history);
+            const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const isSingleDay = isStart && isEnd;
 
             // Construire le label accessible
@@ -243,6 +245,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             if (day.isWorking) statusParts.push('jour travaillé');
             else statusParts.push('jour de repos');
             if (isPosted) statusParts.push('congé posé');
+            if (isCMO) statusParts.push('arrêt maladie');
+            if (isAstreinte) statusParts.push('astreinte');
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -289,14 +293,18 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     'transition-all duration-150 ease-out cursor-pointer',
                     'hover:scale-105 hover:z-10',
                     // État par défaut (non sélectionné)
-                    !isInRange && !isInPreview && !isPosted && {
+                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && {
                       'bg-blue-50 border border-blue-100': day.isWorking,
                       'bg-slate-50 border border-slate-100': !day.isWorking,
                     },
                     // Aujourd'hui (non sélectionné)
-                    day.isToday && !isInRange && !isInPreview && !isPosted && 'ring-2 ring-blue-500 ring-offset-1',
+                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && 'ring-2 ring-blue-500 ring-offset-1',
                     // Congé déjà posé
                     isPosted && !isInRange && !isInPreview && 'bg-emerald-200 border border-emerald-300',
+                    // Arrêt maladie (CMO)
+                    isCMO && !isInRange && !isInPreview && 'bg-violet-200 border border-violet-300',
+                    // Astreinte / permanence
+                    isAstreinte && !isInRange && !isInPreview && 'bg-amber-200 border border-amber-300',
                     // Dans la plage (preview ou confirmée)
                     (isInPreview || isInRange) && !isStart && !isEnd && 'bg-transparent',
                     // Début ou fin de la plage
@@ -361,6 +369,14 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-300" />
             <span className="text-slate-500">Congé</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded bg-violet-200 border border-violet-300" />
+            <span className="text-slate-500">CMO</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded bg-amber-200 border border-amber-300" />
+            <span className="text-slate-500">Astreinte</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded bg-emerald-500" />

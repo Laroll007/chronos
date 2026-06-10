@@ -21,11 +21,24 @@ export interface WeekSchedule {
   dimanche: boolean;
 }
 
+// Durée travaillée par jour (en minutes) — cycle hebdo. 0 = repos.
+// Samedi/dimanche = repos officiels (toujours 0), réservés aux astreintes ponctuelles.
+export interface WeekHours {
+  lundi: number;
+  mardi: number;
+  mercredi: number;
+  jeudi: number;
+  vendredi: number;
+  samedi: number;
+  dimanche: number;
+}
+
 export interface CycleConfig {
   type: CycleType;
   pattern?: CyclePattern; // Pattern de cycle (4/2, 2/2, 3/3, etc.)
-  heuresParJour: number; // en minutes — APORTT: 12h08 (728). Hebdo: jour normal (ex: 7h53 = 473).
-  heuresJourCourt?: number; // en minutes — hebdo uniquement : durée du jour court (ex: 7h25 = 445)
+  heuresParJour: number; // en minutes — APORTT: 12h08 (728). Hebdo: valeur représentative (= lundi).
+  heuresJourCourt?: number; // en minutes — hebdo (legacy) : durée du jour court (ex: 7h25 = 445)
+  heuresSemaine?: WeekHours; // en minutes par jour — hebdo : durée travaillée jour par jour (Lu-Ve), 0 = repos
   dateDebutCycle: string; // ISO date string
   semaineActuelle: WeekType;
   semaineA: WeekSchedule;
@@ -43,10 +56,12 @@ export interface Counters {
   cf: number; // total restant
   cfConsoS1: number; // consommé semestre 1
   cfConsoS2: number; // consommé semestre 2
+  hasCF?: boolean; // false = compteur désactivé (agent sans CF) ; absent/true = actif
 
   // RTC - Récupération Temps de Cycle (en minutes)
   rtc: number; // total restant
   rtcReservesCET: number; // 83h30 = 5010 min réservés pour CET
+  hasRTC?: boolean; // false = compteur désactivé (agent sans RTC) ; absent/true = actif
 
   // RTT - optionnel, pour cycles hebdo (en minutes)
   rtt?: number;
@@ -109,13 +124,16 @@ export interface HistoryEntry {
   amount: number; // en minutes ou jours selon type
   description?: string;
   countersSnapshot: Partial<Counters>;
+  groupId?: string; // identifiant partagé entre items d'une même pose (combinaison)
 }
 
-export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction';
+export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte';
 
 export type CounterType =
   | 'ca' | 'caHP' | 'cf' | 'rtc' | 'rtt' | 'rps' | 'hs' | 'cet'
-  | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'cet2008' | 'congesBonifies' | 'hsHistorique';
+  | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'cet2008' | 'congesBonifies' | 'hsHistorique'
+  | 'cmo'  // Congé Maladie Ordinaire — n'impacte aucun compteur, marquage calendrier uniquement
+  | 'astreinte'; // Astreinte / permanence — ajoute un jour travaillé (week-end), pas d'impact compteur auto
 
 export type AlertType = 'success' | 'warning' | 'error' | 'info';
 export type AlertPriority = 'high' | 'medium' | 'low';
@@ -232,6 +250,17 @@ export const DEFAULT_HEBDO_SCHEDULE: WeekSchedule = {
   vendredi: true,
   samedi: false,
   dimanche: false,
+};
+
+// Heures par défaut du cycle hebdo (régime 39h25 : 8h00 Lu-Je + 7h25 Ve)
+export const DEFAULT_HEBDO_HEURES: WeekHours = {
+  lundi: 8 * 60,
+  mardi: 8 * 60,
+  mercredi: 8 * 60,
+  jeudi: 8 * 60,
+  vendredi: 7 * 60 + 25,
+  samedi: 0,
+  dimanche: 0,
 };
 
 export const DEFAULT_CYCLE_ALTERNE_A: WeekSchedule = {

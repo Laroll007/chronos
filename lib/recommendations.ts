@@ -115,6 +115,7 @@ function checkCFSemester(
   currentDate: Date,
   year: number
 ): Recommendation[] {
+  if (counters.hasCF === false) return [];
   const recommendations: Recommendation[] = [];
   const semester = getCurrentSemester(currentDate);
   const daysRemaining = getDaysUntilSemesterDeadline(currentDate);
@@ -209,6 +210,7 @@ function checkRTCLibres(
   currentDate: Date,
   year: number
 ): Recommendation[] {
+  if (counters.hasRTC === false) return [];
   const recommendations: Recommendation[] = [];
   const rtcLibres = getRTCLibres(counters.rtc);
 
@@ -232,6 +234,7 @@ function checkRTCLibres(
 }
 
 function checkRTCReserves(counters: Counters): Recommendation[] {
+  if (counters.hasRTC === false) return [];
   const recommendations: Recommendation[] = [];
 
   if (isRTCReservesEntames(counters.rtc)) {

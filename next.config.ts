@@ -23,7 +23,7 @@ const csp = [
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
-  allowedDevOrigins: ['127.0.0.1', '192.168.1.90'],
+  allowedDevOrigins: ['127.0.0.1', '192.168.1.90', '192.168.1.60', 'Amyo.local'],
   // Export statique pour Capacitor iOS/Android
   // images.unoptimized requis : Capacitor sert des fichiers locaux, pas de serveur Next.js
   // pour gérer /_next/image?url=... → next/image doit émettre un <img src> direct.

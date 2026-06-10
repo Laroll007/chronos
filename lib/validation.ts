@@ -24,10 +24,11 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const CYCLE_TYPES = ['alterne', 'hebdo'] as const;
 const WEEK_TYPES = ['A', 'B'] as const;
 const CYCLE_PATTERNS = ['4/2', '2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'] as const;
-const HISTORY_ACTIONS = ['pose', 'credit', 'transfer_cet', 'correction'] as const;
+const HISTORY_ACTIONS = ['pose', 'credit', 'transfer_cet', 'correction', 'cmo', 'astreinte'] as const;
 const COUNTER_TYPES = [
   'ca', 'caHP', 'cf', 'rtc', 'rtt', 'rps', 'hs', 'cet',
   'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies', 'hsHistorique',
+  'cmo', 'astreinte',
 ] as const;
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -74,6 +75,16 @@ function checkCycleConfig(v: unknown): string[] {
     errors.push('heuresParJour: 0-1440 attendu');
   if (v.heuresJourCourt !== undefined && !isNum(v.heuresJourCourt as unknown, 0, 1440))
     errors.push('heuresJourCourt: 0-1440 attendu');
+  if (v.heuresSemaine !== undefined) {
+    if (!isObj(v.heuresSemaine)) {
+      errors.push('heuresSemaine: objet attendu');
+    } else {
+      const hs = v.heuresSemaine as Record<string, unknown>;
+      for (const day of ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']) {
+        if (!isNum(hs[day], 0, 1440)) errors.push(`heuresSemaine.${day}: 0-1440 attendu`);
+      }
+    }
+  }
   if (!isStr(v.dateDebutCycle) || !DATE_RE.test(v.dateDebutCycle as string))
     errors.push('dateDebutCycle: YYYY-MM-DD attendu');
   if (!(WEEK_TYPES as readonly unknown[]).includes(v.semaineActuelle))
@@ -99,6 +110,8 @@ function checkCounters(v: unknown): string[] {
       errors.push(`${field}: nombre ${min}-${max === Infinity ? '+∞' : max} attendu`);
   }
   if (!isBool(v.hasRTT)) errors.push('hasRTT: boolean attendu');
+  if (v.hasCF !== undefined && !isBool(v.hasCF)) errors.push('hasCF: boolean attendu');
+  if (v.hasRTC !== undefined && !isBool(v.hasRTC)) errors.push('hasRTC: boolean attendu');
   if (v.rtt !== undefined && !isNum(v.rtt as unknown, 0))
     errors.push('rtt: nombre >= 0 attendu');
   if (v.journeeSolidariteAppliquee !== undefined && !isBool(v.journeeSolidariteAppliquee))

@@ -8,7 +8,7 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester } from '@/lib/calculations';
+import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay } from '@/lib/calculations';
 import { CET_PLAFOND, CA_MAX_VERS_CET, CA_REQUIS_POUR_HP } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 
@@ -96,7 +96,14 @@ export function useCounters() {
 
   // Poser un congé
   const poseConge = useCallback(
-    (type: CounterType, amount: number, dateStart: Date, dateEnd?: Date, description?: string) => {
+    (
+      type: CounterType,
+      amount: number,
+      dateStart: Date,
+      dateEnd?: Date,
+      description?: string,
+      groupId?: string,
+    ) => {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
 
@@ -115,6 +122,7 @@ export function useCounters() {
         amount,
         description,
         countersSnapshot: result.newCounters,
+        groupId,
       };
 
       const newData: UserData = {
@@ -126,6 +134,80 @@ export function useCounters() {
 
       const success = save(newData);
       return { success, alerts: result.alerts };
+    },
+    [save]
+  );
+
+  // Marquer un arrêt maladie (CMO) — aucun impact compteur, marquage calendrier
+  const poseCMO = useCallback(
+    (dateStart: Date, dateEnd?: Date) => {
+      const current = userDataRef.current;
+      if (!current) return { success: false, error: 'Données non chargées' };
+
+      const end = dateEnd ?? dateStart;
+      // amount = jours travaillés couverts (pour affichage uniquement)
+      const amount = Math.max(0, countWorkingDays(dateStart, end, current.cycleConfig));
+
+      const historyEntry: HistoryEntry = {
+        id: generateId(),
+        date: dateStart.toISOString(),
+        dateEnd: dateEnd ? dateEnd.toISOString() : undefined,
+        action: 'cmo',
+        type: 'cmo',
+        amount,
+        description: 'Arrêt maladie (CMO)',
+        countersSnapshot: {},
+      };
+
+      const newData: UserData = {
+        ...current,
+        history: [...current.history, historyEntry],
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const success = save(newData);
+      return { success };
+    },
+    [save]
+  );
+
+  // Poser une astreinte / permanence — ajoute des jours travaillés (week-end), pas d'impact compteur
+  const poseAstreinte = useCallback(
+    (dateStart: Date, dateEnd?: Date) => {
+      const current = userDataRef.current;
+      if (!current) return { success: false, error: 'Données non chargées' };
+
+      const end = dateEnd ?? dateStart;
+      // amount = jours de repos couverts par l'astreinte (qui deviennent travaillés)
+      let amount = 0;
+      const cur = new Date(dateStart);
+      cur.setHours(0, 0, 0, 0);
+      const last = new Date(end);
+      last.setHours(0, 0, 0, 0);
+      while (cur <= last) {
+        if (!isWorkingDay(cur, current.cycleConfig)) amount++;
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      const historyEntry: HistoryEntry = {
+        id: generateId(),
+        date: dateStart.toISOString(),
+        dateEnd: dateEnd ? dateEnd.toISOString() : undefined,
+        action: 'astreinte',
+        type: 'astreinte',
+        amount,
+        description: 'Astreinte / permanence',
+        countersSnapshot: {},
+      };
+
+      const newData: UserData = {
+        ...current,
+        history: [...current.history, historyEntry],
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const success = save(newData);
+      return { success };
     },
     [save]
   );
@@ -182,21 +264,32 @@ export function useCounters() {
   // Supprimer une entrée d'historique (congé posé ou épargne CET)
   const deleteHistoryEntry = useCallback(
     (entryId: string) => {
-      if (!userData) return false;
+      const current = userDataRef.current;
+      if (!current) return false;
 
-      const entry = userData.history.find((h) => h.id === entryId);
+      const entry = current.history.find((h) => h.id === entryId);
       if (!entry) return false;
 
-      const updatedCounters = { ...userData.counters };
+      const updatedCounters = { ...current.counters };
+
+      // Supprimer un arrêt maladie (CMO) ou une astreinte — aucun compteur à restaurer
+      if (entry.action === 'cmo' || entry.action === 'astreinte') {
+        const newData: UserData = {
+          ...current,
+          history: current.history.filter((h) => h.id !== entryId),
+          lastUpdated: new Date().toISOString(),
+        };
+        return save(newData);
+      }
 
       // Annuler une épargne CET (transfer_cet)
       if (entry.action === 'transfer_cet') {
         updatedCounters.ca += entry.amount;
         updatedCounters.cet = Math.max(0, updatedCounters.cet - entry.amount);
         const newData: UserData = {
-          ...userData,
+          ...current,
           counters: updatedCounters,
-          history: userData.history.filter((h) => h.id !== entryId),
+          history: current.history.filter((h) => h.id !== entryId),
           lastUpdated: new Date().toISOString(),
         };
         return save(newData);
@@ -248,15 +341,15 @@ export function useCounters() {
       }
 
       const newData: UserData = {
-        ...userData,
+        ...current,
         counters: updatedCounters,
-        history: userData.history.filter((h) => h.id !== entryId),
+        history: current.history.filter((h) => h.id !== entryId),
         lastUpdated: new Date().toISOString(),
       };
 
       return save(newData);
     },
-    [userData, save]
+    [save]
   );
 
   // Mettre à jour les RPS accumulés
@@ -301,6 +394,8 @@ export function useCounters() {
     updateCounters,
     updateCycle,
     poseConge,
+    poseCMO,
+    poseAstreinte,
     epargnerCET,
     deleteHistoryEntry,
     updateRPS,

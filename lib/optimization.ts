@@ -116,6 +116,8 @@ function getCounterLabel(type: CounterType): string {
     cet2008: 'CET 2008',
     congesBonifies: 'Congés Bon.',
     hsHistorique: 'HS Hist.',
+    cmo: 'CMO',
+    astreinte: 'Astreinte',
   };
   return labels[type];
 }

@@ -40,7 +40,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry } from '@/lib/types';
-import { countWorkingDays, isWorkingDay } from '@/lib/calculations';
+import { countWorkingDays, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
@@ -69,6 +69,8 @@ export default function DashboardPage() {
     isOnboarded,
     updateCounters,
     poseConge,
+    poseCMO,
+    poseAstreinte,
     epargnerCET,
     deleteHistoryEntry,
     reset,
@@ -131,6 +133,36 @@ export default function DashboardPage() {
     setShowOptimization(true);
   }, [deleteHistoryEntry, cycleConfig]);
 
+  const handleMarkCMO = useCallback(() => {
+    if (!selectedRange) return;
+    const result = poseCMO(selectedRange.start, selectedRange.end);
+    if (result.success) {
+      toast.success('Arrêt maladie marqué', {
+        description: 'La période est marquée en CMO sur le calendrier (sans impact sur vos compteurs).',
+      });
+      setShowOptimization(false);
+      setSelectedRange(null);
+      setCalendarResetTrigger((prev) => prev + 1);
+    } else {
+      toast.error('Erreur', { description: result.error });
+    }
+  }, [poseCMO, selectedRange]);
+
+  const handleMarkAstreinte = useCallback(() => {
+    if (!selectedRange) return;
+    const result = poseAstreinte(selectedRange.start, selectedRange.end);
+    if (result.success) {
+      toast.success('Astreinte posée', {
+        description: 'La période est marquée en astreinte (comptée comme jours travaillés). Pensez à saisir vos HS manuellement.',
+      });
+      setShowOptimization(false);
+      setSelectedRange(null);
+      setCalendarResetTrigger((prev) => prev + 1);
+    } else {
+      toast.error('Erreur', { description: result.error });
+    }
+  }, [poseAstreinte, selectedRange]);
+
   const handleEpargneCET = useCallback((joursCA: number) => {
     const result = epargnerCET(joursCA);
     if (result.success) {
@@ -162,6 +194,10 @@ export default function DashboardPage() {
     try {
       let cursorIdx = 0;
       const failed: string[] = [];
+      // groupId partagé : les items d'une même combinaison apparaissent
+      // groupés dans la liste des congés posés (une bulle par période).
+      const groupId =
+        combination.items.length > 1 ? `grp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : undefined;
 
       for (const item of combination.items) {
         const isMinutes = !!item.amountMinutes;
@@ -177,7 +213,7 @@ export default function DashboardPage() {
         const sliceEnd = workingDates[sliceEndIdx] ?? sliceStart;
         cursorIdx += nbDays;
 
-        const result = poseConge(item.type, amount, sliceStart, sliceEnd);
+        const result = poseConge(item.type, amount, sliceStart, sliceEnd, undefined, groupId);
         if (!result.success) {
           failed.push(`${item.type.toUpperCase()} : ${result.error ?? 'échec'}`);
         }
@@ -291,6 +327,8 @@ export default function DashboardPage() {
             counters={counters}
             onApply={handleApplyCombination}
             onEpargneCET={handleEpargneCET}
+            onMarkCMO={handleMarkCMO}
+            onMarkAstreinte={handleMarkAstreinte}
           />
         </Suspense>
       )}
@@ -311,19 +349,18 @@ export default function DashboardPage() {
           counters={counters}
           recommendations={recommendations}
           onUpdateCounters={updateCounters}
+          caTotal={getCATotalForCycle(cycleConfig)}
         />
       </Suspense>
 
       {/* Modal Réglages */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="w-[95vw] max-w-md p-0 bg-background border-0 shadow-2xl rounded-2xl overflow-hidden flex flex-col" style={{ height: '90vh', maxHeight: '90vh' }} showCloseButton={false}>
-          <DialogTitle className="sr-only">Réglages</DialogTitle>
+          <DialogTitle className="sr-only">Paramètres</DialogTitle>
           <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>}>
             <Settings
-              counters={counters}
               cycleConfig={cycleConfig}
               history={history}
-              onUpdateCounters={updateCounters}
               onReset={reset}
               onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); }}
             />
@@ -369,16 +406,16 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                  <p className="text-sm text-muted-foreground mb-2">Pattern</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {cycleConfig.type === 'hebdo' ? 'Rythme' : 'Pattern'}
+                  </p>
                   <p className="text-lg font-semibold text-slate-800">
-                    {cycleConfig.pattern || 'Personnalisé'}
+                    {cycleConfig.type === 'hebdo' ? 'Hebdomadaire' : (cycleConfig.pattern || 'Personnalisé')}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {Math.floor(cycleConfig.heuresParJour / 60)}h
-                    {(cycleConfig.heuresParJour % 60)
-                      .toString()
-                      .padStart(2, '0')}{' '}
-                    par jour
+                    {cycleConfig.type === 'hebdo' && cycleConfig.heuresSemaine
+                      ? `${formatMinutes(getWeeklyMinutes(cycleConfig))} / semaine`
+                      : `${Math.floor(cycleConfig.heuresParJour / 60)}h${(cycleConfig.heuresParJour % 60).toString().padStart(2, '0')} par jour`}
                   </p>
                 </div>
 

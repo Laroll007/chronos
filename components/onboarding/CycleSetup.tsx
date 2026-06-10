@@ -1,30 +1,41 @@
 'use client';
 
 import { useState } from 'react';
-import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern } from '@/lib/types';
+import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours } from '@/lib/types';
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
-import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_SCHEDULE } from '@/lib/types';
-import { Clock, ChevronRight } from 'lucide-react';
+import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
+import { Clock, ChevronRight, Copy } from 'lucide-react';
 
 interface CycleSetupProps {
   onNext: (config: CycleConfig) => void;
   initialConfig?: CycleConfig;
 }
 
-// Valeurs par défaut hebdo (4 jours longs + 1 jour court)
-const HEBDO_HEURES_JOUR_NORMAL = 7 * 60 + 53; // 7h53 = 473 min
-const HEBDO_HEURES_JOUR_COURT = 7 * 60 + 25;  // 7h25 = 445 min
+// Jours travaillés du cycle hebdo (samedi/dimanche = repos officiels, exclus)
+const HEBDO_DAYS: { key: keyof WeekHours; label: string }[] = [
+  { key: 'lundi', label: 'Lundi' },
+  { key: 'mardi', label: 'Mardi' },
+  { key: 'mercredi', label: 'Mercredi' },
+  { key: 'jeudi', label: 'Jeudi' },
+  { key: 'vendredi', label: 'Vendredi' },
+];
+
+// Construit la map d'heures hebdo depuis une config (avec rétro-compat legacy 4 longs + 1 court)
+function buildHebdoHeures(cfg?: CycleConfig): WeekHours {
+  if (cfg?.heuresSemaine) return cfg.heuresSemaine;
+  if (cfg?.type === 'hebdo') {
+    const normal = cfg.heuresParJour ?? DEFAULT_HEBDO_HEURES.lundi;
+    const court = cfg.heuresJourCourt ?? DEFAULT_HEBDO_HEURES.vendredi;
+    return { lundi: normal, mardi: normal, mercredi: normal, jeudi: normal, vendredi: court, samedi: 0, dimanche: 0 };
+  }
+  return DEFAULT_HEBDO_HEURES;
+}
 
 export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [cycleType, setCycleType] = useState<CycleType>(initialConfig?.type ?? 'alterne');
   const [cyclePattern, setCyclePattern] = useState<CyclePattern>('2/2/3/2/2/3');
-  const initialIsHebdo = (initialConfig?.type ?? 'alterne') === 'hebdo';
-  const [heuresParJour, setHeuresParJour] = useState(
-    initialConfig?.heuresParJour ?? (initialIsHebdo ? HEBDO_HEURES_JOUR_NORMAL : HEURES_PAR_JOUR)
-  );
-  const [heuresJourCourt, setHeuresJourCourt] = useState(
-    initialConfig?.heuresJourCourt ?? HEBDO_HEURES_JOUR_COURT
-  );
+  const [heuresParJour, setHeuresParJour] = useState(initialConfig?.heuresParJour ?? HEURES_PAR_JOUR);
+  const [heuresSemaine, setHeuresSemaine] = useState<WeekHours>(buildHebdoHeures(initialConfig));
 
   const getMondayOfCurrentWeek = (): string => {
     const today = new Date();
@@ -45,18 +56,40 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
     else setSemaineB((prev) => ({ ...prev, [day]: !prev[day] }));
   };
 
+  const updateDayHours = (day: keyof WeekHours, minutes: number) =>
+    setHeuresSemaine((prev) => ({ ...prev, [day]: Math.max(0, minutes) }));
+
+  // Recopie la durée du lundi sur les autres jours travaillés (Ma-Ve)
+  const applyMondayToAll = () =>
+    setHeuresSemaine((prev) => ({
+      ...prev, mardi: prev.lundi, mercredi: prev.lundi, jeudi: prev.lundi, vendredi: prev.lundi,
+    }));
+
+  const hebdoTotal = HEBDO_DAYS.reduce((sum, d) => sum + (heuresSemaine[d.key] || 0), 0);
+
   const handleSubmit = () => {
     const isHebdo = cycleType === 'hebdo';
+    // En hebdo, un jour est "travaillé" s'il a des heures > 0 (samedi/dimanche = repos)
+    const hebdoSchedule: WeekSchedule = {
+      lundi: heuresSemaine.lundi > 0,
+      mardi: heuresSemaine.mardi > 0,
+      mercredi: heuresSemaine.mercredi > 0,
+      jeudi: heuresSemaine.jeudi > 0,
+      vendredi: heuresSemaine.vendredi > 0,
+      samedi: false,
+      dimanche: false,
+    };
     onNext({
       type: cycleType,
       pattern: isHebdo ? undefined : cyclePattern,
-      heuresParJour,
-      heuresJourCourt: isHebdo ? heuresJourCourt : undefined,
-      // Hebdo : on force une semaine de référence stable (lundi du jour J) et la semaine A,
-      // car ces deux infos n'ont pas de sens en hebdo (toujours Lu-Ve, pas d'alternance).
+      heuresParJour: isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : heuresParJour,
+      heuresJourCourt: undefined,
+      heuresSemaine: isHebdo ? { ...heuresSemaine, samedi: 0, dimanche: 0 } : undefined,
+      // Hebdo : on force une semaine de référence stable (lundi du jour J),
+      // car la date de réf et l'alternance A/B n'ont pas de sens en hebdo.
       dateDebutCycle: isHebdo ? getMondayOfCurrentWeek() : dateDebutCycle,
       semaineActuelle: isHebdo ? 'A' : semaineActuelle,
-      semaineA: isHebdo ? DEFAULT_HEBDO_SCHEDULE : semaineA,
+      semaineA: isHebdo ? hebdoSchedule : semaineA,
       semaineB: isHebdo ? undefined : semaineB,
     });
   };
@@ -89,11 +122,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => {
-                setCycleType('alterne');
-                // Bascule défaut horaire APORTT si pas déjà customisé sur le profil cible
-                if (heuresParJour === HEBDO_HEURES_JOUR_NORMAL) setHeuresParJour(HEURES_PAR_JOUR);
-              }}
+              onClick={() => setCycleType('alterne')}
               className={`p-4 rounded-xl border-2 transition-all duration-200 hover:scale-105 text-left ${
                 cycleType === 'alterne'
                   ? 'border-blue-500 bg-blue-50'
@@ -105,10 +134,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setCycleType('hebdo');
-                if (heuresParJour === HEURES_PAR_JOUR) setHeuresParJour(HEBDO_HEURES_JOUR_NORMAL);
-              }}
+              onClick={() => setCycleType('hebdo')}
               className={`p-4 rounded-xl border-2 transition-all duration-200 hover:scale-105 text-left ${
                 cycleType === 'hebdo'
                   ? 'border-blue-500 bg-blue-50'
@@ -175,7 +201,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
             Durée de journée
           </div>
           {cycleType === 'hebdo' && (
-            <div className={`${labelClass} mt-1`}>4 jours longs (Lu-Je) + 1 jour court (Ve)</div>
+            <div className={`${labelClass} mt-1`}>Heures travaillées par jour (Lu-Ve) — samedi/dimanche en repos</div>
           )}
         </div>
         {cycleType === 'alterne' ? (
@@ -222,78 +248,57 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
             </div>
           </div>
         ) : (
-          <div className="px-6 space-y-4">
-            {/* Jour normal (4 jours) */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Lundi – Jeudi (4 jours)</label>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={Math.floor(heuresParJour / 60)}
-                  onChange={(e) => {
-                    const h = parseInt(e.target.value) || 0;
-                    setHeuresParJour(h * 60 + (heuresParJour % 60));
-                  }}
-                  aria-label="Heures jour long"
-                  className={`w-20 h-9 ${inputClass}`}
-                />
-                <span className="text-slate-400">h</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={heuresParJour % 60}
-                  onChange={(e) => {
-                    const m = parseInt(e.target.value) || 0;
-                    setHeuresParJour(Math.floor(heuresParJour / 60) * 60 + m);
-                  }}
-                  aria-label="Minutes jour long"
-                  className={`w-20 h-9 ${inputClass}`}
-                />
-                <span className="text-slate-400">min</span>
-              </div>
-            </div>
-            {/* Jour court (vendredi) */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Vendredi (jour court)</label>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={Math.floor(heuresJourCourt / 60)}
-                  onChange={(e) => {
-                    const h = parseInt(e.target.value) || 0;
-                    setHeuresJourCourt(h * 60 + (heuresJourCourt % 60));
-                  }}
-                  aria-label="Heures vendredi"
-                  className={`w-20 h-9 ${inputClass}`}
-                />
-                <span className="text-slate-400">h</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={heuresJourCourt % 60}
-                  onChange={(e) => {
-                    const m = parseInt(e.target.value) || 0;
-                    setHeuresJourCourt(Math.floor(heuresJourCourt / 60) * 60 + m);
-                  }}
-                  aria-label="Minutes vendredi"
-                  className={`w-20 h-9 ${inputClass}`}
-                />
-                <span className="text-slate-400">min</span>
-              </div>
-            </div>
+          <div className="px-6 space-y-3">
+            {HEBDO_DAYS.map((d) => {
+              const mins = heuresSemaine[d.key] || 0;
+              return (
+                <div key={d.key} className="flex items-center justify-between gap-2">
+                  <label className="text-sm font-medium text-slate-600 w-24">{d.label}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={Math.floor(mins / 60)}
+                      onChange={(e) => updateDayHours(d.key, (parseInt(e.target.value) || 0) * 60 + (mins % 60))}
+                      onFocus={(e) => e.target.select()}
+                      aria-label={`${d.label} heures`}
+                      className={`w-16 h-9 ${inputClass}`}
+                    />
+                    <span className="text-slate-400">h</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={mins % 60}
+                      onChange={(e) => updateDayHours(d.key, Math.floor(mins / 60) * 60 + (parseInt(e.target.value) || 0))}
+                      onFocus={(e) => e.target.select()}
+                      aria-label={`${d.label} minutes`}
+                      className={`w-16 h-9 ${inputClass}`}
+                    />
+                    <span className="text-slate-400">min</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={applyMondayToAll}
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <Copy className="w-4 h-4" />
+              Appliquer le lundi à tous les jours
+            </button>
+
             {/* Total hebdo */}
             <div className="mt-2 p-3 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between">
               <span className="text-sm text-blue-700">Total semaine</span>
-              <span className="text-lg font-bold text-blue-700">
-                {formatHeures(4 * heuresParJour + heuresJourCourt)}
-              </span>
+              <span className="text-lg font-bold text-blue-700">{formatHeures(hebdoTotal)}</span>
             </div>
+            <p className="text-xs text-slate-400">
+              Mettez 0h pour un jour de repos. Samedi et dimanche sont des repos officiels (les astreintes se posent sur le calendrier).
+            </p>
           </div>
         )}
       </div>

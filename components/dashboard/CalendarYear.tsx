@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar, computeMonthCalendar } from '@/hooks/useCycle';
-import { hasPostedLeaveOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -98,9 +98,11 @@ function MiniMonth({
           const isInRange = dateRange.isDateInRange(day.date);
           const isSelected = dateRange.isDateSelected(day.date);
           const isPosted = hasPostedLeaveOnDate(day.date, history);
+          const isCMO = !isPosted && hasCMOOnDate(day.date, history);
+          const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
 
           // Label accessible simplifié pour vue annuelle
-          const ariaLabel = `${day.date.getDate()} ${MOIS_COMPLETS[day.date.getMonth()]}${day.isWorking ? ', travaillé' : ''}${isPosted ? ', congé posé' : ''}${isSelected ? ', sélectionné' : ''}`;
+          const ariaLabel = `${day.date.getDate()} ${MOIS_COMPLETS[day.date.getMonth()]}${day.isWorking ? ', travaillé' : ''}${isPosted ? ', congé posé' : ''}${isCMO ? ', arrêt maladie' : ''}${isAstreinte ? ', astreinte' : ''}${isSelected ? ', sélectionné' : ''}`;
 
           return (
             <button
@@ -136,11 +138,21 @@ function MiniMonth({
                   'bg-emerald-200 text-emerald-800':
                     isPosted && !isInRange && !isSelected,
                 },
+                // Arrêt maladie (CMO) - VIOLET
+                {
+                  'bg-violet-200 text-violet-800':
+                    isCMO && !isInRange && !isSelected,
+                },
+                // Astreinte / permanence - AMBRE
+                {
+                  'bg-amber-200 text-amber-800':
+                    isAstreinte && !isInRange && !isSelected,
+                },
                 // États travail/repos - INDIGO pour travail
                 {
                   'bg-blue-100 text-blue-700 font-bold':
-                    day.isWorking && !isInRange && !isSelected && !isPosted,
-                  'text-slate-400': !day.isWorking && !isInRange && !isSelected && !isPosted,
+                    day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte,
+                  'text-slate-400': !day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte,
                 },
                 // Mois courant
                 {
@@ -245,6 +257,14 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-emerald-200" />
             <span className="text-slate-600">Posé</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-violet-200" />
+            <span className="text-slate-600">CMO</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-amber-200" />
+            <span className="text-slate-600">Astreinte</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded ring-1 ring-emerald-500" />

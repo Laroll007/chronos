@@ -14,6 +14,7 @@ const LEAVE_LABELS: Record<string, string> = {
   rps:  'Congé RPS',
   hs:   'Heures supplémentaires',
   cet:  'Congé CET',
+  cmo:  'Arrêt maladie (CMO)',
 };
 
 // ─── Couleurs RFC 7986 ───────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ const COLORS = {
   work:  'steelblue',
   rest:  'silver',
   leave: 'seagreen',
+  cmo:   'mediumorchid',
 } as const;
 
 // ─── Utilitaires ─────────────────────────────────────────────────────────────
@@ -162,10 +164,12 @@ export function generateICS(
     }
   }
 
-  // ── Congés posés (depuis l'historique) ──────────────────────────────────────
+  // ── Congés posés + arrêts maladie (depuis l'historique) ─────────────────────
   if (includeLeaves) {
     const posed = history.filter(
-      (h) => h.action === 'pose' && new Date(h.date).getFullYear() === year,
+      (h) =>
+        (h.action === 'pose' || h.action === 'cmo') &&
+        new Date(h.date).getFullYear() === year,
     );
 
     for (const entry of posed) {
@@ -173,13 +177,14 @@ export function generateICS(
       const endDate   = entry.dateEnd
         ? new Date(entry.dateEnd.slice(0, 10) + 'T00:00:00')
         : new Date(startDate);
+      const isCMO = entry.action === 'cmo';
 
       events.push({
         uid:         makeUID(),
         dtstart:     toICSDate(startDate),
         dtend:       toICSDate(addDays(endDate, 1)),
-        summary:     LEAVE_LABELS[entry.type] ?? 'Congé',
-        color:       COLORS.leave,
+        summary:     LEAVE_LABELS[entry.type] ?? (isCMO ? 'Arrêt maladie (CMO)' : 'Congé'),
+        color:       isCMO ? COLORS.cmo : COLORS.leave,
         transp:      'OPAQUE',
         description: entry.description,
       });

@@ -1,6 +1,6 @@
 // Service Worker pour Chronos PWA
-const CACHE_NAME = 'chronos-v11';
-const STATIC_CACHE = 'chronos-static-v7';
+const CACHE_NAME = 'chronos-v15';
+const STATIC_CACHE = 'chronos-static-v10';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',

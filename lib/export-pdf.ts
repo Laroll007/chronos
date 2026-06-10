@@ -1,7 +1,7 @@
 // Export PDF pour Chronos - Rapport annuel et récapitulatif CET
 
 import { Counters, CycleConfig, HistoryEntry } from './types';
-import { formatMinutes, getRTCLibres, calculateOptimalCETStrategy } from './calculations';
+import { formatMinutes, getRTCLibres, calculateOptimalCETStrategy, getWeeklyMinutes } from './calculations';
 import {
   CA_MAX_VERS_CET,
   RTC_RESERVES_CET,
@@ -272,8 +272,8 @@ export function generateAnnualReportHTML(data: PDFReportData): string {
         <div class="card-detail">Pattern: ${cycleConfig.pattern || 'Personnalisé'}</div>
       </div>
       <div class="card">
-        <div class="card-title">Durée journée</div>
-        <div class="card-value">${formatMinutes(cycleConfig.heuresParJour)}</div>
+        <div class="card-title">${cycleConfig.type === 'hebdo' ? 'Durée semaine' : 'Durée journée'}</div>
+        <div class="card-value">${cycleConfig.type === 'hebdo' && cycleConfig.heuresSemaine ? formatMinutes(getWeeklyMinutes(cycleConfig)) : formatMinutes(cycleConfig.heuresParJour)}</div>
       </div>
     </div>
   </div>
