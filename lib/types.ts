@@ -125,6 +125,7 @@ export interface HistoryEntry {
   description?: string;
   countersSnapshot: Partial<Counters>;
   groupId?: string; // identifiant partagé entre items d'une même pose (combinaison)
+  partialDay?: boolean; // pose fractionnée : seules `amount` minutes du jour `date` sont posées (le reste est travaillé)
 }
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte';

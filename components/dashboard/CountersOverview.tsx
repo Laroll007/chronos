@@ -33,9 +33,10 @@ interface CountersOverviewProps {
   counters: Counters;
   onUpdateCounters: (updates: Partial<Counters>) => void;
   caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
+  dayMinutes?: number; // durée d'un jour du régime (minutes) pour l'équivalent « ≈ Xj »
 }
 
-export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL }: CountersOverviewProps) {
+export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL, dayMinutes }: CountersOverviewProps) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
@@ -284,7 +285,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     <>
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-stagger-in">
         {cards.map((card) => (
-          <CounterCard key={card.id} {...card} onDetails={setDetailsId} onHelp={setHelpKey} />
+          <CounterCard key={card.id} {...card} dayMinutes={dayMinutes} onDetails={setDetailsId} onHelp={setHelpKey} />
         ))}
       </div>
       <CounterDetailsModal

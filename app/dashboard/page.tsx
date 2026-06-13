@@ -39,8 +39,8 @@ import { useCounters } from '@/hooks/useCounters';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
-import { Combination, HistoryEntry } from '@/lib/types';
-import { countWorkingDays, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
+import { Combination, HistoryEntry, CounterType } from '@/lib/types';
+import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -58,6 +58,7 @@ export default function DashboardPage() {
     start: Date;
     end: Date;
     workingDays: number;
+    workingMinutes: number;
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -70,6 +71,7 @@ export default function DashboardPage() {
     isOnboarded,
     updateCounters,
     poseConge,
+    posePartiel,
     poseCMO,
     poseAstreinte,
     epargnerCET,
@@ -113,9 +115,12 @@ export default function DashboardPage() {
 
   // PERF-001: useCallback pour éviter les re-renders
   const handleRangeSelected = useCallback((start: Date, end: Date, workingDays: number) => {
-    setSelectedRange({ start, end, workingDays });
+    const workingMinutes = cycleConfig
+      ? countWorkingMinutes(start, end, cycleConfig)
+      : workingDays * HEURES_PAR_JOUR;
+    setSelectedRange({ start, end, workingDays, workingMinutes });
     setShowOptimization(true);
-  }, []);
+  }, [cycleConfig]);
 
   // Modifier un congé posé : supprime + rouvre le modal avec la même plage
   const handleEditLeave = useCallback((entry: HistoryEntry) => {
@@ -130,7 +135,8 @@ export default function DashboardPage() {
     end.setHours(0, 0, 0, 0);
     if (!cycleConfig) return;
     const workingDays = Math.max(1, countWorkingDays(start, end, cycleConfig));
-    setSelectedRange({ start, end, workingDays });
+    const workingMinutes = countWorkingMinutes(start, end, cycleConfig);
+    setSelectedRange({ start, end, workingDays, workingMinutes });
     setShowOptimization(true);
   }, [deleteHistoryEntry, cycleConfig]);
 
@@ -163,6 +169,21 @@ export default function DashboardPage() {
       toast.error('Erreur', { description: result.error });
     }
   }, [poseAstreinte, selectedRange]);
+
+  const handlePosePartiel = useCallback((type: CounterType, minutes: number) => {
+    if (!selectedRange) return;
+    const result = posePartiel(type, minutes, selectedRange.start);
+    if (result.success) {
+      toast.success('Heures posées', {
+        description: `${formatMinutes(minutes)} de ${type.toUpperCase()} posées sur la journée (le reste est travaillé).`,
+      });
+      setShowOptimization(false);
+      setSelectedRange(null);
+      setCalendarResetTrigger((prev) => prev + 1);
+    } else {
+      toast.error('Erreur', { description: result.error });
+    }
+  }, [posePartiel, selectedRange]);
 
   const handleEpargneCET = useCallback((joursCA: number) => {
     const result = epargnerCET(joursCA);
@@ -200,21 +221,33 @@ export default function DashboardPage() {
       const groupId =
         combination.items.length > 1 ? `grp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : undefined;
 
-      for (const item of combination.items) {
+      // Durée représentative d'un jour du régime (12h08 en cycle APORTT, ~8h en hebdo).
+      const jourMin = cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+      const items = combination.items;
+
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
         // L'unité dépend du TYPE de compteur, pas de la présence de amountMinutes
         // (les types en jours — CA, CET… — ont aussi un amountMinutes égal à leur nb de jours).
         const isMinutes = !isDayBasedType(item.type);
-        const amount = isMinutes ? (item.amountMinutes ?? item.amount) : item.amount;
+        const amount = isMinutes
+          ? (item.amountMinutes ?? Math.round(item.amount * jourMin))
+          : item.amount;
 
-        // Nombre de jours travaillés occupés par cet item
+        // Nombre de jours travaillés occupés par cet item (régime-aware)
         const nbDays = isMinutes
-          ? Math.max(1, Math.round((item.amountMinutes ?? Math.round(item.amount * HEURES_PAR_JOUR)) / HEURES_PAR_JOUR))
+          ? Math.max(1, Math.round((item.amountMinutes ?? Math.round(item.amount * jourMin)) / jourMin))
           : Math.max(1, item.amount);
 
+        const isLast = idx === items.length - 1;
         const sliceStart = workingDates[cursorIdx] ?? selectedRange.start;
-        const sliceEndIdx = Math.min(cursorIdx + nbDays - 1, workingDates.length - 1);
+        // Le dernier item couvre TOUS les jours restants → couverture complète sans trou,
+        // quelle que soit l'approximation jour↔heures.
+        const sliceEndIdx = isLast
+          ? workingDates.length - 1
+          : Math.min(cursorIdx + nbDays - 1, workingDates.length - 1);
         const sliceEnd = workingDates[sliceEndIdx] ?? sliceStart;
-        cursorIdx += nbDays;
+        cursorIdx = sliceEndIdx + 1;
 
         const result = poseConge(item.type, amount, sliceStart, sliceEnd, undefined, groupId);
         if (!result.success) {
@@ -327,11 +360,14 @@ export default function DashboardPage() {
             startDate={selectedRange?.start || null}
             endDate={selectedRange?.end || null}
             workingDaysCount={selectedRange?.workingDays || 0}
+            workingMinutesCount={selectedRange?.workingMinutes}
+            jourMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
             counters={counters}
             onApply={handleApplyCombination}
             onEpargneCET={handleEpargneCET}
             onMarkCMO={handleMarkCMO}
             onMarkAstreinte={handleMarkAstreinte}
+            onPosePartiel={handlePosePartiel}
           />
         </Suspense>
       )}
@@ -353,6 +389,7 @@ export default function DashboardPage() {
           recommendations={recommendations}
           onUpdateCounters={updateCounters}
           caTotal={getCATotalForCycle(cycleConfig)}
+          dayMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
         />
       </Suspense>
 

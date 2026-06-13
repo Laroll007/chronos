@@ -21,6 +21,8 @@ interface CounterCardProps {
   gain?: string;
   onDetails?: (id: string) => void;
   onHelp?: (id: string) => void;
+  // Durée d'un jour du régime (minutes) pour l'équivalent « ≈ Xj ». 12h08 par défaut, ~8h en hebdo.
+  dayMinutes?: number;
 }
 
 export function CounterCard({
@@ -36,6 +38,7 @@ export function CounterCard({
   gain,
   onDetails,
   onHelp,
+  dayMinutes = HEURES_PAR_JOUR,
 }: CounterCardProps) {
   const hasHelp = !!HELP_CONTENT[id];
   const colors = COUNTER_COLORS[id] || COUNTER_COLORS.rtc;
@@ -43,7 +46,7 @@ export function CounterCard({
 
   const displayValue = unit === 'heures' ? formatMinutes(value) : `${value}j`;
   const displayMax = unit === 'heures' ? formatMinutes(max) : `${max}j`;
-  const displayDays = unit === 'heures' ? `≈ ${Math.floor(value / HEURES_PAR_JOUR)}j` : null;
+  const displayDays = unit === 'heures' ? `≈ ${Math.floor(value / dayMinutes)}j` : null;
 
   const daysRemaining = deadline ? getDaysUntil(deadline) : null;
 

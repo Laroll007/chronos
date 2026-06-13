@@ -47,42 +47,44 @@ export function isDayBasedType(type: CounterType): boolean {
   return DAY_BASED_COUNTER_TYPES.includes(type);
 }
 
-function toWorkingDays(amount: number, type: CounterType): number {
+// dayMinutes = durée d'un jour du régime (minutes). 12h08 par défaut (cycles APORTT) ;
+// en hebdo on passe la durée réelle moyenne du jour (~8h) pour ne pas sur-consommer.
+function toWorkingDays(amount: number, type: CounterType, dayMinutes: number = HEURES_PAR_JOUR): number {
   // Les compteurs en jours restent en jours
   if (isDayBasedType(type)) {
     return amount;
   }
   // CF, RTC, RPS, HS, HS historiques sont en minutes → convertir en jours
-  return Math.round((amount / HEURES_PAR_JOUR) * 10) / 10;
+  return Math.round((amount / dayMinutes) * 10) / 10;
 }
 
 /**
  * Convertit des jours en minutes pour un type donné
  */
-function toMinutes(days: number, type: CounterType): number {
+function toMinutes(days: number, type: CounterType, dayMinutes: number = HEURES_PAR_JOUR): number {
   if (isDayBasedType(type)) {
     return days; // garde en jours
   }
-  return Math.round(days * HEURES_PAR_JOUR);
+  return Math.round(days * dayMinutes);
 }
 
 /**
  * Retourne la quantité disponible pour un type de compteur donné (en jours travaillés)
  */
-function getAvailableAmount(counters: Counters, type: CounterType): number {
+function getAvailableAmount(counters: Counters, type: CounterType, dayMinutes: number = HEURES_PAR_JOUR): number {
   switch (type) {
     case 'ca':
       return counters.ca;
     case 'caHP':
       return counters.caHP;
     case 'cf':
-      return toWorkingDays(counters.cf, 'cf');
+      return toWorkingDays(counters.cf, 'cf', dayMinutes);
     case 'rtc':
-      return toWorkingDays(counters.rtc, 'rtc');
+      return toWorkingDays(counters.rtc, 'rtc', dayMinutes);
     case 'rps':
-      return toWorkingDays(counters.rps, 'rps');
+      return toWorkingDays(counters.rps, 'rps', dayMinutes);
     case 'hs':
-      return toWorkingDays(counters.hs, 'hs');
+      return toWorkingDays(counters.hs, 'hs', dayMinutes);
     case 'artt':
       return counters.hasARTT ? (counters.artt ?? 0) : 0;
     case 'caAnterieur':
@@ -94,7 +96,7 @@ function getAvailableAmount(counters: Counters, type: CounterType): number {
     case 'congesBonifies':
       return counters.hasCongesBonifies ? (counters.congesBonifies ?? 0) : 0;
     case 'hsHistorique':
-      return toWorkingDays(counters.hsHistorique, 'hs');
+      return toWorkingDays(counters.hsHistorique, 'hs', dayMinutes);
     default:
       return 0;
   }
@@ -442,15 +444,18 @@ function calculateImpact(
 export function createCombination(
   items: CombinationItem[],
   counters: Counters,
-  date: Date
+  date: Date,
+  // Durée d'un jour du régime (minutes) — détermine les minutes réellement
+  // consommées sur les compteurs horaires. 12h08 par défaut, ~8h en hebdo.
+  dayMinutes: number = HEURES_PAR_JOUR
 ): Combination {
   const score = calculateScore(items, counters, date);
   const totalDays = items.reduce((sum, item) => sum + item.amount, 0);
 
-  // Enrichir items avec amountMinutes
+  // Enrichir items avec amountMinutes (minutes consommées, régime-aware)
   const enrichedItems = items.map((item) => ({
     ...item,
-    amountMinutes: toMinutes(item.amount, item.type),
+    amountMinutes: toMinutes(item.amount, item.type, dayMinutes),
   }));
 
   return {
@@ -472,7 +477,11 @@ export function createCombination(
 export function generateAllCombinations(
   workingDays: number,
   counters: Counters,
-  date: Date
+  date: Date,
+  // Minutes réelles à couvrir sur la période (somme des durées des jours travaillés).
+  // Permet de dimensionner les compteurs horaires selon le régime (ex. hebdo ≈ 8h/jour)
+  // au lieu du forfait 12h08. Si absent, on retombe sur workingDays × 12h08.
+  workingMinutes?: number
 ): Combination[] {
   const combinations: Combination[] = [];
   const priorities: CounterType[] = [
@@ -482,9 +491,14 @@ export function generateAllCombinations(
     'congesBonifies', 'cet2008', 'hsHistorique',
   ];
 
+  // Minutes réelles à couvrir + durée moyenne d'un jour de la période (régime-aware).
+  // En cycle 12h08 : repDayMinutes = 728. En hebdo : ~8h (évite la sur-consommation).
+  const totalMinutes = workingMinutes ?? workingDays * HEURES_PAR_JOUR;
+  const repDayMinutes = workingDays > 0 ? totalMinutes / workingDays : HEURES_PAR_JOUR;
+
   // 1. Combinaisons pures (1 seul type)
   for (const type of priorities) {
-    const available = getAvailableAmount(counters, type);
+    const available = getAvailableAmount(counters, type, repDayMinutes);
     if (available >= workingDays) {
       combinations.push(
         createCombination(
@@ -495,7 +509,8 @@ export function generateAllCombinations(
             },
           ],
           counters,
-          date
+          date,
+          repDayMinutes
         )
       );
     }
@@ -506,8 +521,8 @@ export function generateAllCombinations(
     for (let j = i + 1; j < priorities.length; j++) {
       const type1 = priorities[i];
       const type2 = priorities[j];
-      const avail1 = getAvailableAmount(counters, type1);
-      const avail2 = getAvailableAmount(counters, type2);
+      const avail1 = getAvailableAmount(counters, type1, repDayMinutes);
+      const avail2 = getAvailableAmount(counters, type2, repDayMinutes);
 
       // Essayer différentes répartitions en jours entiers
       for (let amount1 = 1; amount1 <= Math.min(avail1, workingDays - 1); amount1++) {
@@ -520,7 +535,8 @@ export function generateAllCombinations(
                 { type: type2, amount: amount2 },
               ],
               counters,
-              date
+              date,
+              repDayMinutes
             )
           );
         }
@@ -532,7 +548,6 @@ export function generateAllCombinations(
   // Permet de mélanger CF, RTC, RPS, HS pour couvrir une ou plusieurs journées.
   // Ex : 4h CF + 8h08 HS (1j), ou 8h CF + 12h RTC + 4h08 HS (2j), etc.
   const hourlyTypes: CounterType[] = ['cf', 'rtc', 'rps', 'hs', 'hsHistorique'];
-  const totalMinutes = workingDays * HEURES_PAR_JOUR;
 
   const getRawMinutes = (type: CounterType): number => {
     switch (type) {
@@ -548,9 +563,9 @@ export function generateAllCombinations(
   const pushHourlyCombo = (pairs: [CounterType, number][]): void => {
     const items = pairs
       .filter(([, min]) => min > 0)
-      .map(([type, min]) => ({ type, amount: min / HEURES_PAR_JOUR }));
+      .map(([type, min]) => ({ type, amount: min / repDayMinutes }));
     if (items.length >= 2) {
-      combinations.push(createCombination(items, counters, date));
+      combinations.push(createCombination(items, counters, date, repDayMinutes));
     }
   };
 

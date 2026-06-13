@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar, computeMonthCalendar } from '@/hooks/useCycle';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -100,9 +100,10 @@ function MiniMonth({
           const isPosted = hasPostedLeaveOnDate(day.date, history);
           const isCMO = !isPosted && hasCMOOnDate(day.date, history);
           const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
+          const isPartial = !isPosted && !isCMO && !isAstreinte && getPartialMinutesOnDate(day.date, history) > 0;
 
           // Label accessible simplifié pour vue annuelle
-          const ariaLabel = `${day.date.getDate()} ${MOIS_COMPLETS[day.date.getMonth()]}${day.isWorking ? ', travaillé' : ''}${isPosted ? ', congé posé' : ''}${isCMO ? ', arrêt maladie' : ''}${isAstreinte ? ', astreinte' : ''}${isSelected ? ', sélectionné' : ''}`;
+          const ariaLabel = `${day.date.getDate()} ${MOIS_COMPLETS[day.date.getMonth()]}${day.isWorking ? ', travaillé' : ''}${isPosted ? ', congé posé' : ''}${isCMO ? ', arrêt maladie' : ''}${isAstreinte ? ', astreinte' : ''}${isPartial ? ', heures posées' : ''}${isSelected ? ', sélectionné' : ''}`;
 
           return (
             <button
@@ -148,11 +149,16 @@ function MiniMonth({
                   'bg-amber-200 text-amber-800':
                     isAstreinte && !isInRange && !isSelected,
                 },
+                // Pose fractionnée (sortie anticipée) - TEAL
+                {
+                  'bg-teal-100 text-teal-800':
+                    isPartial && !isInRange && !isSelected,
+                },
                 // États travail/repos - INDIGO pour travail
                 {
                   'bg-blue-100 text-blue-700 font-bold':
-                    day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte,
-                  'text-slate-400': !day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte,
+                    day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte && !isPartial,
+                  'text-slate-400': !day.isWorking && !isInRange && !isSelected && !isPosted && !isCMO && !isAstreinte && !isPartial,
                 },
                 // Mois courant
                 {

@@ -138,6 +138,45 @@ export function useCounters() {
     [save]
   );
 
+  // Pose fractionnée : ne consomme que `minutes` d'un compteur horaire sur un seul jour
+  // (sortie anticipée / demi-journée). Le jour reste travaillé pour le reste.
+  const posePartiel = useCallback(
+    (type: CounterType, minutes: number, date: Date) => {
+      const current = userDataRef.current;
+      if (!current) return { success: false, error: 'Données non chargées' };
+      if (!Number.isFinite(minutes) || minutes <= 0) {
+        return { success: false, error: 'Durée invalide' };
+      }
+
+      const result = simulatePose(current.counters, type, minutes, date);
+      if (!result.isValid) {
+        return { success: false, error: result.errorMessage };
+      }
+
+      const historyEntry: HistoryEntry = {
+        id: generateId(),
+        date: date.toISOString(),
+        action: 'pose',
+        type,
+        amount: minutes,
+        partialDay: true,
+        description: 'Pose à l\'heure',
+        countersSnapshot: result.newCounters,
+      };
+
+      const newData: UserData = {
+        ...current,
+        counters: result.newCounters,
+        history: [...current.history, historyEntry],
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const success = save(newData);
+      return { success, alerts: result.alerts };
+    },
+    [save]
+  );
+
   // Marquer un arrêt maladie (CMO) — aucun impact compteur, marquage calendrier
   const poseCMO = useCallback(
     (dateStart: Date, dateEnd?: Date) => {
@@ -394,6 +433,7 @@ export function useCounters() {
     updateCounters,
     updateCycle,
     poseConge,
+    posePartiel,
     poseCMO,
     poseAstreinte,
     epargnerCET,

@@ -5,6 +5,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Counters, Combination, CounterType } from '@/lib/types';
 import { generateAllCombinations, createCombination } from '@/lib/optimization';
+import { formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR, CET_PLAFOND } from '@/lib/constants';
 import { CombinationCard } from './CombinationCard';
 import {
@@ -15,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Plus, X, Pencil, PiggyBank, Thermometer, ShieldAlert } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X, Pencil, PiggyBank, Thermometer, ShieldAlert, Hourglass } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OptimizationModalProps {
@@ -24,11 +25,17 @@ interface OptimizationModalProps {
   startDate: Date | null;
   endDate: Date | null;
   workingDaysCount: number;
+  // Minutes réelles à couvrir (somme des durées des jours travaillés du régime).
+  workingMinutesCount?: number;
+  // Durée représentative d'un jour du régime (minutes) : 12h08 en cycle APORTT, ~8h en hebdo.
+  jourMinutes?: number;
   counters: Counters;
   onApply: (combination: Combination) => void;
   onEpargneCET?: (joursCA: number) => void;
   onMarkCMO?: () => void;
   onMarkAstreinte?: () => void;
+  // Pose fractionnée (sortie anticipée / demi-journée) — uniquement pour 1 jour sélectionné.
+  onPosePartiel?: (type: CounterType, minutes: number) => void;
 }
 
 export function OptimizationModal({
@@ -37,11 +44,14 @@ export function OptimizationModal({
   startDate,
   endDate,
   workingDaysCount,
+  workingMinutesCount,
+  jourMinutes = HEURES_PAR_JOUR,
   counters,
   onApply,
   onEpargneCET,
   onMarkCMO,
   onMarkAstreinte,
+  onPosePartiel,
 }: OptimizationModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
@@ -51,21 +61,41 @@ export function OptimizationModal({
   const [cetEpargneAmount, setCetEpargneAmount] = useState<number | ''>('');
   const [showCMO, setShowCMO] = useState(false);
   const [showAstreinte, setShowAstreinte] = useState(false);
+  const [showPartial, setShowPartial] = useState(false);
+  const [partialType, setPartialType] = useState<CounterType | null>(null);
+  const [partialMinutes, setPartialMinutes] = useState(0);
   const maxCETEpargnable = Math.min(counters.ca, CET_PLAFOND - counters.cet);
+
+  // Compteurs horaires posables à l'heure (sortie anticipée), avec solde > 0
+  const partialTypes = useMemo(() => {
+    const types: { type: CounterType; label: string; available: number }[] = [];
+    if (counters.cf > 0) types.push({ type: 'cf', label: 'CF', available: counters.cf });
+    if (counters.rtc > 0) types.push({ type: 'rtc', label: 'RTC', available: counters.rtc });
+    if (counters.rps > 0) types.push({ type: 'rps', label: 'RPS', available: counters.rps });
+    if (counters.hs > 0) types.push({ type: 'hs', label: 'HS', available: counters.hs });
+    return types;
+  }, [counters]);
+
+  // Durée max posable sur le jour = durée du jour, plafonnée par le solde du compteur choisi
+  const partialMax = useMemo(() => {
+    const dayLen = workingMinutesCount ?? jourMinutes;
+    const bal = partialTypes.find(t => t.type === partialType)?.available ?? 0;
+    return Math.min(dayLen, bal);
+  }, [workingMinutesCount, jourMinutes, partialTypes, partialType]);
 
   // Types disponibles avec soldes > 0 (en jours)
   const availableTypes = useMemo(() => {
     const types: { type: CounterType; label: string; available: number }[] = [];
     if (counters.ca > 0) types.push({ type: 'ca', label: 'CA', available: counters.ca });
     if (counters.caHP > 0) types.push({ type: 'caHP', label: 'CA HP', available: counters.caHP });
-    if (counters.cf > 0) types.push({ type: 'cf', label: 'CF', available: Math.floor(counters.cf / HEURES_PAR_JOUR) });
-    if (counters.rtc > 0) types.push({ type: 'rtc', label: 'RTC', available: Math.floor(counters.rtc / HEURES_PAR_JOUR) });
-    if (counters.rps > 0) types.push({ type: 'rps', label: 'RPS', available: Math.floor(counters.rps / HEURES_PAR_JOUR) });
-    if (counters.hs > 0) types.push({ type: 'hs', label: 'HS', available: Math.floor(counters.hs / HEURES_PAR_JOUR) });
+    if (counters.cf > 0) types.push({ type: 'cf', label: 'CF', available: Math.floor(counters.cf / jourMinutes) });
+    if (counters.rtc > 0) types.push({ type: 'rtc', label: 'RTC', available: Math.floor(counters.rtc / jourMinutes) });
+    if (counters.rps > 0) types.push({ type: 'rps', label: 'RPS', available: Math.floor(counters.rps / jourMinutes) });
+    if (counters.hs > 0) types.push({ type: 'hs', label: 'HS', available: Math.floor(counters.hs / jourMinutes) });
     // CET utilisation : poser des jours depuis le CET
     if (counters.cet > 0) types.push({ type: 'cet', label: 'CET (utiliser)', available: counters.cet });
     return types;
-  }, [counters]);
+  }, [counters, jourMinutes]);
 
   const getAvailableForType = useCallback((type: CounterType): number => {
     return availableTypes.find(t => t.type === type)?.available ?? 0;
@@ -116,11 +146,12 @@ export function OptimizationModal({
     const combination = createCombination(
       customItems.map(item => ({ type: item.type, amount: item.amount })),
       counters,
-      startDate
+      startDate,
+      jourMinutes
     );
     onApply(combination);
     onClose();
-  }, [startDate, isCustomValid, customItems, counters, onApply, onClose]);
+  }, [startDate, isCustomValid, customItems, counters, onApply, onClose, jourMinutes]);
 
   // PERF-009: Ref pour tracker si on doit recalculer
   const lastCalculationRef = useRef<{
@@ -143,6 +174,9 @@ export function OptimizationModal({
       setCetEpargneAmount('');
       setShowCMO(false);
       setShowAstreinte(false);
+      setShowPartial(false);
+      setPartialType(null);
+      setPartialMinutes(0);
     }
   }, [isOpen]);
 
@@ -172,7 +206,8 @@ export function OptimizationModal({
       const results = generateAllCombinations(
         workingDaysCount,
         counters,
-        startDate
+        startDate,
+        workingMinutesCount
       );
       setCombinations(results);
       setIsCalculating(false);
@@ -186,7 +221,7 @@ export function OptimizationModal({
     }, 150); // Réduit de 300ms à 150ms
 
     return () => clearTimeout(timeoutId);
-  }, [isOpen, startDate, endDate, workingDaysCount, countersHash, counters]);
+  }, [isOpen, startDate, endDate, workingDaysCount, workingMinutesCount, countersHash, counters]);
 
   // PERF-009: useCallback pour stabiliser la référence
   const handleSelect = useCallback((combination: Combination) => {
@@ -463,6 +498,88 @@ export function OptimizationModal({
                       >
                         <ShieldAlert className="w-4 h-4" />
                         Poser l&apos;astreinte
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section pose fractionnée — sortie anticipée / demi-journée (1 seul jour) */}
+            {onPosePartiel && !isCalculating && workingDaysCount === 1 && partialTypes.length > 0 && (
+              <div className="mb-6 border-b border-border pb-6">
+                <button
+                  onClick={() => {
+                    setShowPartial(prev => !prev);
+                    if (!partialType && partialTypes.length > 0) setPartialType(partialTypes[0].type);
+                  }}
+                  className="flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors"
+                >
+                  <Hourglass className="w-4 h-4" />
+                  {showPartial ? 'Masquer la pose à l\'heure' : 'Poser quelques heures (sortie anticipée)'}
+                </button>
+
+                {showPartial && (
+                  <div className="mt-4 p-4 rounded-lg bg-teal-50 border border-teal-200 space-y-3">
+                    <p className="text-xs text-teal-700 flex items-start gap-1.5">
+                      <Hourglass className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>Pose une <strong>fraction de journée</strong> sur un compteur horaire (le reste du jour est travaillé). Journée : <strong>{formatMinutes(workingMinutesCount ?? jourMinutes)}</strong>.</span>
+                    </p>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div>
+                        <label className="text-xs text-slate-600 mb-1 block">Compteur</label>
+                        <select
+                          value={partialType ?? ''}
+                          onChange={(e) => { setPartialType(e.target.value as CounterType); setPartialMinutes(0); }}
+                          className="rounded-md border border-teal-300 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          {partialTypes.map(t => (
+                            <option key={t.type} value={t.type}>{t.label} ({formatMinutes(t.available)})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-600 mb-1 block">Durée</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number" min={0} max={Math.floor(partialMax / 60)}
+                            value={Math.floor(partialMinutes / 60) || ''} placeholder="0"
+                            onChange={(e) => {
+                              const h = e.target.value === '' ? 0 : parseInt(e.target.value);
+                              setPartialMinutes(Math.min(partialMax, h * 60 + (partialMinutes % 60)));
+                            }}
+                            className="w-16 rounded-md border border-teal-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            aria-label="heures"
+                          />
+                          <span className="text-slate-400 text-sm">h</span>
+                          <input
+                            type="number" min={0} max={59}
+                            value={partialMinutes % 60 || ''} placeholder="0"
+                            onChange={(e) => {
+                              const m = e.target.value === '' ? 0 : parseInt(e.target.value);
+                              setPartialMinutes(Math.min(partialMax, Math.floor(partialMinutes / 60) * 60 + m));
+                            }}
+                            className="w-16 rounded-md border border-teal-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            aria-label="minutes"
+                          />
+                          <span className="text-slate-400 text-sm">min</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500">Maximum : {formatMinutes(partialMax)}</p>
+                    <div className="flex justify-end">
+                      <button
+                        disabled={!partialType || partialMinutes <= 0 || partialMinutes > partialMax}
+                        onClick={() => {
+                          if (partialType && partialMinutes > 0 && partialMinutes <= partialMax) {
+                            onPosePartiel(partialType, partialMinutes);
+                            onClose();
+                          }
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      >
+                        <Hourglass className="w-4 h-4" />
+                        Poser {partialMinutes > 0 ? formatMinutes(partialMinutes) : ''}
                       </button>
                     </div>
                   </div>

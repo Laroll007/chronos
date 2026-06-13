@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar } from '@/hooks/useCycle';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -280,6 +280,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isPosted = hasPostedLeaveOnDate(day.date, history);
             const isCMO = !isPosted && hasCMOOnDate(day.date, history);
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
+            const partialMin = !isPosted && !isCMO && !isAstreinte ? getPartialMinutesOnDate(day.date, history) : 0;
+            const isPartial = partialMin > 0;
             const isSingleDay = isStart && isEnd;
 
             // Construire le label accessible
@@ -296,6 +298,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isPosted) statusParts.push('congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
+            if (isPartial) statusParts.push('heures posées');
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -350,7 +353,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                     // Forme de base
                     'rounded-full',
                     // État par défaut (non sélectionné)
-                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && {
+                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && {
                       // Jour travaillé
                       'bg-blue-50 text-blue-700 hover:bg-blue-100': day.isWorking && isCurrentMonth,
                       // Jour de repos
@@ -359,13 +362,15 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                       'opacity-30': !isCurrentMonth,
                     },
                     // Aujourd'hui (non sélectionné)
-                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && 'ring-2 ring-blue-500 ring-offset-1',
+                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
                     // Congé déjà posé
                     isPosted && !isInRange && !isInPreview && 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-400',
                     // Arrêt maladie (CMO)
                     isCMO && !isInRange && !isInPreview && 'bg-violet-200 text-violet-800 ring-1 ring-violet-400',
                     // Astreinte / permanence
                     isAstreinte && !isInRange && !isInPreview && 'bg-amber-200 text-amber-800 ring-1 ring-amber-400',
+                    // Pose fractionnée (sortie anticipée) — jour partiellement travaillé
+                    isPartial && !isInRange && !isInPreview && 'bg-teal-100 text-teal-800 ring-1 ring-teal-400',
                     // Dans la plage (preview)
                     isInPreview && !isStart && !isEnd && 'bg-transparent text-emerald-700',
                     // Dans la plage (confirmée)
@@ -404,6 +409,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-400" />
             <span className="text-slate-500">Astreinte</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-teal-100 border border-teal-400" />
+            <span className="text-slate-500">Heures</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />

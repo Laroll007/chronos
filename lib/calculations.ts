@@ -4,6 +4,7 @@ import {
   CycleConfig,
   Counters,
   WeekSchedule,
+  WeekHours,
   WeekType,
   CETProjection,
   SimulationResult,
@@ -241,6 +242,49 @@ export function countWorkingDays(
   }
 
   return count;
+}
+
+/**
+ * Durée travaillée (en minutes) d'un jour donné selon le régime.
+ * - Cycle hebdo avec heuresSemaine : durée réelle du jour de la semaine (8h00 Lu-Je, 7h25 Ve…), 0 si repos.
+ * - Sinon (cycles APORTT 12h08…) : heuresParJour (valeur représentative du régime), 0 si repos.
+ * Sert de source de vérité pour convertir « jours posés » ↔ « minutes consommées » sur les compteurs horaires.
+ */
+export function getJourMinutes(date: Date, cycleConfig: CycleConfig): number {
+  if (!isWorkingDay(date, cycleConfig)) return 0;
+
+  if (cycleConfig.type === 'hebdo' && cycleConfig.heuresSemaine) {
+    const dayKeys: (keyof WeekHours)[] = [
+      'dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi',
+    ];
+    return cycleConfig.heuresSemaine[dayKeys[date.getDay()]] || 0;
+  }
+
+  return cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+}
+
+/**
+ * Somme exacte des minutes travaillées sur les jours TRAVAILLÉS d'une période.
+ * Utilisé pour dimensionner la pose des compteurs horaires (CF/RTC/RPS/HS) selon
+ * la durée réelle des jours (et non un forfait 12h08), notamment en cycle hebdo.
+ */
+export function countWorkingMinutes(
+  startDate: Date,
+  endDate: Date,
+  cycleConfig: CycleConfig
+): number {
+  let total = 0;
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  while (current <= end) {
+    total += getJourMinutes(current, cycleConfig);
+    current.setDate(current.getDate() + 1);
+  }
+
+  return total;
 }
 
 // ============================================
@@ -860,7 +904,21 @@ export function hasPostedLeaveOnDate(
   date: Date,
   history: HistoryEntry[]
 ): boolean {
-  return history.some((entry) => dateMatchesEntry(date, entry, 'pose'));
+  // Les poses fractionnées (partialDay) ne couvrent PAS la journée entière → exclues ici.
+  return history.some((entry) => !entry.partialDay && dateMatchesEntry(date, entry, 'pose'));
+}
+
+/**
+ * Total des minutes posées en « fraction de journée » (sortie anticipée / demi-journée)
+ * sur une date donnée. 0 si aucune. Le jour reste un jour travaillé.
+ */
+export function getPartialMinutesOnDate(
+  date: Date,
+  history: HistoryEntry[]
+): number {
+  return history
+    .filter((entry) => entry.partialDay && dateMatchesEntry(date, entry, 'pose'))
+    .reduce((sum, entry) => sum + entry.amount, 0);
 }
 
 /**

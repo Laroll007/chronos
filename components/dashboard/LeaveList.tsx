@@ -367,6 +367,9 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                             </div>
                             <span className="text-sm font-medium text-slate-800 shrink-0">
                               {formatAmount(item.type, item.amount)}
+                              {item.partialDay && (
+                                <span className="ml-1 text-xs font-normal text-teal-600">à l&apos;heure</span>
+                              )}
                             </span>
                           </div>
                         );
