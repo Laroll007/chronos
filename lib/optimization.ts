@@ -34,12 +34,25 @@ function generateId(): string {
 /**
  * Convertit une valeur en jours selon le type de compteur
  */
+/**
+ * Compteurs comptabilisés en JOURS (et non en minutes).
+ * Doit rester aligné sur simulatePose() dans lib/calculations.ts :
+ * tout type absent de cette liste est exprimé en minutes (cf, rtc, rtt, rps, hs, hsHistorique).
+ */
+export const DAY_BASED_COUNTER_TYPES: CounterType[] = [
+  'ca', 'caHP', 'cet', 'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies',
+];
+
+export function isDayBasedType(type: CounterType): boolean {
+  return DAY_BASED_COUNTER_TYPES.includes(type);
+}
+
 function toWorkingDays(amount: number, type: CounterType): number {
-  // CA et CET sont déjà en jours
-  if (type === 'ca' || type === 'caHP' || type === 'cet') {
+  // Les compteurs en jours restent en jours
+  if (isDayBasedType(type)) {
     return amount;
   }
-  // CF, RTC, RPS, HS sont en minutes → convertir en jours
+  // CF, RTC, RPS, HS, HS historiques sont en minutes → convertir en jours
   return Math.round((amount / HEURES_PAR_JOUR) * 10) / 10;
 }
 
@@ -47,7 +60,7 @@ function toWorkingDays(amount: number, type: CounterType): number {
  * Convertit des jours en minutes pour un type donné
  */
 function toMinutes(days: number, type: CounterType): number {
-  if (type === 'ca' || type === 'caHP' || type === 'cet') {
+  if (isDayBasedType(type)) {
     return days; // garde en jours
   }
   return Math.round(days * HEURES_PAR_JOUR);

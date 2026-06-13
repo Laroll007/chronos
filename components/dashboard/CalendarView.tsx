@@ -9,7 +9,6 @@ import { CalendarMonth } from './CalendarMonth';
 import { CalendarWeek } from './CalendarWeek';
 import { CalendarYear } from './CalendarYear';
 import { Calendar, CalendarDays, CalendarRange } from 'lucide-react';
-import { toast } from 'sonner';
 import { LeaveList } from './LeaveList';
 import {
   CA_REQUIS_POUR_HP,
@@ -166,14 +165,10 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
   const prevResetTrigger = useRef(resetTrigger);
 
   const dateRange = useDateRangePicker(cycleConfig, (start, end, workingDays) => {
-    if (workingDays > 0) {
-      onRangeSelected(start, end, workingDays);
-    } else {
-      toast.error('Aucun jour travaillé', {
-        description: 'Sélectionnez une période contenant au moins 1 jour travaillé.',
-      });
-      dateRange.reset();
-    }
+    // On ouvre toujours la modale, même à 0 jour travaillé : une période de
+    // repos (ex. week-end en cycle hebdo) doit pouvoir être marquée en
+    // astreinte / permanence ou en arrêt maladie.
+    onRangeSelected(start, end, workingDays);
   });
 
   useEffect(() => {

@@ -236,7 +236,7 @@ export function OptimizationModal({
         <ScrollArea className="h-[calc(90vh-140px)]">
           <div className="p-6">
             {/* Formulaire personnalisé */}
-            {!isCalculating && availableTypes.length > 0 && (
+            {!isCalculating && workingDaysCount > 0 && availableTypes.length > 0 && (
               <div className="mb-6 border-b border-border pb-6">
                 <button
                   onClick={toggleCustom}
@@ -475,6 +475,21 @@ export function OptimizationModal({
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
                 <p className="text-sm text-muted-foreground">
                   Calcul des meilleures options...
+                </p>
+              </div>
+            ) : workingDaysCount <= 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 rounded-full bg-amber-100 mb-4">
+                  <ShieldAlert className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Aucun jour travaillé sur cette période
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Cette période ne contient que des jours de repos. Utilisez
+                  «&nbsp;Poser une astreinte / permanence&nbsp;» ci-dessus pour la
+                  compter comme travaillée (week-end, jour de repos), ou
+                  «&nbsp;Marquer un arrêt maladie&nbsp;».
                 </p>
               </div>
             ) : combinations.length === 0 ? (

@@ -42,6 +42,7 @@ import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry } from '@/lib/types';
 import { countWorkingDays, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
+import { isDayBasedType } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -200,12 +201,14 @@ export default function DashboardPage() {
         combination.items.length > 1 ? `grp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : undefined;
 
       for (const item of combination.items) {
-        const isMinutes = !!item.amountMinutes;
-        const amount = isMinutes ? item.amountMinutes! : item.amount;
+        // L'unité dépend du TYPE de compteur, pas de la présence de amountMinutes
+        // (les types en jours — CA, CET… — ont aussi un amountMinutes égal à leur nb de jours).
+        const isMinutes = !isDayBasedType(item.type);
+        const amount = isMinutes ? (item.amountMinutes ?? item.amount) : item.amount;
 
         // Nombre de jours travaillés occupés par cet item
         const nbDays = isMinutes
-          ? Math.max(1, Math.round(item.amountMinutes! / HEURES_PAR_JOUR))
+          ? Math.max(1, Math.round((item.amountMinutes ?? Math.round(item.amount * HEURES_PAR_JOUR)) / HEURES_PAR_JOUR))
           : Math.max(1, item.amount);
 
         const sliceStart = workingDates[cursorIdx] ?? selectedRange.start;
