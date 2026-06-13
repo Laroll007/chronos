@@ -39,13 +39,27 @@ import { useCounters } from '@/hooks/useCounters';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
-import { Combination, HistoryEntry, CounterType } from '@/lib/types';
+import { Combination, HistoryEntry, CounterType, CycleConfig } from '@/lib/types';
 import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+
+// La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
+// Sert à n'afficher l'option « astreinte » que sur des jours non travaillés.
+function rangeHasRestDay(start: Date, end: Date, cycleConfig: CycleConfig): boolean {
+  const cur = new Date(start);
+  cur.setHours(0, 0, 0, 0);
+  const last = new Date(end);
+  last.setHours(0, 0, 0, 0);
+  while (cur <= last) {
+    if (!isWorkingDay(cur, cycleConfig)) return true;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return false;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -59,6 +73,7 @@ export default function DashboardPage() {
     end: Date;
     workingDays: number;
     workingMinutes: number;
+    hasRestDays: boolean;
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -118,7 +133,8 @@ export default function DashboardPage() {
     const workingMinutes = cycleConfig
       ? countWorkingMinutes(start, end, cycleConfig)
       : workingDays * HEURES_PAR_JOUR;
-    setSelectedRange({ start, end, workingDays, workingMinutes });
+    const hasRestDays = cycleConfig ? rangeHasRestDay(start, end, cycleConfig) : false;
+    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
     setShowOptimization(true);
   }, [cycleConfig]);
 
@@ -136,7 +152,8 @@ export default function DashboardPage() {
     if (!cycleConfig) return;
     const workingDays = Math.max(1, countWorkingDays(start, end, cycleConfig));
     const workingMinutes = countWorkingMinutes(start, end, cycleConfig);
-    setSelectedRange({ start, end, workingDays, workingMinutes });
+    const hasRestDays = rangeHasRestDay(start, end, cycleConfig);
+    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
     setShowOptimization(true);
   }, [deleteHistoryEntry, cycleConfig]);
 
@@ -368,6 +385,7 @@ export default function DashboardPage() {
             onMarkCMO={handleMarkCMO}
             onMarkAstreinte={handleMarkAstreinte}
             onPosePartiel={handlePosePartiel}
+            hasRestDays={selectedRange?.hasRestDays}
           />
         </Suspense>
       )}

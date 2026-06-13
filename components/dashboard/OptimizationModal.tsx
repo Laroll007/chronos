@@ -34,8 +34,10 @@ interface OptimizationModalProps {
   onEpargneCET?: (joursCA: number) => void;
   onMarkCMO?: () => void;
   onMarkAstreinte?: () => void;
-  // Pose fractionnée (sortie anticipée / demi-journée) — uniquement pour 1 jour sélectionné.
+  // Pose fractionnée (départ anticipé / prise retardée) — uniquement pour 1 jour sélectionné.
   onPosePartiel?: (type: CounterType, minutes: number) => void;
+  // true si la période sélectionnée contient au moins un jour de repos (astreinte pertinente).
+  hasRestDays?: boolean;
 }
 
 export function OptimizationModal({
@@ -52,6 +54,7 @@ export function OptimizationModal({
   onMarkCMO,
   onMarkAstreinte,
   onPosePartiel,
+  hasRestDays = false,
 }: OptimizationModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
@@ -471,8 +474,9 @@ export function OptimizationModal({
               </div>
             )}
 
-            {/* Section astreinte / permanence — ajoute des jours travaillés, pas d'impact compteur auto */}
-            {onMarkAstreinte && !isCalculating && (
+            {/* Section astreinte / permanence — uniquement si la sélection contient un repos
+                (un jour de repos / week-end devient travaillé ; inutile sur un jour déjà travaillé) */}
+            {onMarkAstreinte && hasRestDays && !isCalculating && (
               <div className="mb-6 border-b border-border pb-6">
                 <button
                   onClick={() => setShowAstreinte(prev => !prev)}
@@ -516,7 +520,7 @@ export function OptimizationModal({
                   className="flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors"
                 >
                   <Hourglass className="w-4 h-4" />
-                  {showPartial ? 'Masquer la pose à l\'heure' : 'Poser quelques heures (sortie anticipée)'}
+                  {showPartial ? 'Masquer la pose à l\'heure' : 'Poser quelques heures (départ anticipé / prise retardée)'}
                 </button>
 
                 {showPartial && (
