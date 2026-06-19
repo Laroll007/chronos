@@ -27,7 +27,17 @@ export interface DateRangeSelection {
  */
 export function useDateRangePicker(
   cycleConfig: CycleConfig,
-  onRangeSelected?: (start: Date, end: Date, workingDays: number) => void
+  onRangeSelected?: (start: Date, end: Date, workingDays: number) => void,
+  options?: {
+    // Vrai si la date porte déjà un congé / CMO / astreinte / pose à l'heure.
+    isDateOccupied?: (date: Date) => boolean;
+    // Appelé quand un premier clic tombe sur un jour déjà occupé : on ouvre
+    // l'édition/suppression au lieu de démarrer une nouvelle pose (anti-chevauchement).
+    onOccupiedClick?: (date: Date) => void;
+    // Appelé quand le 2e clic créerait une plage traversant un jour déjà occupé :
+    // on annule la sélection (anti-chevauchement) et on prévient l'utilisateur.
+    onOccupiedRange?: () => void;
+  }
 ): DateRangeSelection {
   const [selectedStart, setSelectedStart] = useState<Date | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<Date | null>(null);
@@ -77,6 +87,13 @@ export function useDateRangePicker(
   const handleDateClick = useCallback((date: Date) => {
     const normalizedDate = normalizeDate(date);
 
+    // Premier clic sur un jour déjà posé : on n'enchaîne pas une nouvelle pose
+    // par-dessus (chevauchement), on ouvre l'édition/suppression du congé existant.
+    if (!selectedStart && options?.isDateOccupied?.(normalizedDate)) {
+      options.onOccupiedClick?.(normalizedDate);
+      return;
+    }
+
     if (!selectedStart) {
       // Premier clic : définir le début
       setSelectedStart(normalizedDate);
@@ -91,6 +108,21 @@ export function useDateRangePicker(
       if (normalizedDate < selectedStart) {
         finalStart = normalizedDate;
         finalEnd = selectedStart;
+      }
+
+      // Refuser une plage qui traverse un jour déjà posé (chevauchement).
+      if (options?.isDateOccupied) {
+        const cursor = new Date(finalStart);
+        while (cursor <= finalEnd) {
+          if (options.isDateOccupied(cursor)) {
+            setSelectedStart(null);
+            setSelectedEnd(null);
+            setHoveredDate(null);
+            options.onOccupiedRange?.();
+            return;
+          }
+          cursor.setDate(cursor.getDate() + 1);
+        }
       }
 
       setSelectedStart(finalStart);
@@ -108,7 +140,7 @@ export function useDateRangePicker(
       setSelectedEnd(null);
       setHoveredDate(null);
     }
-  }, [selectedStart, selectedEnd, normalizeDate, cycleConfig, onRangeSelected]);
+  }, [selectedStart, selectedEnd, normalizeDate, cycleConfig, onRangeSelected, options]);
 
   /**
    * Vérifie si une date est dans la plage (confirmée ou preview)

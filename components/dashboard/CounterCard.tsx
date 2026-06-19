@@ -19,6 +19,7 @@ interface CounterCardProps {
   description?: string;
   highlight?: boolean;
   gain?: string;
+  unlimited?: boolean;
   onDetails?: (id: string) => void;
   onHelp?: (id: string) => void;
   // Durée d'un jour du régime (minutes) pour l'équivalent « ≈ Xj ». 12h08 par défaut, ~8h en hebdo.
@@ -36,6 +37,7 @@ export function CounterCard({
   description,
   highlight,
   gain,
+  unlimited,
   onDetails,
   onHelp,
   dayMinutes = HEURES_PAR_JOUR,
@@ -85,7 +87,7 @@ export function CounterCard({
       onClick={() => onDetails?.(id)}
       role={onDetails ? 'button' : undefined}
       tabIndex={onDetails ? 0 : undefined}
-      aria-label={`${label} : ${displayValue} sur ${displayMax}${deadline && daysRemaining !== null ? `, ${daysRemaining > 0 ? `${daysRemaining} jours restants` : daysRemaining === 0 ? "deadline aujourd'hui" : 'deadline dépassée'}` : ''}. Cliquer pour les détails.`}
+      aria-label={`${label} : ${displayValue}${unlimited ? ', stock illimité' : ` sur ${displayMax}`}${deadline && daysRemaining !== null ? `, ${daysRemaining > 0 ? `${daysRemaining} jours restants` : daysRemaining === 0 ? "deadline aujourd'hui" : 'deadline dépassée'}` : ''}. Cliquer pour les détails.`}
       onKeyDown={(e) => {
         if (onDetails && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
@@ -130,9 +132,9 @@ export function CounterCard({
                 <span className="hidden sm:block text-sm text-muted-foreground mb-0.5">{displayDays}</span>
               )}
             </div>
-            <span className="text-xs sm:text-sm text-muted-foreground">/ {displayMax}</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">{unlimited ? 'illimité' : `/ ${displayMax}`}</span>
           </div>
-          <Progress value={percent} className="h-1.5 sm:h-2" />
+          {!unlimited && <Progress value={percent} className="h-1.5 sm:h-2" />}
         </div>
 
         {deadline && daysRemaining !== null && (

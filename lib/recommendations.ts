@@ -40,7 +40,7 @@ export function generateRecommendations(
   const year = currentDate.getFullYear();
 
   // 1. CF SEMESTRE (priorité haute)
-  recommendations.push(...checkCFSemester(counters, currentDate, year));
+  recommendations.push(...checkCFSemester(counters, cycleConfig, currentDate, year));
 
   // 2. CA HP CONDITION (priorité haute si proche deadline)
   recommendations.push(...checkCAHPCondition(counters, currentDate, year));
@@ -110,49 +110,63 @@ export function generateRecommendations(
 // VÉRIFICATIONS INDIVIDUELLES
 // ============================================
 
+// Nombre de mois par semestre (janv→juin, juil→déc).
+const CF_MOIS_PAR_SEMESTRE = 6;
+
 function checkCFSemester(
   counters: Counters,
+  cycleConfig: CycleConfig,
   currentDate: Date,
   year: number
 ): Recommendation[] {
   if (counters.hasCF === false) return [];
-  const recommendations: Recommendation[] = [];
+
   const semester = getCurrentSemester(currentDate);
   const daysRemaining = getDaysUntilSemesterDeadline(currentDate);
+  const cfRestant = getCFRemainingForSemester(semester, counters.cfConsoS1, counters.cfConsoS2);
+  if (cfRestant <= 0) return [];
 
-  // Semestre 1
-  if (semester === 1) {
-    const cfRestantS1 = getCFRemainingForSemester(1, counters.cfConsoS1, counters.cfConsoS2);
-    if (cfRestantS1 > 0) {
-      const urgency = calculateUrgencyPercent(daysRemaining, 180);
-      recommendations.push({
-        id: generateId(),
-        priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
-        action: `Consommer ${formatMinutes(cfRestantS1)} de CF`,
-        reason: `Deadline semestre 1 : 30 juin (${daysRemaining}j restants)`,
-        deadline: `${year}-06-30`,
-        counterType: 'cf',
-        amountToConsume: cfRestantS1,
-      });
-    }
-  }
+  // 1 CF = 1 journée travaillée du régime (12h08 en cycle APORTT). Objectif : étaler
+  // les CF en journées entières sur l'année (≈ 9 jours/an, soit ~1 toutes les 5-6
+  // semaines), moitié avant le 30 juin et moitié avant le 31 décembre.
+  const dayMin = cycleConfig.heuresParJour || HEURES_PAR_JOUR;
 
-  // Semestre 2 - toujours afficher si restant
-  const cfRestantS2 = getCFRemainingForSemester(2, counters.cfConsoS1, counters.cfConsoS2);
-  if (semester === 2 && cfRestantS2 > 0) {
-    const urgency = calculateUrgencyPercent(daysRemaining, 180);
-    recommendations.push({
+  // Rang du mois courant dans le semestre (1 à 6) + cadence idéale (consommation
+  // linéaire du crédit semestriel).
+  const month0 = currentDate.getMonth();
+  const monthIndex = semester === 1 ? month0 + 1 : month0 - 5;
+  const isLastMonth = monthIndex >= CF_MOIS_PAR_SEMESTRE;
+  const consumed = CF_PAR_SEMESTRE - cfRestant;
+  const targetByNow = CF_PAR_SEMESTRE * (monthIndex / CF_MOIS_PAR_SEMESTRE);
+
+  // Journées entières à proposer ce mois-ci pour rattraper la cadence idéale.
+  // Dernier mois du semestre : on solde tout le restant avant la deadline.
+  // Sinon : on arrondit l'écart à la journée (rien si on est dans les temps).
+  const gapDays = (targetByNow - consumed) / dayMin;
+  const suggestThisMonth = isLastMonth
+    ? cfRestant
+    : Math.min(cfRestant, Math.max(0, Math.round(gapDays)) * dayMin);
+  if (suggestThisMonth <= 0) return [];
+
+  const nbJours = suggestThisMonth / dayMin;
+  const joursLabel = Number.isInteger(nbJours)
+    ? `${nbJours} jour${nbJours > 1 ? 's' : ''}`
+    : `${formatMinutes(suggestThisMonth)}`;
+  const deadline = semester === 1 ? `${year}-06-30` : `${year}-12-31`;
+  const deadlineLabel = semester === 1 ? '30 juin' : '31 décembre';
+  const urgency = calculateUrgencyPercent(daysRemaining, 180);
+
+  return [
+    {
       id: generateId(),
       priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
-      action: `Consommer ${formatMinutes(cfRestantS2)} de CF`,
-      reason: `Deadline semestre 2 : 31 décembre (${daysRemaining}j restants)`,
-      deadline: `${year}-12-31`,
+      action: `Poser ${joursLabel} de CF ce mois-ci`,
+      reason: `1 CF = ${formatMinutes(dayMin)}. Étalez ~1 jour toutes les 5-6 semaines. Reste ${formatMinutes(cfRestant)} avant le ${deadlineLabel} (${daysRemaining}j).`,
+      deadline,
       counterType: 'cf',
-      amountToConsume: cfRestantS2,
-    });
-  }
-
-  return recommendations;
+      amountToConsume: suggestThisMonth,
+    },
+  ];
 }
 
 function checkCAHPCondition(

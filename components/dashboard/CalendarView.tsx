@@ -4,11 +4,13 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CycleConfig, HistoryEntry, Counters } from '@/lib/types';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { useDateRangePicker } from './DateRangePicker';
 import { CalendarMonth } from './CalendarMonth';
 import { CalendarWeek } from './CalendarWeek';
 import { CalendarYear } from './CalendarYear';
 import { Calendar, CalendarDays, CalendarRange } from 'lucide-react';
+import { toast } from 'sonner';
 import { LeaveList } from './LeaveList';
 import {
   CA_REQUIS_POUR_HP,
@@ -163,13 +165,43 @@ function CaHPBand({ counters }: { counters: Counters }) {
 export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0 }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const prevResetTrigger = useRef(resetTrigger);
+  // Date dont on veut ouvrir le détail (édition/suppression) dans la liste des congés.
+  const [focusDate, setFocusDate] = useState<Date | null>(null);
 
-  const dateRange = useDateRangePicker(cycleConfig, (start, end, workingDays) => {
-    // On ouvre toujours la modale, même à 0 jour travaillé : une période de
-    // repos (ex. week-end en cycle hebdo) doit pouvoir être marquée en
-    // astreinte / permanence ou en arrêt maladie.
-    onRangeSelected(start, end, workingDays);
-  });
+  // Un jour est « occupé » s'il porte déjà un congé, un CMO, une astreinte ou une
+  // pose à l'heure → recliquer dessus doit éditer/supprimer, pas reposer par-dessus.
+  const isDateOccupied = useCallback(
+    (date: Date) =>
+      hasPostedLeaveOnDate(date, history) ||
+      hasCMOOnDate(date, history) ||
+      hasAstreinteOnDate(date, history) ||
+      getPartialMinutesOnDate(date, history) > 0,
+    [history]
+  );
+
+  const pickerOptions = useMemo(
+    () => ({
+      isDateOccupied,
+      onOccupiedClick: (date: Date) => setFocusDate(date),
+      onOccupiedRange: () =>
+        toast.error('Période en chevauchement', {
+          description:
+            'Cette plage recouvre un congé déjà posé. Modifiez-le ou choisissez une autre période.',
+        }),
+    }),
+    [isDateOccupied]
+  );
+
+  const dateRange = useDateRangePicker(
+    cycleConfig,
+    (start, end, workingDays) => {
+      // On ouvre toujours la modale, même à 0 jour travaillé : une période de
+      // repos (ex. week-end en cycle hebdo) doit pouvoir être marquée en
+      // astreinte / permanence ou en arrêt maladie.
+      onRangeSelected(start, end, workingDays);
+    },
+    pickerOptions
+  );
 
   useEffect(() => {
     if (resetTrigger !== prevResetTrigger.current) {
@@ -255,6 +287,8 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
         history={history}
         onDelete={onDeleteLeave ?? (() => {})}
         onEdit={onEditLeave}
+        focusDate={focusDate}
+        onFocusHandled={() => setFocusDate(null)}
       />
     </div>
   );

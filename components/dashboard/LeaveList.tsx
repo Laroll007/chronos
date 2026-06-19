@@ -21,6 +21,10 @@ interface LeaveListProps {
   history: HistoryEntry[];
   onDelete: (entryId: string) => void;
   onEdit?: (entry: HistoryEntry) => void;
+  // Quand renseignée (clic sur un jour déjà posé du calendrier), ouvre la modale
+  // détail du congé couvrant cette date. `onFocusHandled` est appelé après traitement.
+  focusDate?: Date | null;
+  onFocusHandled?: () => void;
 }
 
 const TYPE_LABELS: Record<CounterType, { label: string; color: string }> = {
@@ -124,7 +128,7 @@ function buildGroups(entries: HistoryEntry[]): LeaveGroup[] {
   return groups;
 }
 
-export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
+export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled }: LeaveListProps) {
   const [deleteTarget, setDeleteTarget] = useState<LeaveGroup | null>(null);
   const [detailTarget, setDetailTarget] = useState<LeaveGroup | null>(null);
 
@@ -139,6 +143,32 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
     return buildGroups(filtered);
   }, [history]);
 
+  // Ouverture du détail depuis le calendrier : groupe dont un item (congé / CMO /
+  // astreinte) couvre la date cliquée. Dérivé (pas d'effet) pour éviter un setState
+  // en cascade — l'ouverture est purement calculée à partir de focusDate.
+  const focusGroup = useMemo(() => {
+    if (!focusDate) return null;
+    const t = new Date(focusDate).setHours(0, 0, 0, 0);
+    return (
+      groups.find((g) =>
+        g.items.some((it) => {
+          if (it.action !== 'pose' && it.action !== 'cmo' && it.action !== 'astreinte') return false;
+          const s = new Date(it.date).setHours(0, 0, 0, 0);
+          const e = new Date(it.dateEnd ?? it.date).setHours(0, 0, 0, 0);
+          return t >= s && t <= e;
+        }),
+      ) ?? null
+    );
+  }, [focusDate, groups]);
+
+  // Détail effectivement affiché : clic direct sur la liste, ou clic calendrier.
+  const activeDetail = detailTarget ?? focusGroup;
+
+  const closeDetail = () => {
+    setDetailTarget(null);
+    onFocusHandled?.();
+  };
+
   const handleDelete = () => {
     if (deleteTarget) {
       for (const item of deleteTarget.items) {
@@ -146,6 +176,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
       }
       setDeleteTarget(null);
       setDetailTarget(null);
+      onFocusHandled?.();
     }
   };
 
@@ -236,25 +267,25 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
 
       {/* Modal détail */}
       <Dialog
-        open={!!detailTarget}
-        onOpenChange={(open) => !open && setDetailTarget(null)}
+        open={!!activeDetail}
+        onOpenChange={(open) => !open && closeDetail()}
       >
         <DialogContent
           className="w-[92vw] max-w-sm p-0 overflow-hidden border-0 shadow-2xl rounded-2xl"
           showCloseButton={false}
         >
-          {detailTarget && (() => {
-            const isRange = detailTarget.start !== detailTarget.end;
-            const nbDays = countDays(detailTarget.start, detailTarget.end);
-            const multiItem = detailTarget.items.length > 1;
+          {activeDetail && (() => {
+            const isRange = activeDetail.start !== activeDetail.end;
+            const nbDays = countDays(activeDetail.start, activeDetail.end);
+            const multiItem = activeDetail.items.length > 1;
             const editableItem =
-              detailTarget.items.length === 1 && detailTarget.items[0].action === 'pose'
-                ? detailTarget.items[0]
+              activeDetail.items.length === 1 && activeDetail.items[0].action === 'pose'
+                ? activeDetail.items[0]
                 : null;
             const isCMO =
-              detailTarget.items.length === 1 && detailTarget.items[0].action === 'cmo';
+              activeDetail.items.length === 1 && activeDetail.items[0].action === 'cmo';
             const isAstreinte =
-              detailTarget.items.length === 1 && detailTarget.items[0].action === 'astreinte';
+              activeDetail.items.length === 1 && activeDetail.items[0].action === 'astreinte';
 
             return (
               <>
@@ -269,8 +300,8 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                       </DialogTitle>
                       <p className="text-blue-200 text-xs mt-1">
                         {multiItem
-                          ? `${detailTarget.items.length} types · ${nbDays} jour${nbDays > 1 ? 's' : ''}`
-                          : detailTarget.items[0].action === 'transfer_cet'
+                          ? `${activeDetail.items.length} types · ${nbDays} jour${nbDays > 1 ? 's' : ''}`
+                          : activeDetail.items[0].action === 'transfer_cet'
                             ? 'Épargne CET'
                             : isCMO
                               ? 'Arrêt maladie (CMO)'
@@ -304,7 +335,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                               Du
                             </p>
                             <p className="text-slate-800 font-medium capitalize">
-                              {formatLongDate(detailTarget.start)}
+                              {formatLongDate(activeDetail.start)}
                             </p>
                           </div>
                         </div>
@@ -315,7 +346,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                               Au
                             </p>
                             <p className="text-slate-800 font-medium capitalize">
-                              {formatLongDate(detailTarget.end)}
+                              {formatLongDate(activeDetail.end)}
                             </p>
                           </div>
                         </div>
@@ -328,7 +359,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                             Date
                           </p>
                           <p className="text-slate-800 font-medium capitalize">
-                            {formatLongDate(detailTarget.start)}
+                            {formatLongDate(activeDetail.start)}
                           </p>
                         </div>
                       </div>
@@ -341,7 +372,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                       {multiItem ? 'Composition' : 'Type'}
                     </p>
                     <div className="space-y-1.5">
-                      {detailTarget.items.map((item) => {
+                      {activeDetail.items.map((item) => {
                         const isCETTransfer = item.action === 'transfer_cet';
                         const typeInfo = TYPE_LABELS[item.type];
                         const badgeLabel = isCETTransfer ? 'CET ↑ Épargne' : typeInfo.label;
@@ -384,7 +415,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                         variant="outline"
                         onClick={() => {
                           onEdit(editableItem);
-                          setDetailTarget(null);
+                          closeDetail();
                         }}
                         className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50"
                       >
@@ -394,7 +425,7 @@ export function LeaveList({ history, onDelete, onEdit }: LeaveListProps) {
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => setDeleteTarget(detailTarget)}
+                      onClick={() => setDeleteTarget(activeDetail)}
                       className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />

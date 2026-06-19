@@ -67,6 +67,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       description?: string;
       highlight?: boolean;
       gain?: string;
+      unlimited?: boolean;
     }> = [];
 
     // CET
@@ -160,10 +161,11 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       id: 'rps',
       label: 'RPS',
       value: counters.rps,
-      max: counters.rps + 5000, // Pas de max réel
+      max: counters.rps, // Stock illimité — pas de plafond
       unit: 'heures',
       status: 'protected',
       description: 'Réserve stratégique - gardés',
+      unlimited: true,
     });
 
     // HS
