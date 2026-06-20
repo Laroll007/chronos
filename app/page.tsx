@@ -44,9 +44,14 @@ const jsonLd = {
 // `/dashboard` est servi par Next.js / Nginx normalement.
 const autoRedirectScript = `
 try {
-  if (typeof localStorage !== 'undefined' && localStorage.getItem('chronos_data')) {
-    var target = window.Capacitor ? '/dashboard/index.html' : '/dashboard';
-    window.location.replace(target);
+  if (window.Capacitor) {
+    // App native : on route TOUJOURS vers le dashboard, même si le localStorage
+    // semble vide. Son démarrage tente une restauration depuis le miroir natif
+    // (cas d'une purge WebKit des 7 jours) ; s'il n'y a vraiment rien, il
+    // redirige lui-même vers l'onboarding.
+    window.location.replace('/dashboard/index.html');
+  } else if (typeof localStorage !== 'undefined' && localStorage.getItem('chronos_data')) {
+    window.location.replace('/dashboard');
   }
 } catch (e) {}
 `;

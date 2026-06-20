@@ -11,6 +11,7 @@ import {
 import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay } from '@/lib/calculations';
 import { CET_PLAFOND, CA_MAX_VERS_CET, CA_REQUIS_POUR_HP } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
+import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 
 /**
  * Hook principal pour la gestion des compteurs et données utilisateur
@@ -25,16 +26,35 @@ export function useCounters() {
 
   // Chargement initial
   useEffect(() => {
-    try {
-      const data = loadUserData();
-      userDataRef.current = data;
-      setUserData(data);
-    } catch (err) {
-      setError('Erreur lors du chargement des données');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // iOS : si le localStorage a été purgé (politique 7 jours), restaure
+        // depuis le miroir natif avant de lire. No-op et quasi-instantané sur
+        // le web et pour les utilisateurs ayant déjà des données.
+        await restoreFromNativeIfNeeded();
+
+        const data = loadUserData();
+        if (cancelled) return;
+        userDataRef.current = data;
+        setUserData(data);
+      } catch (err) {
+        if (!cancelled) {
+          setError('Erreur lors du chargement des données');
+          console.error(err);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    // Web / Android : empêche l'éviction automatique du stockage (silencieux).
+    void requestPersistentStorage();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Vérifier si onboarded

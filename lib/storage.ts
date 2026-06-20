@@ -10,6 +10,7 @@ import {
 } from './types';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
+import { mirrorToNative, clearNative } from './native-backup';
 
 // ============================================
 // DONNÉES PAR DÉFAUT
@@ -194,7 +195,10 @@ export function saveUserData(data: UserData): boolean {
       ...data,
       lastUpdated: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    const serialized = JSON.stringify(toSave);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    // Miroir natif iOS (fire-and-forget, silencieux, no-op sur le web)
+    void mirrorToNative(serialized);
     logger.debug('Données sauvegardées avec succès');
     return true;
   } catch (error) {
@@ -280,6 +284,8 @@ export function resetAllData(): boolean {
 
   try {
     localStorage.removeItem(STORAGE_KEY);
+    // Supprime aussi le miroir natif iOS (fire-and-forget, no-op sur le web)
+    void clearNative();
     logger.info('Données réinitialisées');
     return true;
   } catch (error) {
