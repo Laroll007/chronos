@@ -17,6 +17,7 @@ import {
   HS_MAX_STOCKABLES,
   CET_PLAFOND,
   ARTT_QUOTA_ANNUEL,
+  RTT_QUOTA_HEBDO,
   CONGES_BONIFIES_QUOTA,
   COUNTER_LABELS,
 } from '@/lib/constants';
@@ -148,8 +149,8 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         id: 'rtt',
         label: 'RTT',
         value: counters.rtt,
-        max: counters.rtt, // Variable selon le cycle
-        unit: 'heures',
+        max: RTT_QUOTA_HEBDO, // 16j/an (cycle hebdo)
+        unit: 'jours',
         deadline: new Date(year, 11, 31),
         status: getStatus(daysUntilYear, true),
         description: COUNTER_LABELS.rtt.description,

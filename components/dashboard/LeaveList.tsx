@@ -86,7 +86,7 @@ function formatRange(startISO: string, endISO: string): string {
 }
 
 function formatAmount(type: CounterType, amount: number): string {
-  if (type === 'ca' || type === 'caHP' || type === 'cet' || type === 'cmo' || type === 'astreinte') {
+  if (type === 'ca' || type === 'caHP' || type === 'cet' || type === 'rtt' || type === 'artt' || type === 'cmo' || type === 'astreinte') {
     return `${amount}j`;
   }
   return formatMinutes(amount);

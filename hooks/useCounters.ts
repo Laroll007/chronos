@@ -381,6 +381,8 @@ export function useCounters() {
         updatedCounters[entry.type] += entry.amount;
       } else if (entry.type === 'artt') {
         updatedCounters.artt = (updatedCounters.artt ?? 0) + entry.amount;
+      } else if (entry.type === 'rtt') {
+        updatedCounters.rtt = (updatedCounters.rtt ?? 0) + entry.amount;
       } else if (entry.type === 'caAnterieur') {
         updatedCounters.caAnterieur += entry.amount;
       } else if (entry.type === 'caHPAnterieur') {
@@ -392,8 +394,8 @@ export function useCounters() {
       } else if (entry.type === 'hsHistorique') {
         updatedCounters.hsHistorique += entry.amount;
       } else {
-        // Types en minutes : rtc, rtt, rps, hs
-        const key = entry.type as 'rtc' | 'rtt' | 'rps' | 'hs';
+        // Types en minutes : rtc, rps, hs
+        const key = entry.type as 'rtc' | 'rps' | 'hs';
         if (updatedCounters[key] !== undefined) {
           (updatedCounters[key] as number) += entry.amount;
         }

@@ -84,6 +84,9 @@ export const COEFFICIENTS_RPS = {
 // ============================================
 export const ARTT_QUOTA_ANNUEL = 20; // jours/an (arrêté du 3 mai 2002 - police nationale)
 
+// RTT (cycle hebdomadaire)
+export const RTT_QUOTA_HEBDO = 16; // jours/an (régime hebdo)
+
 // ============================================
 // CONGÉS BONIFIÉS (décret n°2020-851 du 2 juillet 2020)
 // ============================================
@@ -157,8 +160,8 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   rtt: {
     name: 'RTT',
-    description: 'Récupération Temps de Travail. Perdus au 31/12.',
-    unit: 'heures',
+    description: 'Récupération Temps de Travail (cycle hebdo : 16j/an). Perdus au 31/12.',
+    unit: 'jours',
   },
   rps: {
     name: 'RPS',

@@ -59,6 +59,9 @@ function applyCancel(
     case 'artt':
       c.artt = (c.artt ?? 0) + amount;
       break;
+    case 'rtt':
+      c.rtt = (c.rtt ?? 0) + amount;
+      break;
     case 'cet2008':
       c.cet2008 = (c.cet2008 ?? 0) + amount;
       break;
@@ -207,6 +210,53 @@ describe('simulatePose - ARTT', () => {
     const afterCancel = applyCancel(afterPose.newCounters, 'artt', amount);
 
     expect(afterCancel).toEqual(BASE_COUNTERS);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RTT (cycle hebdo — en jours, 16j/an)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('simulatePose - RTT', () => {
+  const amount = 3;
+  const RTT_COUNTERS: Counters = { ...BASE_COUNTERS, hasRTT: true, rtt: 16 };
+
+  it('pose valide : decremente rtt (en jours)', () => {
+    const result = simulatePose(RTT_COUNTERS, 'rtt', amount, DATE_JUIN);
+
+    expect(result.isValid).toBe(true);
+    expect(result.newCounters.rtt).toBe((RTT_COUNTERS.rtt ?? 0) - amount);
+  });
+
+  it('pose invalide si montant > solde disponible', () => {
+    const result = simulatePose(RTT_COUNTERS, 'rtt', 99, DATE_JUIN);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errorMessage).toContain('RTT');
+    expect(result.errorMessage).toContain('j de RTT');
+  });
+
+  it('pose invalide si hasRTT = false', () => {
+    const result = simulatePose(BASE_COUNTERS, 'rtt', 1, DATE_JUIN);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errorMessage).toContain('RTT');
+  });
+
+  it('pose invalide si rtt = undefined', () => {
+    const countersUndef = { ...RTT_COUNTERS, rtt: undefined };
+    const result = simulatePose(countersUndef, 'rtt', 1, DATE_JUIN);
+
+    expect(result.isValid).toBe(false);
+  });
+
+  it('annulation restaure exactement etat initial', () => {
+    const afterPose = simulatePose(RTT_COUNTERS, 'rtt', amount, DATE_JUIN);
+    expect(afterPose.isValid).toBe(true);
+
+    const afterCancel = applyCancel(afterPose.newCounters, 'rtt', amount);
+
+    expect(afterCancel).toEqual(RTT_COUNTERS);
   });
 });
 

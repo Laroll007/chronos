@@ -59,7 +59,7 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     title: 'RTT (Réduction du Temps de Travail)',
     bullets: [
       'Applicable uniquement aux cycles hebdomadaires.',
-      'Calculé selon les heures supplémentaires à la semaine.',
+      'Crédit de 16 jours par an, décomptés en jours.',
       'Perdus au 31 décembre s\'ils ne sont pas consommés.',
       'Non transférables au CET.',
     ],

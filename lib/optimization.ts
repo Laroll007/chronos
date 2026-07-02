@@ -37,10 +37,10 @@ function generateId(): string {
 /**
  * Compteurs comptabilisés en JOURS (et non en minutes).
  * Doit rester aligné sur simulatePose() dans lib/calculations.ts :
- * tout type absent de cette liste est exprimé en minutes (cf, rtc, rtt, rps, hs, hsHistorique).
+ * tout type absent de cette liste est exprimé en minutes (cf, rtc, rps, hs, hsHistorique).
  */
 export const DAY_BASED_COUNTER_TYPES: CounterType[] = [
-  'ca', 'caHP', 'cet', 'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies',
+  'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies',
 ];
 
 export function isDayBasedType(type: CounterType): boolean {

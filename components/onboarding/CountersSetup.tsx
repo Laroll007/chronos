@@ -137,11 +137,15 @@ interface CountersSetupProps {
 }
 
 // Compteurs vides pour démarrer l'onboarding sans pré-remplissage.
+// hasCF/hasRTC démarrent désactivés : aucun compteur n'est actif tant que
+// l'utilisateur ne l'a pas explicitement coché (sinon notifications fantômes).
 const EMPTY_COUNTERS: Counters = {
   ...DEFAULT_COUNTERS,
   ca: 0,
   cf: 0,
+  hasCF: false,
   rtc: 0,
+  hasRTC: false,
 };
 
 type SubStep = 'intro' | 'selection' | 'values';
@@ -209,6 +213,25 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
     if (subStep === 'values') setSubStep('selection');
     else if (subStep === 'selection') setSubStep('intro');
     else onBack();
+  };
+
+  // Réconcilie les flags d'activation avec les cases réellement cochées avant
+  // de sauvegarder : un compteur non coché ne doit jamais rester actif
+  // (sinon ses notifications se déclenchent à tort — cf. CF/RTC à hasX:true par défaut).
+  const handleFinish = () => {
+    const finalCounters: Counters = {
+      ...counters,
+      hasCF: selectedKeys.has('cf'),
+      hasRTC: selectedKeys.has('rtc'),
+      hasRTT: selectedKeys.has('rtt'),
+      hasARTT: selectedKeys.has('artt'),
+      hasCET2008: selectedKeys.has('cet2008'),
+      hasCongesBonifies: selectedKeys.has('congesBonifies'),
+      cf: selectedKeys.has('cf') ? counters.cf : 0,
+      rtc: selectedKeys.has('rtc') ? counters.rtc : 0,
+      rtt: selectedKeys.has('rtt') ? counters.rtt : undefined,
+    };
+    onNext(finalCounters);
   };
 
   const cardClass = 'rounded-xl border border-slate-200 py-6 shadow-sm bg-white';
@@ -502,7 +525,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
               <div className={`${subClass} mt-1`}>{COUNTER_LABELS.rtt.description}</div>
             </div>
             <div className="px-6">
-              <TimeInput label="RTT restants" value={counters.rtt ?? 0} onChange={(v) => setCounters((prev) => ({ ...prev, rtt: v, hasRTT: true }))} hint="Perdus au 31/12" colorKey="rtt" />
+              <DaysInput label="RTT restants" value={counters.rtt ?? 0} onChange={(v) => setCounters((prev) => ({ ...prev, rtt: v, hasRTT: true }))} max={16} hint="16j/an — perdus au 31/12" colorKey="rtt" />
             </div>
           </div>
         )}
@@ -610,7 +633,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
             <ChevronLeft className="w-5 h-5" />
             Retour
           </button>
-          <button type="button" onClick={() => onNext(counters)}
+          <button type="button" onClick={handleFinish}
             className="inline-flex items-center justify-center gap-2 flex-1 h-14 text-lg font-semibold rounded-xl text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
             style={{ background: 'linear-gradient(135deg, #0055A4 0%, #1a7de8 45%, #EF4135 100%)', boxShadow: '0 8px 24px rgba(0,85,164,0.25)' }}
           >

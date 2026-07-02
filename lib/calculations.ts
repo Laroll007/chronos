@@ -647,7 +647,7 @@ export function simulatePose(
           newCounters: counters,
           alerts: [{ id: '1', type: 'error', priority: 'high', message: 'RTT insuffisants' }],
           isValid: false,
-          errorMessage: `Vous n'avez que ${formatMinutes(counters.rtt)} de RTT disponibles`,
+          errorMessage: `Vous n'avez que ${counters.rtt}j de RTT disponibles`,
         };
       }
       newCounters.rtt = counters.rtt - amount;

@@ -63,7 +63,7 @@ export interface Counters {
   rtcReservesCET: number; // 83h30 = 5010 min réservés pour CET
   hasRTC?: boolean; // false = compteur désactivé (agent sans RTC) ; absent/true = actif
 
-  // RTT - optionnel, pour cycles hebdo (en minutes)
+  // RTT - optionnel, pour cycles hebdo (en jours) — 16j/an
   rtt?: number;
   hasRTT: boolean;
 

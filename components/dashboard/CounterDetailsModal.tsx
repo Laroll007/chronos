@@ -19,6 +19,7 @@ import {
   RTC_RESERVES_CET,
   CET_PLAFOND,
   ARTT_QUOTA_ANNUEL,
+  RTT_QUOTA_HEBDO,
   HS_HISTORIQUE_TAUX_HORAIRE,
   CONGES_BONIFIES_QUOTA,
   CONGES_BONIFIES_EXPIRATION_MOIS,
@@ -113,6 +114,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         case 'caHP': return counters.caHP;
         case 'cet': return counters.cet;
         case 'artt': return counters.artt ?? 0;
+        case 'rtt': return counters.rtt ?? 0;
         case 'caAnterieur': return counters.caAnterieur;
         case 'caHPAnterieur': return counters.caHPAnterieur;
         case 'cet2008': return counters.cet2008 ?? 0;
@@ -141,6 +143,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
       else if (counterId === 'caHP') onUpdate({ caHP: newDays });
       else if (counterId === 'cet') onUpdate({ cet: newDays });
       else if (counterId === 'artt') onUpdate({ artt: newDays });
+      else if (counterId === 'rtt') onUpdate({ rtt: newDays });
       else if (counterId === 'caAnterieur') onUpdate({ caAnterieur: newDays });
       else if (counterId === 'caHPAnterieur') onUpdate({ caHPAnterieur: newDays });
       else if (counterId === 'cet2008') onUpdate({ cet2008: newDays });
@@ -317,6 +320,21 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         );
       }
 
+      case 'rtt': {
+        const year = new Date().getFullYear();
+        const daysLeft = Math.ceil((new Date(year, 11, 31).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return (
+          <>
+            <Row label="RTT disponibles" value={`${counters.rtt ?? 0}j`} bold color="text-slate-700" />
+            <Row label="Quota annuel" value={`${RTT_QUOTA_HEBDO}j`} />
+            <Row label="Deadline" value="31 décembre" color="text-rose-600" separator />
+            <Row label="Jours restants" value={`${daysLeft}j`} color={daysLeft <= 60 ? 'text-amber-600' : 'text-slate-600'} />
+            <Alert type="warning" text="Les RTT non consommés au 31/12 sont perdus définitivement." />
+            <Alert type="info" text="Cycle hebdomadaire : 16 jours de RTT par an. Non transférables au CET." />
+          </>
+        );
+      }
+
       case 'cet2008': {
         return (
           <>
@@ -411,7 +429,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         </div>
 
         {/* Section modification */}
-        {counterId && ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique', 'ca', 'caHP', 'cet', 'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies'].includes(counterId) && (
+        {counterId && ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique', 'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies'].includes(counterId) && (
           <div className="pt-3 border-t border-slate-100">
             {!isEditing ? (
               <Button

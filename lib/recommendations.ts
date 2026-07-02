@@ -310,7 +310,7 @@ function checkRTT(
     recommendations.push({
       id: generateId(),
       priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
-      action: `Consommer ${formatMinutes(counters.rtt)} de RTT`,
+      action: `Consommer ${counters.rtt}j de RTT`,
       reason: `Perdus au 31/12`,
       deadline: `${year}-12-31`,
       counterType: 'rtt',

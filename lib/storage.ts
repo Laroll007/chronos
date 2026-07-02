@@ -1,7 +1,7 @@
 // LocalStorage helpers pour Chronos
 
 import { UserData, Counters, CycleConfig, HistoryEntry, ExportData } from './types';
-import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_NET_ANNUEL, JOURNEE_SOLIDARITE } from './constants';
+import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_NET_ANNUEL, JOURNEE_SOLIDARITE, RTT_QUOTA_HEBDO } from './constants';
 import {
   DEFAULT_WEEK_SCHEDULE,
   DEFAULT_CYCLE_ALTERNE_A,
@@ -126,6 +126,33 @@ export function migrateUserData(data: UserData): UserData {
     needsSave = true;
   }
 
+  // Migration 6: RTT converti de minutes → jours (16j/an en hebdo).
+  // Les anciens soldes étaient stockés en minutes ; un solde RTT plausible
+  // tient en jours (<= ~16). Au-delà de 40, c'est forcément un ancien stock
+  // en minutes → on convertit avec la durée représentative d'un jour du régime.
+  // Seuil idempotent : la valeur convertie repasse sous 40, pas de double conversion.
+  if (data.counters.hasRTT && typeof data.counters.rtt === 'number' && data.counters.rtt > 40) {
+    const jourMin = data.cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+    data.counters.rtt = Math.round(data.counters.rtt / jourMin);
+    needsSave = true;
+  }
+
+  // Migration 7: désactive CF/RTC restés actifs par défaut sans jamais avoir été
+  // configurés (bug onboarding : DEFAULT_COUNTERS avait hasCF/hasRTC=true alors que
+  // les cases démarraient décochées → notifications fantômes sur des compteurs à 0).
+  // On ne touche QUE la signature exacte du bug : solde à 0 ET aucune consommation
+  // enregistrée — un vrai utilisateur CF/RTC a soit un solde > 0, soit de la conso.
+  // Placé AVANT le reset annuel pour lire la conso de l'année avant sa remise à 0.
+  if (data.counters.hasCF && data.counters.cf === 0
+      && data.counters.cfConsoS1 === 0 && data.counters.cfConsoS2 === 0) {
+    data.counters.hasCF = false;
+    needsSave = true;
+  }
+  if (data.counters.hasRTC && data.counters.rtc === 0) {
+    data.counters.hasRTC = false;
+    needsSave = true;
+  }
+
   // Migration 4: Reset annuel des compteurs périodiques
   // caPosesHorsPeriode et caHP doivent être remis à 0 chaque année (règle APORTT)
   const currentYear = new Date().getFullYear();
@@ -135,6 +162,10 @@ export function migrateUserData(data: UserData): UserData {
     data.counters.cfConsoS1 = 0;
     data.counters.cfConsoS2 = 0;
     data.counters.caConsommes = 0;
+    // RTT (cycle hebdo) : perdus au 31/12, crédit annuel de 16j renouvelé au 1er janvier
+    if (data.counters.hasRTT) {
+      data.counters.rtt = RTT_QUOTA_HEBDO;
+    }
     data.lastResetYear = currentYear;
     needsSave = true;
   }
