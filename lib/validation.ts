@@ -20,7 +20,13 @@ interface Schema<T> {
 // HELPERS INTERNES
 // ============================================
 
+// Date seule (« 2026-03-10 ») — format de `cycleConfig.dateDebutCycle`.
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Horodatage d'historique : `poseConge` écrit `Date.toISOString()`
+// (« 2026-03-10T00:00:00.000Z »), mais d'anciennes sauvegardes peuvent ne
+// contenir que la date. Les deux doivent être acceptés, sinon l'import d'une
+// sauvegarde contenant le moindre congé échoue.
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}([T ][^\s].*)?$/;
 const CYCLE_TYPES = ['alterne', 'hebdo'] as const;
 const WEEK_TYPES = ['A', 'B'] as const;
 const CYCLE_PATTERNS = ['4/2', '2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'] as const;
@@ -42,6 +48,10 @@ function isBool(v: unknown): v is boolean {
 }
 function isStr(v: unknown): v is string {
   return typeof v === 'string';
+}
+/** Date ISO d'historique : « YYYY-MM-DD » ou horodatage complet, et réellement parsable. */
+function isISODateTime(v: unknown): boolean {
+  return isStr(v) && DATETIME_RE.test(v) && !Number.isNaN(new Date(v).getTime());
 }
 function makeEnum<T extends string>(values: readonly T[]): Schema<T> {
   return {
@@ -133,7 +143,9 @@ function checkHistoryEntry(v: unknown, i: number): string[] {
   if (!isObj(v)) return [`history[${i}]: objet attendu`];
   const errors: string[] = [];
   if (!isStr(v.id) || (v.id as string).length < 1) errors.push(`history[${i}].id: string non vide`);
-  if (!isStr(v.date) || !DATE_RE.test(v.date as string)) errors.push(`history[${i}].date: YYYY-MM-DD`);
+  if (!isISODateTime(v.date)) errors.push(`history[${i}].date: date ISO attendue`);
+  if (v.dateEnd !== undefined && !isISODateTime(v.dateEnd))
+    errors.push(`history[${i}].dateEnd: date ISO attendue`);
   if (!(HISTORY_ACTIONS as readonly unknown[]).includes(v.action)) errors.push(`history[${i}].action: invalide`);
   if (!(COUNTER_TYPES as readonly unknown[]).includes(v.type)) errors.push(`history[${i}].type: invalide`);
   if (typeof v.amount !== 'number') errors.push(`history[${i}].amount: nombre attendu`);
