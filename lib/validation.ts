@@ -108,12 +108,20 @@ function checkCycleConfig(v: unknown): string[] {
 function checkCounters(v: unknown): string[] {
   if (!isObj(v)) return ['counters: objet attendu'];
   const errors: string[] = [];
+  // Pas de plafond métier ici : ce validateur écarte des données CORROMPUES
+  // (champ manquant, non numérique, négatif), pas des valeurs inhabituelles.
+  // Les plafonds APORTT (160h de HS, 60j de CET, 2 CA HP…) sont des règles de
+  // gestion, appliquées à la pose et à l'épargne — les imposer ici faisait
+  // rejeter la sauvegarde entière d'un agent au solde atypique, alors que ces
+  // valeurs sont atteignables depuis l'app (saisie de compteur sans `max`) et
+  // parfois légitimes (CET plafonné à 80j pour les cohortes COVID/JOP, HS
+  // au-delà de 160h avant paiement obligatoire).
   const numFields: [string, number, number][] = [
-    ['ca', 0, 30], ['caConsommes', 0, Infinity], ['caPosesHorsPeriode', 0, Infinity],
-    ['caHP', 0, 2], ['cf', 0, Infinity], ['cfConsoS1', 0, Infinity], ['cfConsoS2', 0, Infinity],
+    ['ca', 0, Infinity], ['caConsommes', 0, Infinity], ['caPosesHorsPeriode', 0, Infinity],
+    ['caHP', 0, Infinity], ['cf', 0, Infinity], ['cfConsoS1', 0, Infinity], ['cfConsoS2', 0, Infinity],
     ['rtc', 0, Infinity], ['rtcReservesCET', 0, Infinity],
     ['rps', 0, Infinity], ['rpsAnneePrec', 0, Infinity],
-    ['hs', 0, 9600], ['cet', 0, 60], ['objectifCET', 0, 60],
+    ['hs', 0, Infinity], ['cet', 0, Infinity], ['objectifCET', 0, Infinity],
   ];
   for (const [field, min, max] of numFields) {
     if (!isNum(v[field] as unknown, min, max))

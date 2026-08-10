@@ -139,6 +139,32 @@ describe('Sauvegarde — aller-retour export/import', () => {
     }).success).toBe(false);
   });
 
+  it('réimporte la sauvegarde d’un agent aux soldes atypiques', () => {
+    // Ces valeurs sont saisissables depuis l'app (l'input « jours » de la fiche
+    // compteur n'a pas de `max`, le champ HS monte à 999h) et parfois légitimes.
+    // Elles bloquaient l'import tant que le validateur imposait les plafonds métier.
+    const atypique: UserData = {
+      ...userDataWith([poseEntry()]),
+      counters: {
+        ...DEFAULT_COUNTERS,
+        hs: 200 * 60, // au-delà des 160h stockables (avant paiement obligatoire)
+        cet: 80,      // plafond dérogatoire COVID / JOP
+        caHP: 4,
+        ca: 40,
+        objectifCET: 80,
+      },
+    };
+    saveUserData(atypique);
+
+    const result = importData(JSON.stringify(exportData()), false);
+    expect(result.error).toBeUndefined();
+    expect(result.success).toBe(true);
+
+    const reloaded = loadUserData()!.counters;
+    expect(reloaded.hs).toBe(200 * 60);
+    expect(reloaded.cet).toBe(80);
+  });
+
   it('l’import en fusion conserve l’historique existant', () => {
     saveUserData(userDataWith([poseEntry({ id: 'existant' })]));
     const exported = exportData()!;

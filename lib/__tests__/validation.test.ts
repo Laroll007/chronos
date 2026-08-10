@@ -194,34 +194,44 @@ describe('CountersSchema', () => {
     expect(CountersSchema.safeParse(counters).success).toBe(true);
   });
 
-  it('rejette CA > 30', () => {
-    const counters = { ...validCounters, ca: 31 };
-    expect(CountersSchema.safeParse(counters).success).toBe(false);
-  });
-
   it('rejette CA < 0', () => {
     const counters = { ...validCounters, ca: -1 };
     expect(CountersSchema.safeParse(counters).success).toBe(false);
   });
 
-  it('rejette caHP > 2', () => {
-    const counters = { ...validCounters, caHP: 3 };
-    expect(CountersSchema.safeParse(counters).success).toBe(false);
+  // Les plafonds APORTT (18/23/25 CA, 2 CA HP, 160h de HS, 60j de CET) sont des
+  // règles de GESTION, appliquées à la pose et à l'épargne — pas des critères
+  // d'intégrité. Les imposer ici faisait rejeter la sauvegarde entière d'un agent
+  // au solde atypique, alors que ces valeurs sont atteignables depuis l'app
+  // (l'input « jours » de la fiche compteur n'a pas de `max`) et parfois
+  // légitimes (CET à 80j pour les cohortes COVID/JOP, HS au-delà de 160h avant
+  // paiement obligatoire). Cf. lib/__tests__/backupRoundTrip.test.ts.
+  it('accepte les soldes au-delà des plafonds métier (intégrité ≠ règle de gestion)', () => {
+    const horsPlafond: Record<string, number>[] = [
+      { ca: 40 },          // au-delà des 25 CA du régime hebdo
+      { caHP: 4 },         // au-delà du bonus de 2
+      { hs: 200 * 60 },    // au-delà des 160h stockables
+      { cet: 80 },         // plafond dérogatoire COVID/JOP
+      { objectifCET: 80 },
+    ];
+    for (const over of horsPlafond) {
+      const counters = { ...validCounters, ...over };
+      const result = CountersSchema.safeParse(counters);
+      expect(result.success, `${JSON.stringify(over)} devrait être accepté`).toBe(true);
+    }
   });
 
-  it('rejette HS > 9600 (160h)', () => {
-    const counters = { ...validCounters, hs: 9601 };
-    expect(CountersSchema.safeParse(counters).success).toBe(false);
-  });
-
-  it('rejette CET > 60', () => {
-    const counters = { ...validCounters, cet: 61 };
-    expect(CountersSchema.safeParse(counters).success).toBe(false);
-  });
-
-  it('rejette objectifCET > 60', () => {
-    const counters = { ...validCounters, objectifCET: 61 };
-    expect(CountersSchema.safeParse(counters).success).toBe(false);
+  it('rejette toujours les soldes corrompus (négatif, NaN, non numérique)', () => {
+    const corrompus: Record<string, unknown>[] = [
+      { ca: -1 }, { caHP: -1 }, { hs: -1 }, { cet: -1 },
+      { ca: NaN }, { hs: NaN },
+      { ca: '18' }, { cet: null }, { hs: undefined },
+    ];
+    for (const over of corrompus) {
+      const counters = { ...validCounters, ...over };
+      const result = CountersSchema.safeParse(counters);
+      expect(result.success, `${JSON.stringify(over)} devrait être refusé`).toBe(false);
+    }
   });
 });
 
@@ -355,7 +365,8 @@ describe('validateUserData', () => {
   });
 
   it('inclut le chemin dans le message d\'erreur', () => {
-    const invalidData = { ...validUserData, counters: { ...validCounters, ca: 50 } };
+    // `ca: -1` est corrompu (négatif) ; un solde simplement élevé est désormais accepté.
+    const invalidData = { ...validUserData, counters: { ...validCounters, ca: -1 } };
     const result = validateUserData(invalidData);
     expect(result.success).toBe(false);
     if (!result.success) {
