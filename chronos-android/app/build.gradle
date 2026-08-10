@@ -56,8 +56,8 @@ android {
     defaultConfig {
         applicationId "fr.mychronos.app"
         minSdkVersion 21
-        targetSdkVersion 35
-        versionCode 2
+        targetSdkVersion 36
+        versionCode 3
         versionName ""
 
         // The name for the application

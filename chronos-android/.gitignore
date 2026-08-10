@@ -1,0 +1,13 @@
+# Secrets de signature — ne jamais committer
+*.keystore
+*.jks
+keystore.properties
+upload_certificate.pem
+android.keystore
+
+# Build
+build/
+.gradle/
+*.aab
+*.apk
+*.idsig
