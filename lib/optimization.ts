@@ -573,6 +573,41 @@ export function generateAllCombinations(
   // au lieu du forfait 12h08. Si absent, on retombe sur workingDays × 12h08.
   workingMinutes?: number
 ): Combination[] {
+  const reserve = Math.max(0, counters.caReservesCET ?? 0);
+
+  // 1re passe : on met de côté les CA que l'agent a sécurisés pour son CET.
+  const sansReserve = buildCombinations(workingDays, counters, date, workingMinutes, reserve);
+  if (reserve === 0 || sansReserve.length > 0) return sansReserve;
+
+  // Aucune solution sans y toucher → on repropose en entamant la réserve, mais
+  // en le disant clairement sur chaque option (l'agent garde la décision).
+  const avecReserve = buildCombinations(workingDays, counters, date, workingMinutes, 0);
+  for (const combo of avecReserve) {
+    if (combo.items.some((it) => it.type === 'ca')) {
+      combo.disadvantages = [
+        `⚠️ Entame vos ${reserve} CA sécurisés pour le CET`,
+        ...combo.disadvantages,
+      ];
+    }
+  }
+  return avecReserve;
+}
+
+/**
+ * Génère les combinaisons en retirant `caReserve` jours du solde de CA
+ * réellement proposable (0 = on autorise l'usage de la réserve).
+ */
+function buildCombinations(
+  workingDays: number,
+  counters: Counters,
+  date: Date,
+  workingMinutes: number | undefined,
+  caReserve: number
+): Combination[] {
+  // Soldes utilisés pour décider de ce qu'on PROPOSE. Le scoring, l'impact et la
+  // vérification de faisabilité continuent d'utiliser les soldes réels.
+  const dispo: Counters =
+    caReserve > 0 ? { ...counters, ca: Math.max(0, counters.ca - caReserve) } : counters;
   const combinations: Combination[] = [];
   const priorities: CounterType[] = [
     'caAnterieur', 'caHPAnterieur', // deadline 30 avril — toujours en tête si Jan-Avr
@@ -588,7 +623,7 @@ export function generateAllCombinations(
 
   // 1. Combinaisons pures (1 seul type)
   for (const type of priorities) {
-    const available = getAvailableAmount(counters, type, repDayMinutes);
+    const available = getAvailableAmount(dispo, type, repDayMinutes);
     if (available >= workingDays) {
       combinations.push(
         createCombination(
@@ -611,8 +646,8 @@ export function generateAllCombinations(
     for (let j = i + 1; j < priorities.length; j++) {
       const type1 = priorities[i];
       const type2 = priorities[j];
-      const avail1 = getAvailableAmount(counters, type1, repDayMinutes);
-      const avail2 = getAvailableAmount(counters, type2, repDayMinutes);
+      const avail1 = getAvailableAmount(dispo, type1, repDayMinutes);
+      const avail2 = getAvailableAmount(dispo, type2, repDayMinutes);
 
       // Essayer différentes répartitions en jours entiers
       for (let amount1 = 1; amount1 <= Math.min(avail1, workingDays - 1); amount1++) {
@@ -641,11 +676,11 @@ export function generateAllCombinations(
 
   const getRawMinutes = (type: CounterType): number => {
     switch (type) {
-      case 'cf': return counters.cf;
-      case 'rtc': return counters.rtc;
-      case 'rps': return counters.rps;
-      case 'hs': return counters.hs;
-      case 'hsHistorique': return counters.hsHistorique;
+      case 'cf': return dispo.cf;
+      case 'rtc': return dispo.rtc;
+      case 'rps': return dispo.rps;
+      case 'hs': return dispo.hs;
+      case 'hsHistorique': return dispo.hsHistorique;
       default: return 0;
     }
   };

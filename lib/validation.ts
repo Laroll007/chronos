@@ -144,6 +144,7 @@ function checkCounters(v: unknown): string[] {
   if (v.hasCongesBonifies !== undefined && !isBool(v.hasCongesBonifies)) errors.push('hasCongesBonifies: boolean attendu');
   if (v.congesBonifies !== undefined && !isNum(v.congesBonifies as unknown, 0)) errors.push('congesBonifies: nombre >= 0 attendu');
   if (v.hsHistorique !== undefined && !isNum(v.hsHistorique as unknown, 0)) errors.push('hsHistorique: nombre >= 0 attendu');
+  if (v.caReservesCET !== undefined && !isNum(v.caReservesCET as unknown, 0)) errors.push('caReservesCET: nombre >= 0 attendu');
   return errors;
 }
 

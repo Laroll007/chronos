@@ -405,7 +405,6 @@ export default function DashboardPage() {
             jourMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
             counters={counters}
             onApply={handleApplyCombination}
-            onEpargneCET={handleEpargneCET}
             onMarkCMO={handleMarkCMO}
             onMarkAstreinte={handleMarkAstreinte}
             onPosePartiel={handlePosePartiel}
@@ -507,6 +506,8 @@ export default function DashboardPage() {
                       currentCET={counters.cet}
                       counters={counters}
                       projection={cetProjection}
+                      onEpargneCET={handleEpargneCET}
+                      onUpdateCounters={updateCounters}
                     />
                   </Suspense>
                 )}

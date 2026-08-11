@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Counters, Combination, CounterType } from '@/lib/types';
 import { generateAllCombinations, createCombination } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
-import { HEURES_PAR_JOUR, CET_PLAFOND } from '@/lib/constants';
+import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { CombinationCard } from './CombinationCard';
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Plus, X, Pencil, PiggyBank, Thermometer, ShieldAlert, Hourglass } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X, Pencil, Thermometer, ShieldAlert, Hourglass } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OptimizationModalProps {
@@ -33,7 +33,6 @@ interface OptimizationModalProps {
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
   onApply: (combination: Combination) => boolean | void;
-  onEpargneCET?: (joursCA: number) => void;
   onMarkCMO?: () => void;
   onMarkAstreinte?: () => void;
   // Pose fractionnée (départ anticipé / prise retardée) — uniquement pour 1 jour sélectionné.
@@ -52,7 +51,6 @@ export function OptimizationModal({
   jourMinutes = HEURES_PAR_JOUR,
   counters,
   onApply,
-  onEpargneCET,
   onMarkCMO,
   onMarkAstreinte,
   onPosePartiel,
@@ -62,14 +60,11 @@ export function OptimizationModal({
   const [combinations, setCombinations] = useState<Combination[]>([]);
   const [showCustom, setShowCustom] = useState(false);
   const [customItems, setCustomItems] = useState<{ type: CounterType; amount: number }[]>([]);
-  const [showCETEpargne, setShowCETEpargne] = useState(false);
-  const [cetEpargneAmount, setCetEpargneAmount] = useState<number | ''>('');
   const [showCMO, setShowCMO] = useState(false);
   const [showAstreinte, setShowAstreinte] = useState(false);
   const [showPartial, setShowPartial] = useState(false);
   const [partialType, setPartialType] = useState<CounterType | null>(null);
   const [partialMinutes, setPartialMinutes] = useState(0);
-  const maxCETEpargnable = Math.min(counters.ca, CET_PLAFOND - counters.cet);
 
   // Compteurs horaires posables à l'heure (sortie anticipée), avec solde > 0
   const partialTypes = useMemo(() => {
@@ -166,16 +161,14 @@ export function OptimizationModal({
 
   // Créer un hash stable des compteurs pour comparaison
   const countersHash = useMemo(() => {
-    return `${counters.ca}|${counters.cf}|${counters.rtc}|${counters.rps}|${counters.hs}|${counters.caHP}`;
-  }, [counters.ca, counters.cf, counters.rtc, counters.rps, counters.hs, counters.caHP]);
+    return `${counters.ca}|${counters.cf}|${counters.rtc}|${counters.rps}|${counters.hs}|${counters.caHP}|${counters.caReservesCET ?? 0}`;
+  }, [counters.ca, counters.cf, counters.rtc, counters.rps, counters.hs, counters.caHP, counters.caReservesCET]);
 
   // Reset formulaires à l'ouverture
   useEffect(() => {
     if (isOpen) {
       setShowCustom(false);
       setCustomItems([]);
-      setShowCETEpargne(false);
-      setCetEpargneAmount('');
       setShowCMO(false);
       setShowAstreinte(false);
       setShowPartial(false);
@@ -364,76 +357,6 @@ export function OptimizationModal({
                         className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-blue-600 hover:bg-blue-700"
                       >
                         Valider
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Section épargne CET — distincte de la pose de congés */}
-            {onEpargneCET && maxCETEpargnable > 0 && !isCalculating && (
-              <div className="mb-6 border-b border-border pb-6">
-                <button
-                  onClick={() => setShowCETEpargne(prev => !prev)}
-                  className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <PiggyBank className="w-4 h-4" />
-                  {showCETEpargne ? 'Masquer épargne CET' : 'Épargner au CET'}
-                </button>
-
-                {showCETEpargne && (
-                  <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 space-y-3">
-                    <p className="text-xs text-red-700 flex items-start gap-1.5">
-                      <PiggyBank className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                      <span>Les jours épargnés au CET <strong>ne sont pas posés sur le calendrier</strong> — ils s'ajoutent à votre solde CET et diminuent vos CA.</span>
-                    </p>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="p-2 rounded bg-white border border-red-100">
-                        <p className="text-[10px] text-slate-500">CA dispo</p>
-                        <p className="text-base font-bold text-slate-800">{counters.ca}j</p>
-                      </div>
-                      <div className="p-2 rounded bg-white border border-red-100">
-                        <p className="text-[10px] text-slate-500">CET actuel</p>
-                        <p className="text-base font-bold text-red-700">{counters.cet}j</p>
-                      </div>
-                      <div className="p-2 rounded bg-white border border-red-100">
-                        <p className="text-[10px] text-slate-500">CET après</p>
-                        <p className={`text-base font-bold ${typeof cetEpargneAmount === 'number' && cetEpargneAmount > 0 && cetEpargneAmount <= maxCETEpargnable ? 'text-emerald-600' : 'text-slate-400'}`}>
-                          {typeof cetEpargneAmount === 'number' && cetEpargneAmount > 0 && cetEpargneAmount <= maxCETEpargnable
-                            ? `${counters.cet + cetEpargneAmount}j`
-                            : '—'}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-600 mb-1 block">CA à épargner (max {maxCETEpargnable}j)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={maxCETEpargnable}
-                        value={cetEpargneAmount}
-                        onChange={(e) => setCetEpargneAmount(Number(e.target.value) || '')}
-                        className="w-full rounded-md border border-red-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                        placeholder={`Nombre de jours (max ${maxCETEpargnable})`}
-                      />
-                      {typeof cetEpargneAmount === 'number' && cetEpargneAmount > maxCETEpargnable && (
-                        <p className="text-xs text-rose-600 mt-1">Maximum {maxCETEpargnable}j (plafond CET : {CET_PLAFOND}j)</p>
-                      )}
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => {
-                          if (typeof cetEpargneAmount === 'number' && cetEpargneAmount > 0 && cetEpargneAmount <= maxCETEpargnable) {
-                            onEpargneCET(cetEpargneAmount);
-                            onClose();
-                          }
-                        }}
-                        disabled={!(typeof cetEpargneAmount === 'number' && cetEpargneAmount > 0 && cetEpargneAmount <= maxCETEpargnable)}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                      >
-                        <PiggyBank className="w-4 h-4" />
-                        Épargner au CET
                       </button>
                     </div>
                   </div>

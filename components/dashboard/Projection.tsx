@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CETProjection, Counters } from '@/lib/types';
@@ -12,12 +13,16 @@ import {
   HS_MAX_VERS_CET,
   HEURES_PAR_JOUR,
 } from '@/lib/constants';
-import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, ShieldCheck, PiggyBank } from 'lucide-react';
 
 interface ProjectionProps {
   currentCET: number;
   counters: Counters;
   projection: CETProjection;
+  /** Bascule immédiatement X CA vers le CET (déplacé depuis la modale de pose). */
+  onEpargneCET?: (joursCA: number) => void;
+  /** Met à jour le nombre de CA sécurisés pour le CET. */
+  onUpdateCounters?: (updates: Partial<Counters>) => void;
 }
 
 interface SourceRowProps {
@@ -122,9 +127,17 @@ function SourceRow({ label, sublabel, balance, towardsCET, maxAllowed, note, gai
   );
 }
 
-export function Projection({ currentCET, counters, projection }: ProjectionProps) {
+export function Projection({ currentCET, counters, projection, onEpargneCET, onUpdateCounters }: ProjectionProps) {
   const progressBefore = (currentCET / CET_PLAFOND) * 100;
   const progressAfter = (projection.cetFinal / CET_PLAFOND) * 100;
+
+  // ── Sécurisation / épargne des CA ─────────────────────────────────────────
+  const reserve = counters.caReservesCET ?? 0;
+  // On ne peut sécuriser que des CA encore disponibles, dans la limite APORTT.
+  const reserveMax = Math.min(CA_MAX_VERS_CET, counters.ca + reserve);
+  const epargneMax = Math.min(counters.ca, CA_MAX_VERS_CET, CET_PLAFOND - currentCET);
+  const [epargne, setEpargne] = useState<number | ''>('');
+  const epargneValide = typeof epargne === 'number' && epargne > 0 && epargne <= epargneMax;
 
   // Calculs des soldes lisibles
   const rtcJoursDisponibles = Math.floor(counters.rtc / RTC_COUT_PAR_JOUR_CET);
@@ -257,6 +270,92 @@ export function Projection({ currentCET, counters, projection }: ProjectionProps
             disabledReason="Solde insuffisant"
           />
         </div>
+
+        {/* ── Sécuriser des CA pour le CET ───────────────────────────────── */}
+        {onUpdateCounters && reserveMax > 0 && (
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <span className="text-sm font-semibold text-foreground">Sécuriser des CA pour le CET</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ces jours sont mis de côté pour être basculés au CET en fin d&apos;année.
+              L&apos;app ne les proposera pas quand vous posez des congés — sauf si elle
+              n&apos;a aucune autre solution pour couvrir votre période, et elle vous
+              préviendra alors clairement.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label htmlFor="ca-reserve" className="text-xs text-muted-foreground">
+                CA sécurisés
+              </label>
+              <input
+                id="ca-reserve"
+                type="number"
+                min={0}
+                max={reserveMax}
+                value={reserve || ''}
+                placeholder="0"
+                inputMode="numeric"
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(reserveMax, parseInt(e.target.value) || 0));
+                  onUpdateCounters({ caReservesCET: v });
+                }}
+                className="w-20 rounded-md border border-blue-500/30 bg-background px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-xs text-muted-foreground">
+                / {reserveMax} max · {Math.max(0, counters.ca)}j librement posables
+              </span>
+            </div>
+            {reserve > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] text-blue-400">
+                <ShieldCheck className="w-3 h-3 flex-shrink-0" />
+                {reserve}j protégé{reserve > 1 ? 's' : ''} — non proposé{reserve > 1 ? 's' : ''} à la pose
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Épargner maintenant au CET ──────────────────────────────────── */}
+        {onEpargneCET && epargneMax > 0 && (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <PiggyBank className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="text-sm font-semibold text-foreground">Épargner au CET maintenant</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Transfère des CA vers votre CET. Ces jours <strong>ne sont pas posés</strong> sur
+              le calendrier : ils quittent vos CA et rejoignent votre solde CET.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="number"
+                min={1}
+                max={epargneMax}
+                value={epargne}
+                placeholder={`max ${epargneMax}`}
+                inputMode="numeric"
+                aria-label="Nombre de CA à épargner"
+                onChange={(e) => setEpargne(parseInt(e.target.value) || '')}
+                className="w-20 rounded-md border border-emerald-500/30 bg-background px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-muted-foreground">
+                jour(s) · CET {currentCET}j → {currentCET + (epargneValide ? epargne : 0)}j
+              </span>
+              <button
+                onClick={() => {
+                  if (epargneValide) {
+                    onEpargneCET(epargne);
+                    setEpargne('');
+                  }
+                }}
+                disabled={!epargneValide}
+                className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Épargner
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Jours perdus */}
         {projection.joursPerdus > 0 && (

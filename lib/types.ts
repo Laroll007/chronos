@@ -51,6 +51,10 @@ export interface Counters {
   caConsommes: number; // jours consommés cette année
   caPosesHorsPeriode: number; // CA posés entre 01/01-30/04 ou 01/11-31/12
   caHP: number; // 0, 1 ou 2 (CA Hors Période bonus)
+  // CA que l'agent met de côté pour les basculer au CET en fin d'année.
+  // Le moteur d'optimisation ne les propose pas — sauf s'il n'a pas d'autre
+  // solution pour couvrir la période, et il le signale alors explicitement.
+  caReservesCET: number;
 
   // Crédits Fériés (en minutes)
   cf: number; // total restant

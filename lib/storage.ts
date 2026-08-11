@@ -31,6 +31,7 @@ export const DEFAULT_COUNTERS: Counters = {
   caConsommes: 0,
   caPosesHorsPeriode: 0,
   caHP: 0,
+  caReservesCET: 0,
   cf: 6552, // 109h12 en minutes
   cfConsoS1: 0,
   cfConsoS2: 0,
@@ -114,6 +115,7 @@ export function migrateUserData(data: UserData): UserData {
   if (data.counters.hasCET2008 === undefined) { data.counters.hasCET2008 = false; needsSave = true; }
   if (data.counters.hasCongesBonifies === undefined) { data.counters.hasCongesBonifies = false; needsSave = true; }
   if (data.counters.hsHistorique === undefined) { data.counters.hsHistorique = 0; needsSave = true; }
+  if (data.counters.caReservesCET === undefined) { data.counters.caReservesCET = 0; needsSave = true; }
 
   // Migration 5: heuresSemaine pour cycle hebdo (depuis l'ancien modèle 4 longs + 1 court)
   if (data.cycleConfig.type === 'hebdo' && !data.cycleConfig.heuresSemaine) {
