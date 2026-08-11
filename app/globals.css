@@ -185,6 +185,27 @@
   }
 }
 
+/* ── Anti-zoom iOS sur les champs de saisie ──────────────────────────────────
+   iOS zoome automatiquement dès qu'un champ focalisé a une police < 16px. Comme
+   le viewport ne fixe pas de `maximum-scale` (app/layout.tsx), la page RESTE
+   zoomée après la saisie : la modale se décale, puis le dashboard derrière aussi.
+   Les champs de l'app sont en `text-sm` (14px) → symptôme systématique sur iPhone.
+
+   ⚠️ Volontairement HORS `@layer` : une règle non calquée l'emporte sur les
+   utilitaires Tailwind, sinon `text-sm` reprendrait le dessus et le correctif
+   serait sans effet.
+
+   On n'utilise PAS `user-scalable=no` / `maximum-scale=1` : ça supprimerait aussi
+   le zoom à deux doigts, régression d'accessibilité pour les malvoyants. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+}
+
 /* Safe-area iOS (notch / Dynamic Island / home indicator) */
 @layer utilities {
   .safe-top {

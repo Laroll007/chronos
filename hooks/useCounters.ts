@@ -153,7 +153,9 @@ export function useCounters() {
       };
 
       const success = save(newData);
-      return { success, alerts: result.alerts };
+      // `entryId` permet à l'appelant d'annuler cette pose si une pose ultérieure
+      // de la même combinaison échoue (application « tout ou rien »).
+      return { success, alerts: result.alerts, entryId: success ? historyEntry.id : undefined };
     },
     [save]
   );

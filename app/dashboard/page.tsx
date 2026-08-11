@@ -42,7 +42,7 @@ import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig } from '@/lib/types';
 import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
-import { isDayBasedType } from '@/lib/optimization';
+import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -214,8 +214,21 @@ export default function DashboardPage() {
   }, [epargnerCET, counters]);
 
   // PERF-001: useCallback sur handleApplyCombination
-  const handleApplyCombination = useCallback((combination: Combination) => {
-    if (!selectedRange || !cycleConfig) return;
+  // Retourne false si rien n'a été posé — la modale reste alors ouverte.
+  const handleApplyCombination = useCallback((combination: Combination): boolean => {
+    if (!selectedRange || !cycleConfig || !counters) return false;
+
+    // Garde-fou « tout ou rien » : on vérifie que la combinaison entière est
+    // payable AVANT de poser le premier item. Sans ça, un échec en cours de
+    // boucle laissait les items précédents posés et trouait la période.
+    const jourMinutesGuard = cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+    const affordable = canAfford(combination.items, counters, jourMinutesGuard);
+    if (!affordable.ok) {
+      toast.error('Solde insuffisant — rien n\'a été posé', {
+        description: formatShortfalls(affordable),
+      });
+      return false;
+    }
 
     // Liste des jours travaillés de la plage sélectionnée (chronologiquement)
     const workingDates: Date[] = [];
@@ -233,6 +246,8 @@ export default function DashboardPage() {
     try {
       let cursorIdx = 0;
       const failed: string[] = [];
+      // Poses déjà enregistrées : sert à tout annuler si un item échoue ensuite.
+      const posedIds: string[] = [];
       // groupId partagé : les items d'une même combinaison apparaissent
       // groupés dans la liste des congés posés (une bulle par période).
       const groupId =
@@ -269,30 +284,39 @@ export default function DashboardPage() {
         const result = poseConge(item.type, amount, sliceStart, sliceEnd, undefined, groupId);
         if (!result.success) {
           failed.push(`${item.type.toUpperCase()} : ${result.error ?? 'échec'}`);
+          break; // inutile de continuer : on va tout annuler
         }
+        if (result.entryId) posedIds.push(result.entryId);
       }
 
+      // Le garde-fou en amont rend ce cas quasi inatteignable, mais s'il survient
+      // on défait les poses déjà enregistrées plutôt que de laisser la période
+      // à moitié couverte, et on rend la main sans fermer la fenêtre.
       if (failed.length > 0) {
-        toast.error('Pose partielle', {
-          description: failed.join(' · '),
+        posedIds.forEach((id) => deleteHistoryEntry(id));
+        toast.error('Aucun congé posé', {
+          description: `${failed.join(' · ')}. Les autres jours de la période ont été annulés — rien n'a été modifié.`,
         });
-      } else {
-        toast.success('Congés posés avec succès !', {
-          description: `${combination.totalDays} jour${
-            combination.totalDays > 1 ? 's' : ''
-          } enregistré${combination.totalDays > 1 ? 's' : ''}`,
-        });
+        return false;
       }
+
+      toast.success('Congés posés avec succès !', {
+        description: `${combination.totalDays} jour${
+          combination.totalDays > 1 ? 's' : ''
+        } enregistré${combination.totalDays > 1 ? 's' : ''}`,
+      });
 
       setShowOptimization(false);
       setSelectedRange(null);
+      return true;
     } catch (error) {
       toast.error('Erreur lors de la pose des congés', {
         description:
           error instanceof Error ? error.message : 'Une erreur est survenue',
       });
+      return false;
     }
-  }, [poseConge, selectedRange, cycleConfig]);
+  }, [poseConge, deleteHistoryEntry, selectedRange, cycleConfig, counters]);
 
   if (isLoading) {
     return (

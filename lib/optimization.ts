@@ -49,13 +49,19 @@ export function isDayBasedType(type: CounterType): boolean {
 
 // dayMinutes = durée d'un jour du régime (minutes). 12h08 par défaut (cycles APORTT) ;
 // en hebdo on passe la durée réelle moyenne du jour (~8h) pour ne pas sur-consommer.
+//
+// ⚠️ Arrondi VERS LE BAS, jamais au plus proche : cette valeur sert à décider si
+// un compteur peut couvrir N journées entières. Un arrondi au plus proche faisait
+// croire à l'app qu'elle avait jusqu'à ~36 min de plus qu'en réalité (108h42 de CF
+// → « 9,0 jours »), et lui faisait proposer une combinaison refusée ensuite à la pose.
 function toWorkingDays(amount: number, type: CounterType, dayMinutes: number = HEURES_PAR_JOUR): number {
   // Les compteurs en jours restent en jours
   if (isDayBasedType(type)) {
     return amount;
   }
-  // CF, RTC, RPS, HS, HS historiques sont en minutes → convertir en jours
-  return Math.round((amount / dayMinutes) * 10) / 10;
+  // CF, RTC, RPS, HS, HS historiques sont en minutes → convertir en jours entiers couvrables
+  if (dayMinutes <= 0) return 0;
+  return Math.floor(amount / dayMinutes);
 }
 
 /**
@@ -100,6 +106,86 @@ function getAvailableAmount(counters: Counters, type: CounterType, dayMinutes: n
     default:
       return 0;
   }
+}
+
+/**
+ * Solde brut d'un compteur, dans l'unité qu'attend `simulatePose`
+ * (jours pour les types en jours, minutes pour les types horaires).
+ * Renvoie 0 pour un compteur désactivé sur le profil.
+ */
+export function getRawBalance(counters: Counters, type: CounterType): number {
+  switch (type) {
+    case 'ca': return counters.ca;
+    case 'caHP': return counters.caHP;
+    case 'cet': return counters.cet;
+    case 'caAnterieur': return counters.caAnterieur;
+    case 'caHPAnterieur': return counters.caHPAnterieur;
+    case 'artt': return counters.hasARTT ? (counters.artt ?? 0) : 0;
+    case 'rtt': return counters.hasRTT ? (counters.rtt ?? 0) : 0;
+    case 'cet2008': return counters.hasCET2008 ? (counters.cet2008 ?? 0) : 0;
+    case 'congesBonifies': return counters.hasCongesBonifies ? (counters.congesBonifies ?? 0) : 0;
+    case 'cf': return counters.cf;
+    case 'rtc': return counters.rtc;
+    case 'rps': return counters.rps;
+    case 'hs': return counters.hs;
+    case 'hsHistorique': return counters.hsHistorique;
+    default: return 0;
+  }
+}
+
+/** Ce qu'un item consommera réellement, dans l'unité de `simulatePose`. */
+export function getItemCost(item: CombinationItem, dayMinutes: number = HEURES_PAR_JOUR): number {
+  if (isDayBasedType(item.type)) return item.amount;
+  return item.amountMinutes ?? Math.round(item.amount * dayMinutes);
+}
+
+export interface AffordabilityResult {
+  ok: boolean;
+  /** Compteurs insuffisants, avec le manque exprimé dans l'unité du compteur. */
+  shortfalls: { type: CounterType; required: number; available: number; missing: number }[];
+}
+
+/**
+ * Vérifie qu'une combinaison est réellement payable avec les soldes courants,
+ * en unités EXACTES (minutes pour les compteurs horaires) — jamais en jours arrondis.
+ *
+ * Source de vérité unique, utilisée à deux endroits :
+ *  - à la génération, pour ne jamais PROPOSER une combinaison impossible ;
+ *  - au clic, comme garde-fou avant de poser quoi que ce soit (tout ou rien).
+ */
+export function canAfford(
+  items: CombinationItem[],
+  counters: Counters,
+  dayMinutes: number = HEURES_PAR_JOUR
+): AffordabilityResult {
+  // Cumul par type : une combinaison ne devrait pas répéter un compteur,
+  // mais on ne veut pas que ce garde-fou dépende de cette hypothèse.
+  const required = new Map<CounterType, number>();
+  for (const item of items) {
+    required.set(item.type, (required.get(item.type) ?? 0) + getItemCost(item, dayMinutes));
+  }
+
+  const shortfalls: AffordabilityResult['shortfalls'] = [];
+  for (const [type, need] of required) {
+    const available = getRawBalance(counters, type);
+    if (need > available) {
+      shortfalls.push({ type, required: need, available, missing: need - available });
+    }
+  }
+
+  return { ok: shortfalls.length === 0, shortfalls };
+}
+
+/** Message lisible listant ce qui manque (« CF : il manque 0h30 »). */
+export function formatShortfalls(result: AffordabilityResult): string {
+  return result.shortfalls
+    .map((s) => {
+      const unit = isDayBasedType(s.type)
+        ? `${s.missing}j`
+        : formatMins(s.missing);
+      return `${getCounterLabel(s.type)} : il manque ${unit}`;
+    })
+    .join(' · ');
 }
 
 /**
@@ -458,6 +544,10 @@ export function createCombination(
     amountMinutes: toMinutes(item.amount, item.type, dayMinutes),
   }));
 
+  // Vérification en minutes exactes : une combinaison que les soldes ne couvrent
+  // pas est marquée invalide et sera écartée avant d'être proposée.
+  const affordable = canAfford(enrichedItems, counters, dayMinutes);
+
   return {
     id: generateId(),
     items: enrichedItems,
@@ -467,7 +557,7 @@ export function createCombination(
     advantages: generateAdvantages(enrichedItems, counters, score, date),
     disadvantages: generateDisadvantages(enrichedItems, counters, date),
     impact: calculateImpact(enrichedItems, counters),
-    isValid: true,
+    isValid: affordable.ok,
   };
 }
 
@@ -605,11 +695,24 @@ export function generateAllCombinations(
     }
   }
 
+  // Dédoublonner : les sous-ensembles horaires ({CF,RTC}, {CF,RTC,RPS}, …)
+  // produisent la même répartition dès que les compteurs supplémentaires sont à 0.
+  // Sans ça, l'agent voit trois fois la même proposition dans son Top 3.
+  const seen = new Set<string>();
+  const unique: Combination[] = [];
+  for (const c of combinations) {
+    if (!c.isValid) continue;
+    const signature = c.items
+      .map((it) => `${it.type}:${Math.round(it.amountMinutes ?? it.amount)}`)
+      .sort()
+      .join('|');
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    unique.push(c);
+  }
+
   // Trier par score (meilleur en premier) et limiter à 100
-  return combinations
-    .filter((c) => c.isValid)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 100);
+  return unique.sort((a, b) => b.score - a.score).slice(0, 100);
 }
 
 /**

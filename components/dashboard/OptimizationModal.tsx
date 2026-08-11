@@ -30,7 +30,9 @@ interface OptimizationModalProps {
   // Durée représentative d'un jour du régime (minutes) : 12h08 en cycle APORTT, ~8h en hebdo.
   jourMinutes?: number;
   counters: Counters;
-  onApply: (combination: Combination) => void;
+  // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
+  // ouverte pour que l'agent puisse choisir une autre option.
+  onApply: (combination: Combination) => boolean | void;
   onEpargneCET?: (joursCA: number) => void;
   onMarkCMO?: () => void;
   onMarkAstreinte?: () => void;
@@ -152,8 +154,7 @@ export function OptimizationModal({
       startDate,
       jourMinutes
     );
-    onApply(combination);
-    onClose();
+    if (onApply(combination) !== false) onClose();
   }, [startDate, isCustomValid, customItems, counters, onApply, onClose, jourMinutes]);
 
   // PERF-009: Ref pour tracker si on doit recalculer
@@ -228,8 +229,8 @@ export function OptimizationModal({
 
   // PERF-009: useCallback pour stabiliser la référence
   const handleSelect = useCallback((combination: Combination) => {
-    onApply(combination);
-    onClose();
+    // On ne referme que si la pose a effectivement eu lieu.
+    if (onApply(combination) !== false) onClose();
   }, [onApply, onClose]);
 
   // Formater la période sélectionnée
