@@ -8,7 +8,7 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay } from '@/lib/calculations';
+import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays } from '@/lib/calculations';
 import { CET_PLAFOND, CA_MAX_VERS_CET, CA_REQUIS_POUR_HP } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
@@ -127,7 +127,13 @@ export function useCounters() {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
 
-      const result = simulatePose(current.counters, type, amount, dateStart);
+      // Seuls les jours réellement situés dans la période CA HP comptent : une
+      // plage du 28 avril au 5 mai ne crédite que ses jours d'avant le 1er mai.
+      const hpDays = type === 'ca'
+        ? countCAHPDays(dateStart, dateEnd ?? dateStart, current.cycleConfig)
+        : undefined;
+
+      const result = simulatePose(current.counters, type, amount, dateStart, hpDays);
 
       if (!result.isValid) {
         return { success: false, error: result.errorMessage };
@@ -143,6 +149,7 @@ export function useCounters() {
         description,
         countersSnapshot: result.newCounters,
         groupId,
+        caHPDays: hpDays,
       };
 
       const newData: UserData = {
@@ -363,8 +370,11 @@ export function useCounters() {
         updatedCounters.ca += entry.amount;
         updatedCounters.caConsommes = Math.max(0, updatedCounters.caConsommes - entry.amount);
         const poseDate = new Date(entry.date);
-        if (isInCAHPPeriod(poseDate)) {
-          const newHorsPeriode = Math.max(0, updatedCounters.caPosesHorsPeriode - entry.amount);
+        // Reprend exactement ce qui avait été crédité (plage à cheval incluse) ;
+        // repli sur l'ancien calcul pour les entrées antérieures au correctif.
+        const joursHP = entry.caHPDays ?? (isInCAHPPeriod(poseDate) ? entry.amount : 0);
+        if (joursHP > 0) {
+          const newHorsPeriode = Math.max(0, updatedCounters.caPosesHorsPeriode - joursHP);
           updatedCounters.caPosesHorsPeriode = newHorsPeriode;
           // Retirer le bonus CA HP si le seuil n'est plus atteint
           if (newHorsPeriode < CA_REQUIS_POUR_HP) {

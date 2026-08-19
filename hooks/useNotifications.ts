@@ -1,7 +1,7 @@
 // Hook React pour gérer les notifications deadline
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Counters } from '@/lib/types';
+import { Counters, CycleConfig } from '@/lib/types';
 import {
   DeadlineNotification,
   NotificationPermissionState,
@@ -14,6 +14,7 @@ import {
 
 interface UseNotificationsOptions {
   counters: Counters | null;
+  cycleConfig?: CycleConfig | null;
   enabled?: boolean;
 }
 
@@ -36,6 +37,7 @@ const DISMISSED_KEY = 'chronos_dismissed_notifications';
  */
 export function useNotifications({
   counters,
+  cycleConfig,
   enabled = true,
 }: UseNotificationsOptions): UseNotificationsReturn {
   const [permissionState, setPermissionState] = useState<NotificationPermissionState>(() =>
@@ -66,8 +68,8 @@ export function useNotifications({
   // Calculer les notifications
   const allNotifications = useMemo(() => {
     if (!counters || !enabled) return [];
-    return calculateDeadlineNotifications(counters);
-  }, [counters, enabled]);
+    return calculateDeadlineNotifications(counters, new Date(), cycleConfig ?? undefined);
+  }, [counters, cycleConfig, enabled]);
 
   // Filtrer les notifications dismissées
   const notifications = useMemo(() => {

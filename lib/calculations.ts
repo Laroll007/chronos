@@ -370,6 +370,36 @@ export function isInCAHPPeriod(date: Date): boolean {
 }
 
 /**
+ * Nombre de jours TRAVAILLÉS d'une plage qui tombent réellement dans la période
+ * CA HP (1er jan → 30 avr, 1er nov → 31 déc).
+ *
+ * Une pose du 28 avril au 5 mai ne compte que ses jours antérieurs au 1er mai :
+ * auparavant, la date de début seule décidait, et les 4 jours étaient crédités
+ * hors période — le bonus de 2 CA HP pouvait être accordé à tort (et refusé à
+ * tort pour une plage 29 octobre → 3 novembre).
+ */
+export function countCAHPDays(
+  startDate: Date,
+  endDate: Date,
+  cycleConfig: CycleConfig
+): number {
+  let count = 0;
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  while (current <= end) {
+    if (isWorkingDay(current, cycleConfig) && isInCAHPPeriod(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}
+
+/**
  * Calcule si les CA HP sont obtenus
  */
 export function checkCAHPCondition(caPosesHorsPeriode: number): number {
@@ -548,7 +578,11 @@ export function simulatePose(
   counters: Counters,
   type: CounterType,
   amount: number, // en minutes pour heures, en jours pour CA/CET
-  date: Date
+  date: Date,
+  // Jours de la pose tombant réellement dans la période CA HP. À fournir dès que
+  // la pose couvre une plage (cf. countCAHPDays) : sans lui, on retombe sur
+  // l'ancien comportement « la date de début décide pour toute la plage ».
+  hpDays?: number
 ): SimulationResult {
   const newCounters = { ...counters };
   const alerts: Alert[] = [];
@@ -565,9 +599,15 @@ export function simulatePose(
       }
       newCounters.ca -= amount;
       newCounters.caConsommes += amount;
-      if (isInCAHPPeriod(date)) {
+      // Nombre de jours réellement posés dans la période HP : fourni par
+      // l'appelant pour une plage, sinon déduit de la date (pose d'un seul jour).
+      const joursHP = Math.min(
+        amount,
+        hpDays ?? (isInCAHPPeriod(date) ? amount : 0)
+      );
+      if (joursHP > 0) {
         const wasBelow = newCounters.caPosesHorsPeriode < CA_REQUIS_POUR_HP;
-        newCounters.caPosesHorsPeriode += amount;
+        newCounters.caPosesHorsPeriode += joursHP;
         // N'accorder le bonus qu'au moment du franchissement du seuil
         // (évite de réinitialiser caHP si déjà gagné et partiellement utilisé)
         if (wasBelow && newCounters.caPosesHorsPeriode >= CA_REQUIS_POUR_HP) {

@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { calculateYearEndBalance, BILAN_MOIS_DEBUT } from '@/lib/yearEnd';
-import { simulatePose } from '@/lib/calculations';
+import { simulatePose, countCAHPDays, countWorkingDays } from '@/lib/calculations';
 import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
 import { CA_HP_BONUS, CET_APPORT_ANNUEL_MAX, CA_MAX_VERS_CET } from '@/lib/constants';
 import type { Counters } from '@/lib/types';
@@ -109,6 +109,40 @@ describe('CA HP — cohérence du bonus', () => {
     expect(c.caHP).toBe(0);
     c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
     expect(c.caHP).toBe(CA_HP_BONUS);
+  });
+
+  it('ne compte que les jours réellement dans la période, sur une plage à cheval', () => {
+    // 28 avril → 5 mai : 4 jours travaillés, mais un seul avant le 1er mai.
+    const start = new Date(2026, 3, 28);
+    const end = new Date(2026, 4, 5);
+    const jours = countWorkingDays(start, end, cfg);
+    const hp = countCAHPDays(start, end, cfg);
+
+    expect(jours).toBe(4);
+    expect(hp).toBe(1);
+
+    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, hp);
+    expect(r.newCounters.caPosesHorsPeriode).toBe(1); // et non 4
+  });
+
+  it('compte aussi correctement à l’entrée de période (fin octobre → novembre)', () => {
+    const start = new Date(2026, 9, 29);
+    const end = new Date(2026, 10, 3);
+    const hp = countCAHPDays(start, end, cfg);
+    const jours = countWorkingDays(start, end, cfg);
+
+    expect(hp).toBeGreaterThan(0);
+    expect(hp).toBeLessThan(jours);
+
+    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, hp);
+    expect(r.newCounters.caPosesHorsPeriode).toBe(hp);
+  });
+
+  it('sans indication de jours HP, retombe sur l’ancien comportement (pose d’un jour)', () => {
+    const r = simulatePose(C({ ca: 18 }), 'ca', 1, new Date(2026, 1, 10));
+    expect(r.newCounters.caPosesHorsPeriode).toBe(1);
+    const hors = simulatePose(C({ ca: 18 }), 'ca', 1, new Date(2026, 6, 10));
+    expect(hors.newCounters.caPosesHorsPeriode).toBe(0);
   });
 
   it('n’accorde rien pour des CA posés en période estivale', () => {
