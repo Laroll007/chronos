@@ -43,6 +43,7 @@ export const DEFAULT_COUNTERS: Counters = {
   rtt: undefined,
   rps: 0,
   rpsAnneePrec: 0,
+  rpsDernierCredit: undefined,
   hs: 0,
   cet: 0,
   objectifCET: 15,
@@ -116,6 +117,14 @@ export function migrateUserData(data: UserData): UserData {
   if (data.counters.hasCongesBonifies === undefined) { data.counters.hasCongesBonifies = false; needsSave = true; }
   if (data.counters.hsHistorique === undefined) { data.counters.hsHistorique = 0; needsSave = true; }
   if (data.counters.caReservesCET === undefined) { data.counters.caReservesCET = 0; needsSave = true; }
+  // Repère RPS : posé au jour de la migration pour les profils existants. Sans
+  // ça, le premier crédit rattraperait tous les dimanches depuis le 1er janvier
+  // et gonflerait un solde que l'agent a déjà saisi à la main.
+  if (data.counters.rpsDernierCredit === undefined) {
+    const now = new Date();
+    data.counters.rpsDernierCredit = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    needsSave = true;
+  }
 
   // Migration 5: heuresSemaine pour cycle hebdo (depuis l'ancien modèle 4 longs + 1 court)
   if (data.cycleConfig.type === 'hebdo' && !data.cycleConfig.heuresSemaine) {

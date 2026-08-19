@@ -8,10 +8,34 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { simulatePose, calculateRPSAccumulated, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays } from '@/lib/calculations';
-import { CET_PLAFOND, CA_MAX_VERS_CET, CA_REQUIS_POUR_HP } from '@/lib/constants';
+import { simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition } from '@/lib/calculations';
+import { CET_PLAFOND, CA_MAX_VERS_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
+import { computeRPSCredit } from '@/lib/rps';
+
+/**
+ * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
+ * Retourne les données inchangées s'il n'y a rien à créditer ni repère à avancer.
+ */
+function creditRPSIfNeeded(data: UserData): UserData {
+  const credit = computeRPSCredit(data.counters, data.cycleConfig, data.history);
+  if (credit.minutes === 0 && credit.marker === data.counters.rpsDernierCredit) {
+    return data;
+  }
+
+  const updated: UserData = {
+    ...data,
+    counters: {
+      ...data.counters,
+      rps: data.counters.rps + credit.minutes,
+      rpsDernierCredit: credit.marker,
+    },
+    lastUpdated: new Date().toISOString(),
+  };
+  saveUserData(updated);
+  return updated;
+}
 
 /**
  * Hook principal pour la gestion des compteurs et données utilisateur
@@ -35,8 +59,14 @@ export function useCounters() {
         // le web et pour les utilisateurs ayant déjà des données.
         await restoreFromNativeIfNeeded();
 
-        const data = loadUserData();
+        const loaded = loadUserData();
         if (cancelled) return;
+
+        // Crédit automatique des RPS : ajoute les dimanches réellement travaillés
+        // depuis le dernier passage. Incrémental — jamais de recalcul depuis le
+        // 1er janvier, qui écraserait la consommation et le stock déclaré.
+        const data = loaded ? creditRPSIfNeeded(loaded) : loaded;
+
         userDataRef.current = data;
         setUserData(data);
       } catch (err) {
@@ -376,10 +406,12 @@ export function useCounters() {
         if (joursHP > 0) {
           const newHorsPeriode = Math.max(0, updatedCounters.caPosesHorsPeriode - joursHP);
           updatedCounters.caPosesHorsPeriode = newHorsPeriode;
-          // Retirer le bonus CA HP si le seuil n'est plus atteint
-          if (newHorsPeriode < CA_REQUIS_POUR_HP) {
-            updatedCounters.caHP = 0;
-          }
+          // Redescendre au palier correspondant (4 CA → 1 jour, 8 CA → 2), sans
+          // jamais remonter un bonus que l'agent aurait déjà consommé.
+          updatedCounters.caHP = Math.min(
+            updatedCounters.caHP,
+            checkCAHPCondition(newHorsPeriode)
+          );
         }
       } else if (entry.type === 'cf') {
         updatedCounters.cf += entry.amount;
@@ -425,18 +457,29 @@ export function useCounters() {
     [save]
   );
 
-  // Mettre à jour les RPS accumulés
+  // Crédite les dimanches travaillés depuis le dernier passage.
+  // ⚠️ Ne recalcule PAS depuis le 1er janvier : l'ancienne version écrasait le
+  // solde, rendant des RPS déjà consommés et effaçant le stock déclaré à
+  // l'inscription par un agent arrivé en cours d'année.
   const updateRPS = useCallback(() => {
-    if (!userData) return false;
+    const current = userDataRef.current;
+    if (!current) return false;
 
-    const rpsTotal = calculateRPSAccumulated(
-      new Date(),
-      userData.cycleConfig,
-      userData.counters.rpsAnneePrec
-    );
+    const credit = computeRPSCredit(current.counters, current.cycleConfig, current.history);
+    if (credit.minutes === 0 && credit.marker === current.counters.rpsDernierCredit) {
+      return true;
+    }
 
-    return updateCounters({ rps: rpsTotal });
-  }, [userData, updateCounters]);
+    return save({
+      ...current,
+      counters: {
+        ...current.counters,
+        rps: current.counters.rps + credit.minutes,
+        rpsDernierCredit: credit.marker,
+      },
+      lastUpdated: new Date().toISOString(),
+    });
+  }, [save]);
 
   // Recommandations
   const recommendations = useMemo(() => {

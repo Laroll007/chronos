@@ -74,6 +74,10 @@ export interface Counters {
   // RPS - Récupération dimanche (en minutes)
   rps: number; // stock total (illimité)
   rpsAnneePrec: number; // report année précédente
+  // Repère du dernier crédit automatique ('YYYY-MM-DD'). Les dimanches sont
+  // crédités de façon incrémentale à partir de cette date, jamais recalculés
+  // depuis le 1er janvier (cf. lib/rps.ts).
+  rpsDernierCredit?: string;
 
   // Heures Supplémentaires (en minutes)
   hs: number; // max 160h = 9600 min

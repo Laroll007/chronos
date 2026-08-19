@@ -145,6 +145,7 @@ function checkCounters(v: unknown): string[] {
   if (v.congesBonifies !== undefined && !isNum(v.congesBonifies as unknown, 0)) errors.push('congesBonifies: nombre >= 0 attendu');
   if (v.hsHistorique !== undefined && !isNum(v.hsHistorique as unknown, 0)) errors.push('hsHistorique: nombre >= 0 attendu');
   if (v.caReservesCET !== undefined && !isNum(v.caReservesCET as unknown, 0)) errors.push('caReservesCET: nombre >= 0 attendu');
+  if (v.rpsDernierCredit !== undefined && !isStr(v.rpsDernierCredit)) errors.push('rpsDernierCredit: date attendue');
   return errors;
 }
 
