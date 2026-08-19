@@ -1,6 +1,6 @@
 // Système de notifications pour les deadlines Chronos
 
-import { Counters } from './types';
+import { Counters, CycleConfig } from './types';
 import {
   CA_MAX_VERS_CET,
   RTC_RESERVES_CET,
@@ -9,6 +9,7 @@ import {
   CET_APPORT_ANNUEL_MAX,
 } from './constants';
 import { formatMinutes, getDaysUntil, getRTCLibres } from './calculations';
+import { calculateYearEndBalance, formatYearEndSummary } from './yearEnd';
 
 // ============================================
 // TYPES
@@ -110,10 +111,35 @@ export function sendSystemNotification(
  */
 export function calculateDeadlineNotifications(
   counters: Counters,
-  currentDate: Date = new Date()
+  currentDate: Date = new Date(),
+  // Nécessaire pour convertir les compteurs horaires en journées du régime.
+  cycleConfig?: CycleConfig
 ): DeadlineNotification[] {
   const notifications: DeadlineNotification[] = [];
   const year = currentDate.getFullYear();
+
+  // 0. BILAN DE FIN D'ANNÉE — dès septembre, bien avant le seuil des 60 jours.
+  // Récapitule ce qui sera réellement perdu au 31/12, une fois déduit ce qui
+  // partira au CET (dont les places sont limitées à 15/an).
+  if (cycleConfig) {
+    const bilan = calculateYearEndBalance(counters, cycleConfig, currentDate);
+    if (bilan.actif && bilan.items.length > 0) {
+      notifications.push({
+        id: 'bilan-fin-annee',
+        title: `${bilan.joursASolder} journée(s) à poser avant le 31/12`,
+        message: `${formatYearEndSummary(bilan)}. ${
+          bilan.apportCET.total > 0
+            ? `${bilan.apportCET.total}j partiront au CET et sont déjà déduits.`
+            : "Aucune place au CET cette année : tout doit être posé."
+        }`,
+        priority: bilan.joursRestants <= 30 ? 'urgent' : bilan.joursRestants <= 60 ? 'warning' : 'info',
+        daysRemaining: bilan.joursRestants,
+        deadline: new Date(year, 11, 31),
+        counterType: 'bilan',
+        actionLabel: 'Planifier mes congés',
+      });
+    }
+  }
 
   // 1. Deadline CA - 31 décembre
   const caDeadline = new Date(year, 11, 31);

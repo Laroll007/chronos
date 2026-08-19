@@ -74,6 +74,10 @@ export function OnboardingWizard() {
       counters: finalCounters,
       history: [],
       lastUpdated: new Date().toISOString(),
+      // Sans cette ligne, migrateUserData() croit qu'on change d'année au premier
+      // chargement du dashboard et remet à zéro ce que l'agent vient de saisir
+      // (CA posés hors période, CA HP, conso CF du semestre, RTT).
+      lastResetYear: new Date().getFullYear(),
       isOnboarded: true,
     });
 

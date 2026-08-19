@@ -571,7 +571,10 @@ export function simulatePose(
         // N'accorder le bonus qu'au moment du franchissement du seuil
         // (évite de réinitialiser caHP si déjà gagné et partiellement utilisé)
         if (wasBelow && newCounters.caPosesHorsPeriode >= CA_REQUIS_POUR_HP) {
-          newCounters.caHP += CA_HP_BONUS;
+          // Plafonné au bonus réglementaire : un agent ayant déjà déclaré ses
+          // CA HP à la main se retrouvait sinon avec 4 jours (2 déclarés + 2
+          // accordés) alors que le maximum APORTT est de 2.
+          newCounters.caHP = Math.min(CA_HP_BONUS, newCounters.caHP + CA_HP_BONUS);
         }
       }
       break;

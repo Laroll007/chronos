@@ -15,6 +15,9 @@ import { Counters } from '@/lib/types';
 import { formatMinutes } from '@/lib/calculations';
 import {
   CA_TOTAL_ANNUEL,
+  CA_HP_BONUS,
+  CA_HP_PALIER_1,
+  CA_REQUIS_POUR_HP,
   CF_TOTAL_ANNUEL,
   RTC_RESERVES_CET,
   CET_PLAFOND,
@@ -140,7 +143,19 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
     } else {
       const newDays = Math.max(0, inputDays);
       if (counterId === 'ca') onUpdate({ ca: newDays });
-      else if (counterId === 'caHP') onUpdate({ caHP: newDays });
+      else if (counterId === 'caHP') {
+        // Le bonus est plafonné à 2 jours (règle APORTT).
+        const caHP = Math.min(CA_HP_BONUS, newDays);
+        // Déclarer ses CA HP implique d'avoir posé les CA correspondants hors
+        // période : sans ça la barre du calendrier restait à 0/8, l'agent
+        // reposait 8 CA et le bonus se cumulait (jusqu'à 4 CA HP).
+        // On ne redescend jamais un décompte réel déjà supérieur.
+        const seuil = caHP >= CA_HP_BONUS ? CA_REQUIS_POUR_HP : caHP > 0 ? CA_HP_PALIER_1 : 0;
+        onUpdate({
+          caHP,
+          caPosesHorsPeriode: Math.max(counters.caPosesHorsPeriode, seuil),
+        });
+      }
       else if (counterId === 'cet') onUpdate({ cet: newDays });
       else if (counterId === 'artt') onUpdate({ artt: newDays });
       else if (counterId === 'rtt') onUpdate({ rtt: newDays });

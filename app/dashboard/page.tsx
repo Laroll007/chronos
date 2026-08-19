@@ -34,6 +34,7 @@ const Projection = lazy(() =>
   }))
 );
 import { WelcomeModal, hasSeenWelcome } from '@/components/dashboard/WelcomeModal';
+import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
 import { useCounters } from '@/hooks/useCounters';
 // ColleaguesDrawer & useColleagues — désactivé v1, réactiver pour la v2
 import { useRecommendations } from '@/hooks/useRecommendations';
@@ -110,7 +111,7 @@ export default function DashboardPage() {
     requestPermission,
     dismissNotification,
     isSupported: notificationsSupported,
-  } = useNotifications({ counters });
+  } = useNotifications({ counters, cycleConfig });
 
   const totalNotificationCount = urgentCount + warningCount;
 
@@ -354,6 +355,10 @@ export default function DashboardPage() {
 
         {/* Main - Calendrier central */}
         <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 min-h-0 overflow-y-auto">
+          {/* Rappel de fin d'année (septembre → décembre) */}
+          <div className="mb-4">
+            <YearEndBanner counters={counters} cycleConfig={cycleConfig} />
+          </div>
           <CalendarView
             cycleConfig={cycleConfig}
             counters={counters}
