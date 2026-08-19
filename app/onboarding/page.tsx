@@ -5,7 +5,7 @@ import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 export default function OnboardingPage() {
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
+      className="h-dvh flex flex-col overflow-hidden"
       style={{
         background: `
           radial-gradient(ellipse at 15% 40%, rgba(0,85,164,0.07) 0%, transparent 50%),
@@ -20,7 +20,7 @@ export default function OnboardingPage() {
         <div className="h-1 w-full" style={{ background: 'linear-gradient(to right, #0055A4 33.3%, #ffffff 33.3%, #ffffff 66.6%, #EF4135 66.6%)' }} />
       </div>
 
-      <main className="flex-1 min-h-0 overflow-y-auto safe-x">
+      <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain safe-x">
         <div className="container max-w-lg mx-auto px-4 py-8 pb-safe-plus-4">
           {/* Logo */}
           <div className="text-center mb-6">

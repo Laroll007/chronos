@@ -185,6 +185,28 @@
   }
 }
 
+/* ── Ancrage de la coquille d'app sur iOS ────────────────────────────────────
+   Symptôme : en haut du planning, une zone se laissait tirer vers le bas, avec
+   un blanc tantôt trop grand tantôt trop faible.
+
+   Deux causes : le document lui-même pouvait scroller (aucun `overscroll-behavior`,
+   donc rubber-band iOS), et `h-screen` vaut `100vh` — le viewport LARGE d'iOS,
+   sans les barres système. Avec `contentInset: 'always'` (capacitor.config.ts),
+   qui décale déjà le contenu sous l'encoche, la coquille dépassait la zone
+   visible et rendait le document scrollable.
+
+   `overscroll-behavior-y: none` supprime le rebond sans empêcher le défilement :
+   les pages qui s'appuient sur le scroll du document (/cgu, /privacy) restent
+   parfaitement utilisables. Volontairement hors `@layer` pour passer devant les
+   utilitaires Tailwind. */
+html {
+  height: 100%;
+  overscroll-behavior-y: none;
+}
+body {
+  overscroll-behavior-y: none;
+}
+
 /* ── Anti-zoom iOS sur les champs de saisie ──────────────────────────────────
    iOS zoome automatiquement dès qu'un champ focalisé a une police < 16px. Comme
    le viewport ne fixe pas de `maximum-scale` (app/layout.tsx), la page RESTE

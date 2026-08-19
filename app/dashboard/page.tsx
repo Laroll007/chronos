@@ -335,14 +335,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-background">
+    <div className="h-dvh overflow-hidden bg-background">
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-blue-500/[0.04] rounded-full blur-3xl" />
         <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-red-500/[0.03] rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col h-screen">
+      <div className="relative z-10 flex flex-col h-dvh">
         {/* Header */}
         <SimpleHeader
           cycleInfo={cycleInfo}
@@ -354,7 +354,7 @@ export default function DashboardPage() {
         />
 
         {/* Main - Calendrier central */}
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 min-h-0 overflow-y-auto">
+        <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 min-h-0 overflow-y-auto overscroll-contain">
           {/* Rappel de fin d'année (septembre → décembre) */}
           <div className="mb-4">
             <YearEndBanner counters={counters} cycleConfig={cycleConfig} />
