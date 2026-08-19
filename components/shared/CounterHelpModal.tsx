@@ -28,12 +28,12 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
   caHP: {
     title: 'CA Hors Période (CA HP)',
     bullets: [
-      'Bonus de 2 jours attribué si vous posez 8 CA ou plus en dehors de la période estivale.',
+      'Bonus attribué par paliers en dehors de la période estivale : 1 jour dès 4 CA posés, 2 jours dès 8 CA.',
       'Période "hors période" : 1er janvier → 30 avril et 1er novembre → 31 décembre.',
       'Ces 2 jours bonus sont transférables au CET (en plus des 5 CA classiques).',
       'Le compteur indique combien de CA vous avez déjà posés hors période cette année.',
     ],
-    tip: 'Si vous atteignez 8 CA hors période, vous débloquez automatiquement 2 jours CET supplémentaires.',
+    tip: 'Chaque palier franchi (4 puis 8 CA hors période) débloque automatiquement un jour épargnable au CET.',
   },
   cf: {
     title: 'Crédits Fériés (CF)',

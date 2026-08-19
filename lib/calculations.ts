@@ -20,6 +20,7 @@ import {
   CA_HEBDO,
   CA_MAX_VERS_CET,
   CA_REQUIS_POUR_HP,
+  CA_HP_PALIER_1,
   CA_HP_BONUS,
   CF_PAR_SEMESTRE,
   RTC_RESERVES_CET,
@@ -400,18 +401,31 @@ export function countCAHPDays(
 }
 
 /**
- * Calcule si les CA HP sont obtenus
+ * CA HP acquis pour un nombre de CA posés hors période.
+ * Deux paliers : 4 CA → 1 jour de bonus, 8 CA → 2 jours.
  */
 export function checkCAHPCondition(caPosesHorsPeriode: number): number {
-  return caPosesHorsPeriode >= CA_REQUIS_POUR_HP ? CA_HP_BONUS : 0;
+  if (caPosesHorsPeriode >= CA_REQUIS_POUR_HP) return CA_HP_BONUS;
+  if (caPosesHorsPeriode >= CA_HP_PALIER_1) return 1;
+  return 0;
 }
 
 /**
- * Calcule les CA restants à poser pour obtenir les CA HP
+ * Calcule les CA restants à poser pour obtenir le bonus COMPLET (2 jours).
  */
 export function getCANeededForHP(caPosesHorsPeriode: number): number {
   if (caPosesHorsPeriode >= CA_REQUIS_POUR_HP) return 0;
   return CA_REQUIS_POUR_HP - caPosesHorsPeriode;
+}
+
+/**
+ * CA restants à poser pour atteindre le PROCHAIN palier (1er ou 2e jour de bonus).
+ * 0 si les deux paliers sont déjà franchis.
+ */
+export function getCANeededForNextHPPalier(caPosesHorsPeriode: number): number {
+  if (caPosesHorsPeriode < CA_HP_PALIER_1) return CA_HP_PALIER_1 - caPosesHorsPeriode;
+  if (caPosesHorsPeriode < CA_REQUIS_POUR_HP) return CA_REQUIS_POUR_HP - caPosesHorsPeriode;
+  return 0;
 }
 
 // ============================================
@@ -606,15 +620,17 @@ export function simulatePose(
         hpDays ?? (isInCAHPPeriod(date) ? amount : 0)
       );
       if (joursHP > 0) {
-        const wasBelow = newCounters.caPosesHorsPeriode < CA_REQUIS_POUR_HP;
+        // Deux paliers : 4 CA hors période → 1 jour de bonus, 8 CA → 2 jours.
+        // On ne crédite QUE les paliers nouvellement franchis : `caHP` est un
+        // solde consommable, le recalculer écraserait un bonus déjà utilisé.
+        const acquisAvant = checkCAHPCondition(newCounters.caPosesHorsPeriode);
         newCounters.caPosesHorsPeriode += joursHP;
-        // N'accorder le bonus qu'au moment du franchissement du seuil
-        // (évite de réinitialiser caHP si déjà gagné et partiellement utilisé)
-        if (wasBelow && newCounters.caPosesHorsPeriode >= CA_REQUIS_POUR_HP) {
+        const acquisApres = checkCAHPCondition(newCounters.caPosesHorsPeriode);
+        const gain = acquisApres - acquisAvant;
+        if (gain > 0) {
           // Plafonné au bonus réglementaire : un agent ayant déjà déclaré ses
-          // CA HP à la main se retrouvait sinon avec 4 jours (2 déclarés + 2
-          // accordés) alors que le maximum APORTT est de 2.
-          newCounters.caHP = Math.min(CA_HP_BONUS, newCounters.caHP + CA_HP_BONUS);
+          // CA HP à la main se retrouvait sinon au-delà du maximum de 2.
+          newCounters.caHP = Math.min(CA_HP_BONUS, newCounters.caHP + gain);
         }
       }
       break;

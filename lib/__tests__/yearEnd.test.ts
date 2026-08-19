@@ -101,14 +101,44 @@ describe('CA HP — cohérence du bonus', () => {
     expect(c.caHP).toBe(CA_HP_BONUS); // et non 4
   });
 
-  it('accorde bien le bonus au franchissement du seuil', () => {
+  it('crédite les deux paliers, un jour à la fois', () => {
     let c = C({ ca: 18, caHP: 0, caPosesHorsPeriode: 0 });
-    for (let i = 0; i < 7; i++) {
+    const poserUnCA = () => {
       c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
-    }
-    expect(c.caHP).toBe(0);
-    c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
-    expect(c.caHP).toBe(CA_HP_BONUS);
+    };
+
+    for (let i = 0; i < 3; i++) poserUnCA();
+    expect(c.caHP).toBe(0);          // 3 CA : rien encore
+
+    poserUnCA();
+    expect(c.caHP).toBe(1);          // 4 CA : 1er palier
+
+    for (let i = 0; i < 3; i++) poserUnCA();
+    expect(c.caHP).toBe(1);          // 7 CA : toujours 1
+
+    poserUnCA();
+    expect(c.caHP).toBe(CA_HP_BONUS); // 8 CA : bonus complet
+
+    for (let i = 0; i < 4; i++) poserUnCA();
+    expect(c.caHP).toBe(CA_HP_BONUS); // au-delà : pas de dépassement
+  });
+
+  it('franchit les deux paliers d’un coup sur une pose groupée', () => {
+    const r = simulatePose(C({ ca: 18 }), 'ca', 8, new Date(2026, 1, 10), 8);
+    expect(r.newCounters.caHP).toBe(CA_HP_BONUS);
+  });
+
+  it('ne recrédite pas un palier déjà franchi puis consommé', () => {
+    // L'agent atteint 4 CA (1 jour de bonus), le pose, puis continue jusqu'à 8.
+    let c = C({ ca: 18, caHP: 0, caPosesHorsPeriode: 0 });
+    for (let i = 0; i < 4; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
+    expect(c.caHP).toBe(1);
+
+    c = simulatePose(c, 'caHP', 1, new Date(2026, 1, 20)).newCounters;
+    expect(c.caHP).toBe(0); // bonus consommé
+
+    for (let i = 0; i < 4; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
+    expect(c.caHP).toBe(1); // seul le 2e palier est crédité, pas les deux
   });
 
   it('ne compte que les jours réellement dans la période, sur une plage à cheval', () => {

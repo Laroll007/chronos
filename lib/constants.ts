@@ -135,7 +135,7 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   caHP: {
     name: 'CA Hors Période',
-    description: 'Bonus si 8 CA posés hors période. Peuvent aller au CET.',
+    description: 'Bonus par paliers : 1j dès 4 CA hors période, 2j dès 8. Peuvent aller au CET.',
     unit: 'jours',
   },
   cf: {

@@ -224,8 +224,8 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
           <>
             <Row label="CA HP disponibles" value={`${counters.caHP}j`} bold color="text-red-700" />
             <Row label="CA posés hors période" value={`${counters.caPosesHorsPeriode}j`} />
-            <Row label="Condition d'obtention" value="8 CA hors période" />
-            <Alert type="info" text="Bonus de 2j si vous posez 8 CA hors période de forte demande (01/05–31/10). Ces jours peuvent être épargnés au CET." />
+            <Row label="Condition d'obtention" value={`${CA_HP_PALIER_1} CA hors période : 1j · ${CA_REQUIS_POUR_HP} CA : 2j`} />
+            <Alert type="info" text={`Bonus par paliers pour les CA posés hors période de forte demande (01/05–31/10) : ${CA_HP_PALIER_1} CA donnent 1 jour, ${CA_REQUIS_POUR_HP} CA en donnent 2. Ces jours peuvent être épargnés au CET.`} />
           </>
         );
       }

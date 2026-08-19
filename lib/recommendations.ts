@@ -19,6 +19,7 @@ import {
   getRTCLibres,
   isRTCReservesEntames,
   getCANeededForHP,
+  checkCAHPCondition as getCAHPAcquis,
   getDaysUntil,
   calculateUrgencyPercent,
 } from './calculations';
@@ -181,6 +182,7 @@ function checkCAHPCondition(
   // Priorité haute dès le début : CA à poser avant CF pour déclencher le bonus CA HP
   if (month >= 1 && month <= 4) {
     const caNeeded = getCANeededForHP(counters.caPosesHorsPeriode);
+    const acquis = getCAHPAcquis(counters.caPosesHorsPeriode);
     if (caNeeded > 0) {
       const deadline = new Date(year, 3, 30); // 30 avril
       const daysRemaining = getDaysUntil(deadline, currentDate);
@@ -189,7 +191,9 @@ function checkCAHPCondition(
         id: generateId(),
         priority: 'high',
         action: `Poser ${caNeeded} CA avant le 30 avril`,
-        reason: `${counters.caPosesHorsPeriode}/${CA_REQUIS_POUR_HP} CA posés hors période — ${daysRemaining}j pour obtenir les 2 CA HP bonus`,
+        reason: `${counters.caPosesHorsPeriode}/${CA_REQUIS_POUR_HP} CA posés hors période${
+          acquis > 0 ? ` (${acquis} jour de bonus déjà acquis)` : ''
+        } — ${daysRemaining}j pour obtenir les 2 CA HP bonus`,
         deadline: `${year}-04-30`,
         counterType: 'ca',
         amountToConsume: caNeeded,

@@ -221,8 +221,13 @@ describe('Calculs CA HP', () => {
       expect(checkCAHPCondition(10)).toBe(CA_HP_BONUS);
     });
 
-    it('retourne 0 si moins de 8 CA posés hors période', () => {
-      expect(checkCAHPCondition(7)).toBe(0);
+    it('retourne 1 au premier palier (4 à 7 CA posés hors période)', () => {
+      expect(checkCAHPCondition(4)).toBe(1);
+      expect(checkCAHPCondition(7)).toBe(1);
+    });
+
+    it('retourne 0 en dessous du premier palier', () => {
+      expect(checkCAHPCondition(3)).toBe(0);
       expect(checkCAHPCondition(0)).toBe(0);
     });
   });

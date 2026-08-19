@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Counters, CycleConfig } from '@/lib/types';
 import { COUNTER_LABELS, COUNTER_COLORS } from '@/lib/constants';
-import { getCATotalForCycle } from '@/lib/calculations';
+import { getCATotalForCycle, checkCAHPCondition } from '@/lib/calculations';
 import { DEFAULT_COUNTERS } from '@/lib/storage';
 import { ChevronRight, ChevronLeft, Sparkles, ShieldCheck, ListChecks } from 'lucide-react';
 import { CounterHelpButton as HelpButton, CounterHelpModal as HelpModal } from '@/components/shared/CounterHelpModal';
@@ -428,16 +428,16 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
                 <DaysInput
                   label="CA posés hors période"
                   value={counters.caPosesHorsPeriode}
-                  onChange={(v) => { updateCounter('caPosesHorsPeriode', v); updateCounter('caHP', v >= 8 ? 2 : 0); }}
+                  onChange={(v) => { updateCounter('caPosesHorsPeriode', v); updateCounter('caHP', checkCAHPCondition(v)); }}
                   max={caTotal}
-                  hint="01/01-30/04 ou 01/11-31/12 — Si ≥ 8 : bonus 2 CA HP"
+                  hint="01/01-30/04 ou 01/11-31/12 — 4 CA : 1 jour de bonus, 8 CA : 2 jours"
                   colorKey="caHP"
                 />
               </div>
-              {counters.caPosesHorsPeriode >= 8 && (
+              {checkCAHPCondition(counters.caPosesHorsPeriode) > 0 && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                   <Sparkles className="w-5 h-5 text-emerald-500" />
-                  <span className="text-emerald-700 font-medium">2 CA Hors Période bonus obtenus !</span>
+                  <span className="text-emerald-700 font-medium">{checkCAHPCondition(counters.caPosesHorsPeriode)} CA Hors Période bonus obtenu{checkCAHPCondition(counters.caPosesHorsPeriode) > 1 ? 's' : ''} !</span>
                 </div>
               )}
             </div>

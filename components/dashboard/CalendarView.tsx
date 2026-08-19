@@ -131,7 +131,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
                 <button type="button" aria-label="Fermer" onClick={close} className="text-slate-500 hover:text-slate-800 ml-3 flex-shrink-0">✕</button>
               </div>
               <p className="text-sm text-slate-600 mb-4">
-                L'APORTT accorde <strong>2 jours de CA bonus</strong> si vous posez au moins <strong>8 CA en dehors de la période estivale</strong>. Ces jours supplémentaires peuvent être transférés au CET.
+                L'APORTT accorde des <strong>jours de CA bonus</strong> selon le nombre de CA posés en dehors de la période estivale : <strong>1 jour dès 4 CA</strong>, <strong>2 jours dès 8 CA</strong>. Ces jours supplémentaires peuvent être transférés au CET.
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-start gap-2 text-sm">
