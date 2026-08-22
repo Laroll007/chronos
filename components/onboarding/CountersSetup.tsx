@@ -276,7 +276,12 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
 
             <div className="rounded-lg bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900">
               <p>
-                <strong>Pas de panique&nbsp;:</strong> si vous n&apos;avez pas vos soldes sous la main,
+                {/* `{' '}` explicite : le compilateur JSX supprimait l'espace qui
+                    suivait </strong>, le texte s'affichait « Pas de panique :si vous ».
+                    Se produit quand le nœud de texte démarre sur la ligne de la
+                    balise puis se poursuit sur les lignes suivantes. */}
+                <strong>Pas de panique&nbsp;:</strong>{' '}
+                si vous n&apos;avez pas vos soldes sous la main,
                 vous pouvez aussi les renseigner plus tard depuis le dashboard. Vous pourrez les
                 modifier ou les compléter à tout moment.
               </p>
