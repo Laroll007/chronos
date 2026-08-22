@@ -1,4 +1,13 @@
 import type { NextConfig } from "next";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+// Version applicative : lue depuis package.json, seule source de vérité.
+// Évite la dérive qui avait laissé « v1.3.0 » affiché dans l'app alors que
+// le binaire iOS était en 1.8 — cf. le test de cohérence dans constants.test.ts.
+const pkgVersion = JSON.parse(
+  readFileSync(path.join(process.cwd(), "package.json"), "utf8")
+).version as string;
 
 const isCapacitor = process.env.BUILD_TARGET === "capacitor";
 const isProd = process.env.NODE_ENV === "production";
@@ -21,6 +30,7 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_APP_VERSION: pkgVersion },
   compress: true,
   poweredByHeader: false,
   allowedDevOrigins: ['127.0.0.1', '192.168.1.90', '192.168.1.60', 'Amyo.local'],

@@ -58,7 +58,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 3
-        versionName ""
+        versionName "1.8.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

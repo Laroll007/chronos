@@ -1,5 +1,7 @@
 // Tests pour lib/constants.ts - Valeurs APORTT
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   // Durées
   HEURES_PAR_JOUR,
@@ -431,6 +433,30 @@ describe('JOURS_SEMAINE', () => {
 describe('Constantes App', () => {
   it('APP_VERSION est une version semver', () => {
     expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  // Garde-fou anti-dérive : l'app a affiché « v1.3.0 » dans ses Réglages alors
+  // que package.json portait 1.1.0 et le binaire iOS 1.8 — impossible pour un
+  // utilisateur de savoir quelle version il utilisait. Ces trois sources doivent
+  // rester alignées ; ce test échoue au premier oubli de bump.
+  it('APP_VERSION correspond à package.json', () => {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'));
+    expect(APP_VERSION).toBe(pkg.version);
+  });
+
+  it('la version iOS (MARKETING_VERSION) correspond à package.json', () => {
+    const pbx = readFileSync(
+      join(process.cwd(), 'ios/App/App.xcodeproj/project.pbxproj'),
+      'utf8'
+    );
+    const versions = [...pbx.matchAll(/MARKETING_VERSION = ([\d.]+);/g)].map((m) => m[1]);
+    expect(versions.length).toBeGreaterThan(0);
+
+    // iOS s'écrit « 1.8 », npm « 1.8.0 » : on compare major.minor.
+    const [major, minor] = APP_VERSION.split('.');
+    for (const v of versions) {
+      expect(v).toBe(`${major}.${minor}`);
+    }
   });
 
   it('STORAGE_KEY est défini', () => {
