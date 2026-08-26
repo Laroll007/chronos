@@ -440,6 +440,55 @@ export function getCurrentSemester(date: Date): 1 | 2 {
 }
 
 /**
+ * Répartit les minutes travaillées d'une plage entre les deux semestres.
+ *
+ * Une pose du 28 juin au 3 juillet était intégralement imputée au S1, parce que
+ * le semestre était déduit de la seule date de début — même défaut que pour la
+ * période CA HP. Le crédit CF étant semestriel, cela faussait le suivi des deux
+ * semestres à la fois.
+ */
+export function splitWorkingMinutesBySemester(
+  startDate: Date,
+  endDate: Date,
+  cycleConfig: CycleConfig
+): { s1: number; s2: number } {
+  let s1 = 0;
+  let s2 = 0;
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  while (current <= end) {
+    const minutes = getJourMinutes(current, cycleConfig);
+    if (minutes > 0) {
+      if (getCurrentSemester(current) === 1) s1 += minutes;
+      else s2 += minutes;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return { s1, s2 };
+}
+
+/**
+ * Part des `amount` minutes posées à imputer au 1er semestre, au prorata des
+ * minutes réellement travaillées de chaque côté du 30 juin.
+ */
+export function getCFS1Share(
+  amount: number,
+  startDate: Date,
+  endDate: Date,
+  cycleConfig: CycleConfig
+): number {
+  const { s1, s2 } = splitWorkingMinutesBySemester(startDate, endDate, cycleConfig);
+  const total = s1 + s2;
+  // Plage sans jour travaillé : on retombe sur le semestre de la date de début.
+  if (total === 0) return getCurrentSemester(startDate) === 1 ? amount : 0;
+  return Math.min(amount, Math.round(amount * (s1 / total)));
+}
+
+/**
  * Calcule les CF restants pour le semestre courant
  */
 export function getCFRemainingForSemester(
@@ -588,16 +637,26 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
 /**
  * Simule la pose d'un congé
  */
+/**
+ * Précisions sur la plage couverte par une pose. Sans elles, la date de début
+ * décide pour toute la période — ce qui fausse les poses à cheval sur une
+ * frontière (30 avril pour les CA HP, 30 juin pour les CF).
+ */
+export interface PoseContext {
+  /** Jours de la pose réellement situés dans la période CA HP (cf. countCAHPDays). */
+  hpDays?: number;
+  /** Minutes de la pose imputables au 1er semestre (cf. getCFS1Share). */
+  cfS1Minutes?: number;
+}
+
 export function simulatePose(
   counters: Counters,
   type: CounterType,
   amount: number, // en minutes pour heures, en jours pour CA/CET
   date: Date,
-  // Jours de la pose tombant réellement dans la période CA HP. À fournir dès que
-  // la pose couvre une plage (cf. countCAHPDays) : sans lui, on retombe sur
-  // l'ancien comportement « la date de début décide pour toute la plage ».
-  hpDays?: number
+  context: PoseContext = {}
 ): SimulationResult {
+  const { hpDays, cfS1Minutes } = context;
   const newCounters = { ...counters };
   const alerts: Alert[] = [];
 
@@ -659,12 +718,11 @@ export function simulatePose(
         };
       }
       newCounters.cf -= amount;
-      const semester = getCurrentSemester(date);
-      if (semester === 1) {
-        newCounters.cfConsoS1 += amount;
-      } else {
-        newCounters.cfConsoS2 += amount;
-      }
+      // Répartition réelle entre les semestres : fournie par l'appelant pour une
+      // plage, sinon déduite de la date (pose sur un seul jour).
+      const partS1 = cfS1Minutes ?? (getCurrentSemester(date) === 1 ? amount : 0);
+      newCounters.cfConsoS1 += partS1;
+      newCounters.cfConsoS2 += amount - partS1;
       break;
     }
 

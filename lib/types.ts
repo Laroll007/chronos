@@ -138,6 +138,9 @@ export interface HistoryEntry {
   // 30 avril / 1er novembre). Mémorisé pour restituer exactement le même compte
   // à l'annulation. Absent sur les entrées antérieures au correctif.
   caHPDays?: number;
+  // Minutes de cette pose imputées au 1er semestre (plage à cheval sur le 30 juin).
+  // Mémorisé pour restituer la même répartition à l'annulation.
+  cfS1Minutes?: number;
 }
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte';

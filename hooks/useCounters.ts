@@ -8,7 +8,7 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition } from '@/lib/calculations';
+import { simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
 import { CET_PLAFOND, CA_MAX_VERS_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
@@ -157,13 +157,18 @@ export function useCounters() {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
 
-      // Seuls les jours réellement situés dans la période CA HP comptent : une
-      // plage du 28 avril au 5 mai ne crédite que ses jours d'avant le 1er mai.
+      // Une plage à cheval sur une frontière ne doit pas être imputée en bloc au
+      // côté de sa date de début : 28 avril → 5 mai ne crédite que ses jours
+      // d'avant le 1er mai, 28 juin → 3 juillet répartit les CF entre S1 et S2.
+      const dEnd = dateEnd ?? dateStart;
       const hpDays = type === 'ca'
-        ? countCAHPDays(dateStart, dateEnd ?? dateStart, current.cycleConfig)
+        ? countCAHPDays(dateStart, dEnd, current.cycleConfig)
+        : undefined;
+      const cfS1Minutes = type === 'cf'
+        ? getCFS1Share(amount, dateStart, dEnd, current.cycleConfig)
         : undefined;
 
-      const result = simulatePose(current.counters, type, amount, dateStart, hpDays);
+      const result = simulatePose(current.counters, type, amount, dateStart, { hpDays, cfS1Minutes });
 
       if (!result.isValid) {
         return { success: false, error: result.errorMessage };
@@ -180,6 +185,7 @@ export function useCounters() {
         countersSnapshot: result.newCounters,
         groupId,
         caHPDays: hpDays,
+        cfS1Minutes,
       };
 
       const newData: UserData = {
@@ -416,11 +422,12 @@ export function useCounters() {
       } else if (entry.type === 'cf') {
         updatedCounters.cf += entry.amount;
         const poseDate = new Date(entry.date);
-        if (getCurrentSemester(poseDate) === 1) {
-          updatedCounters.cfConsoS1 = Math.max(0, updatedCounters.cfConsoS1 - entry.amount);
-        } else {
-          updatedCounters.cfConsoS2 = Math.max(0, updatedCounters.cfConsoS2 - entry.amount);
-        }
+        // Reprend la répartition réellement appliquée (plage à cheval incluse) ;
+        // repli sur l'ancien calcul pour les entrées antérieures au correctif.
+        const partS1 = entry.cfS1Minutes
+          ?? (getCurrentSemester(poseDate) === 1 ? entry.amount : 0);
+        updatedCounters.cfConsoS1 = Math.max(0, updatedCounters.cfConsoS1 - partS1);
+        updatedCounters.cfConsoS2 = Math.max(0, updatedCounters.cfConsoS2 - (entry.amount - partS1));
       } else if (entry.type === 'caHP' || entry.type === 'cet') {
         updatedCounters[entry.type] += entry.amount;
       } else if (entry.type === 'artt') {

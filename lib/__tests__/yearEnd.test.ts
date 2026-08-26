@@ -124,7 +124,7 @@ describe('CA HP — cohérence du bonus', () => {
   });
 
   it('franchit les deux paliers d’un coup sur une pose groupée', () => {
-    const r = simulatePose(C({ ca: 18 }), 'ca', 8, new Date(2026, 1, 10), 8);
+    const r = simulatePose(C({ ca: 18 }), 'ca', 8, new Date(2026, 1, 10), { hpDays: 8 });
     expect(r.newCounters.caHP).toBe(CA_HP_BONUS);
   });
 
@@ -151,7 +151,7 @@ describe('CA HP — cohérence du bonus', () => {
     expect(jours).toBe(4);
     expect(hp).toBe(1);
 
-    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, hp);
+    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, { hpDays: hp });
     expect(r.newCounters.caPosesHorsPeriode).toBe(1); // et non 4
   });
 
@@ -164,7 +164,7 @@ describe('CA HP — cohérence du bonus', () => {
     expect(hp).toBeGreaterThan(0);
     expect(hp).toBeLessThan(jours);
 
-    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, hp);
+    const r = simulatePose(C({ ca: 18 }), 'ca', jours, start, { hpDays: hp });
     expect(r.newCounters.caPosesHorsPeriode).toBe(hp);
   });
 

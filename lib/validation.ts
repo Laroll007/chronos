@@ -160,6 +160,7 @@ function checkHistoryEntry(v: unknown, i: number): string[] {
   if (!(COUNTER_TYPES as readonly unknown[]).includes(v.type)) errors.push(`history[${i}].type: invalide`);
   if (typeof v.amount !== 'number') errors.push(`history[${i}].amount: nombre attendu`);
   if (v.caHPDays !== undefined && !isNum(v.caHPDays as unknown, 0)) errors.push(`history[${i}].caHPDays: nombre >= 0 attendu`);
+  if (v.cfS1Minutes !== undefined && !isNum(v.cfS1Minutes as unknown, 0)) errors.push(`history[${i}].cfS1Minutes: nombre >= 0 attendu`);
   return errors;
 }
 
