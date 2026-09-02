@@ -41,7 +41,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig } from '@/lib/types';
-import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes } from '@/lib/calculations';
+import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -86,6 +86,7 @@ export default function DashboardPage() {
     isLoading,
     isOnboarded,
     updateCounters,
+    updateCycle,
     poseConge,
     posePartiel,
     poseCMO,
@@ -173,6 +174,18 @@ export default function DashboardPage() {
     setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
     setShowOptimization(true);
   }, [deleteHistoryEntry, cycleConfig]);
+
+  // Changement de cycle : les compteurs et l'historique sont conservés, seul le
+  // calendrier est recalculé. On purge les caches de `calculations`, dont les clés
+  // ne couvrent pas tous les champs du cycle (ni `type`, ni `heuresSemaine`).
+  const handleUpdateCycle = useCallback((config: CycleConfig) => {
+    const ok = updateCycle(config);
+    if (ok) {
+      clearCalculationCaches();
+      setCalendarResetTrigger((prev) => prev + 1);
+    }
+    return ok;
+  }, [updateCycle]);
 
   const handleMarkCMO = useCallback(() => {
     if (!selectedRange) return;
@@ -486,6 +499,7 @@ export default function DashboardPage() {
               history={history}
               onReset={reset}
               onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); }}
+              onUpdateCycle={handleUpdateCycle}
             />
           </Suspense>
         </DialogContent>

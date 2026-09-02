@@ -26,6 +26,7 @@ import {
   MessageSquarePlus,
   Coffee,
   ChevronRight,
+  CalendarCog,
   Database,
   Heart,
   Briefcase,
@@ -39,6 +40,11 @@ const FeedbackModal = lazy(() =>
 
 const WorkedDaysCalculator = lazy(() =>
   import('@/components/dashboard/WorkedDaysCalculator').then((m) => ({ default: m.WorkedDaysCalculator }))
+);
+
+// Réutilise l'écran d'onboarding, qui accepte déjà un `initialConfig`.
+const CycleSetup = lazy(() =>
+  import('@/components/onboarding/CycleSetup').then((m) => ({ default: m.CycleSetup }))
 );
 
 // ─── Sous-composants de mise en page ─────────────────────────────────────────
@@ -97,6 +103,8 @@ interface SettingsProps {
   history: HistoryEntry[];
   onReset: () => void;
   onShowWelcome?: () => void;
+  /** Enregistre un nouveau cycle sans toucher aux compteurs ni à l'historique. */
+  onUpdateCycle?: (config: CycleConfig) => boolean;
 }
 
 export function Settings({
@@ -104,12 +112,14 @@ export function Settings({
   history,
   onReset,
   onShowWelcome,
+  onUpdateCycle,
 }: SettingsProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showWorkedDays, setShowWorkedDays] = useState(false);
+  const [showCycle, setShowCycle] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
   const handleExport = () => {
@@ -184,6 +194,19 @@ export function Settings({
       {/* ── Contenu scrollable ────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="px-5 py-5 space-y-6">
+
+          {/* Cycle de travail */}
+          {onUpdateCycle && (
+            <section className="space-y-2.5">
+              <SectionLabel icon={<CalendarCog className="w-3 h-3 text-blue-600" />} label="Mon cycle" />
+              <ClickableRow
+                icon={<CalendarCog className="w-4 h-4 text-blue-500 shrink-0" />}
+                label="Modifier mon cycle de travail"
+                sublabel="Changement de brigade, de régime ou d'horaires"
+                onClick={() => setShowCycle(true)}
+              />
+            </section>
+          )}
 
           {/* Outils */}
           <section className="space-y-2.5">
@@ -312,6 +335,59 @@ export function Settings({
         <Suspense fallback={null}>
           <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
         </Suspense>
+      )}
+
+      {showCycle && onUpdateCycle && (
+        <Dialog open={showCycle} onOpenChange={setShowCycle}>
+          <DialogContent
+            className="w-[95vw] max-w-lg p-0 rounded-2xl border-0 shadow-2xl overflow-hidden flex flex-col"
+            style={{ height: '90vh', maxHeight: '90vh' }}
+            showCloseButton={false}
+          >
+            <div className="shrink-0 px-5 pt-5 pb-4 text-white" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0d2347 55%, #0055A4 100%)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                  <CalendarCog className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <DialogTitle className="text-base font-bold leading-tight text-white">Modifier mon cycle</DialogTitle>
+                  <p className="text-blue-200 text-xs mt-0.5">Vos compteurs et congés déjà posés sont conservés</p>
+                </div>
+                <DialogClose className="shrink-0 w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white/80 hover:text-white transition-all">
+                  <X className="w-4 h-4" />
+                </DialogClose>
+              </div>
+              <div className="mt-3 h-[3px] rounded-full" style={{ background: 'linear-gradient(90deg, #0055A4 33%, #ffffff 33%, #ffffff 66%, #EF4135 66%)' }} />
+            </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 bg-[#f8f9fc]">
+              <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-amber-50 border border-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">
+                  Changer de cycle modifie les jours travaillés du calendrier, <strong>y compris
+                  dans le passé</strong>. Vos congés déjà posés restent enregistrés, mais certains
+                  peuvent tomber sur des jours devenus des repos : vérifiez-les ensuite.
+                </p>
+              </div>
+              <Suspense fallback={<div className="flex justify-center py-8 text-sm text-slate-500">Chargement…</div>}>
+                <CycleSetup
+                  initialConfig={cycleConfig}
+                  onNext={(config) => {
+                    const ok = onUpdateCycle(config);
+                    if (ok) {
+                      toast.success('Cycle mis à jour', {
+                        description: 'Le calendrier a été recalculé. Vos compteurs et congés sont inchangés.',
+                      });
+                      setShowCycle(false);
+                    } else {
+                      toast.error('Impossible d\'enregistrer le nouveau cycle');
+                    }
+                  }}
+                />
+              </Suspense>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showWorkedDays && (
