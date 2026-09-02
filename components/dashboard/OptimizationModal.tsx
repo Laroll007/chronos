@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Counters, Combination, CounterType } from '@/lib/types';
-import { generateAllCombinations, createCombination } from '@/lib/optimization';
+import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { CombinationCard } from './CombinationCard';
@@ -83,18 +83,35 @@ export function OptimizationModal({
     return Math.min(dayLen, bal);
   }, [workingMinutesCount, jourMinutes, partialTypes, partialType]);
 
-  // Types disponibles avec soldes > 0 (en jours)
+  // Types disponibles avec soldes > 0 (en jours).
+  // Table unique : la liste précédente omettait ARTT, RTT, CA/CA HP antérieurs,
+  // CET 2008, congés bonifiés et HS historiques — des compteurs que le moteur
+  // automatique proposait pourtant, et que l'agent ne pouvait donc pas choisir
+  // lui-même. Les RTT n'étaient posables nulle part.
   const availableTypes = useMemo(() => {
-    const types: { type: CounterType; label: string; available: number }[] = [];
-    if (counters.ca > 0) types.push({ type: 'ca', label: 'CA', available: counters.ca });
-    if (counters.caHP > 0) types.push({ type: 'caHP', label: 'CA HP', available: counters.caHP });
-    if (counters.cf > 0) types.push({ type: 'cf', label: 'CF', available: Math.floor(counters.cf / jourMinutes) });
-    if (counters.rtc > 0) types.push({ type: 'rtc', label: 'RTC', available: Math.floor(counters.rtc / jourMinutes) });
-    if (counters.rps > 0) types.push({ type: 'rps', label: 'RPS', available: Math.floor(counters.rps / jourMinutes) });
-    if (counters.hs > 0) types.push({ type: 'hs', label: 'HS', available: Math.floor(counters.hs / jourMinutes) });
-    // CET utilisation : poser des jours depuis le CET
-    if (counters.cet > 0) types.push({ type: 'cet', label: 'CET (utiliser)', available: counters.cet });
-    return types;
+    const LIBELLES: { type: CounterType; label: string }[] = [
+      { type: 'ca', label: 'CA' },
+      { type: 'caHP', label: 'CA HP' },
+      { type: 'caAnterieur', label: 'CA antérieurs' },
+      { type: 'caHPAnterieur', label: 'CA HP antérieurs' },
+      { type: 'cf', label: 'CF' },
+      { type: 'rtc', label: 'RTC' },
+      { type: 'rtt', label: 'RTT' },
+      { type: 'artt', label: 'ARTT' },
+      { type: 'rps', label: 'RPS' },
+      { type: 'hs', label: 'HS' },
+      { type: 'hsHistorique', label: 'HS historiques' },
+      { type: 'congesBonifies', label: 'Congés bonifiés' },
+      { type: 'cet2008', label: 'CET 2008' },
+      { type: 'cet', label: 'CET (utiliser)' },
+    ];
+
+    return LIBELLES.map(({ type, label }) => {
+      const solde = getRawBalance(counters, type);
+      // Compteurs horaires : convertir en journées entières couvrables.
+      const available = isDayBasedType(type) ? solde : Math.floor(solde / jourMinutes);
+      return { type, label, available };
+    }).filter((t) => t.available > 0);
   }, [counters, jourMinutes]);
 
   const getAvailableForType = useCallback((type: CounterType): number => {

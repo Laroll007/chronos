@@ -407,7 +407,16 @@ export default function DashboardPage() {
             endDate={selectedRange?.end || null}
             workingDaysCount={selectedRange?.workingDays || 0}
             workingMinutesCount={selectedRange?.workingMinutes}
-            jourMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
+            // Durée MOYENNE réelle d'un jour de la période sélectionnée, et non
+            // `heuresParJour` (valeur représentative = le lundi). En régime hebdo
+            // 39h25, le forfait faisait consommer 40h00 pour 5 jours au « Choix
+            // libre », soit 35 min de trop. Le moteur automatique, lui, calculait
+            // déjà juste.
+            jourMinutes={
+              selectedRange && selectedRange.workingDays > 0
+                ? selectedRange.workingMinutes / selectedRange.workingDays
+                : cycleConfig?.heuresParJour || HEURES_PAR_JOUR
+            }
             counters={counters}
             onApply={handleApplyCombination}
             onMarkCMO={handleMarkCMO}

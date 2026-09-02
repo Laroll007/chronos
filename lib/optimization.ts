@@ -93,6 +93,8 @@ function getAvailableAmount(counters: Counters, type: CounterType, dayMinutes: n
       return toWorkingDays(counters.hs, 'hs', dayMinutes);
     case 'artt':
       return counters.hasARTT ? (counters.artt ?? 0) : 0;
+    case 'rtt':
+      return counters.hasRTT ? (counters.rtt ?? 0) : 0;
     case 'caAnterieur':
       return counters.caAnterieur;
     case 'caHPAnterieur':
@@ -295,6 +297,9 @@ function getPriorityWeight(
     }
     case 'artt':
       // Perdus au 31/12, priorité similaire aux RTC libres
+      return 28;
+    case 'rtt':
+      // Perdus au 31/12 également (régime hebdomadaire)
       return 28;
     case 'congesBonifies':
       // Droit rare, périodique — priorité modérée
@@ -612,7 +617,7 @@ function buildCombinations(
   const priorities: CounterType[] = [
     'caAnterieur', 'caHPAnterieur', // deadline 30 avril — toujours en tête si Jan-Avr
     'cf', 'ca', 'caHP',
-    'artt', 'rtc', 'rps', 'hs',
+    'artt', 'rtt', 'rtc', 'rps', 'hs',
     'congesBonifies', 'cet2008', 'hsHistorique',
   ];
 
