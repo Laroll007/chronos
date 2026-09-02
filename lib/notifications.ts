@@ -178,14 +178,25 @@ export function calculateDeadlineNotifications(
     });
   }
 
-  // 3. Alerte RTC réservés entamés
-  if (counters.hasRTC !== false && counters.rtc < RTC_RESERVES_CET) {
+  // 3. Alerte RTC réservés entamés.
+  // Ne se déclenche qu'à l'approche de la deadline : la « réserve » de 83h30 ne
+  // sert qu'au transfert CET de fin d'année. En alerter toute l'année affichait
+  // un bandeau rouge permanent et non désactivable à tout agent consommant ses
+  // RTC — c'est-à-dire l'usage normal. Muette aussi si le CET ne peut plus rien
+  // recevoir : la réserve n'a alors plus d'objet.
+  const margeCET = Math.min(CET_PLAFOND - counters.cet, CET_APPORT_ANNUEL_MAX);
+  if (
+    counters.hasRTC !== false &&
+    counters.rtc < RTC_RESERVES_CET &&
+    daysUntilCA <= NOTIFICATION_THRESHOLDS.info &&
+    margeCET > 0
+  ) {
     const rtcManquants = RTC_RESERVES_CET - counters.rtc;
     notifications.push({
       id: 'rtc-reserves-alert',
       title: 'RTC réservés entamés !',
-      message: `Il vous manque ${formatMinutes(rtcManquants)} pour reconstituer vos RTC réservés CET. Vous perdez du gain potentiel.`,
-      priority: 'urgent',
+      message: `Il vous manque ${formatMinutes(rtcManquants)} pour reconstituer vos RTC réservés CET avant le transfert de fin d'année.`,
+      priority: getPriority(daysUntilCA),
       daysRemaining: daysUntilCA,
       deadline: caDeadline,
       counterType: 'rtc',

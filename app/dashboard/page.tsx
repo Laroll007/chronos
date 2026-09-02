@@ -189,8 +189,20 @@ export default function DashboardPage() {
   }, [poseAstreinte, selectedRange]);
 
   const handlePosePartiel = useCallback((type: CounterType, minutes: number) => {
-    if (!selectedRange) return;
-    const result = posePartiel(type, minutes, selectedRange.start);
+    if (!selectedRange || !cycleConfig) return;
+    // Premier jour TRAVAILLÉ de la sélection, et non son premier jour tout court :
+    // sur une sélection samedi (repos) + dimanche (travaillé), `workingDaysCount`
+    // vaut 1 — la section s'affiche donc — mais les heures partaient sur le samedi.
+    const cursor = new Date(selectedRange.start);
+    cursor.setHours(0, 0, 0, 0);
+    const last = new Date(selectedRange.end);
+    last.setHours(0, 0, 0, 0);
+    while (cursor <= last && !isWorkingDay(cursor, cycleConfig)) {
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const jourCible = cursor <= last ? cursor : selectedRange.start;
+
+    const result = posePartiel(type, minutes, jourCible);
     if (result.success) {
       toast.success('Heures posées', {
         description: `${formatMinutes(minutes)} de ${type.toUpperCase()} posées sur la journée (le reste est travaillé).`,
@@ -201,7 +213,7 @@ export default function DashboardPage() {
     } else {
       toast.error('Erreur', { description: result.error });
     }
-  }, [posePartiel, selectedRange]);
+  }, [posePartiel, selectedRange, cycleConfig]);
 
   const handleEpargneCET = useCallback((joursCA: number) => {
     const result = epargnerCET(joursCA);
