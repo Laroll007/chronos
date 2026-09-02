@@ -92,6 +92,8 @@ export default function DashboardPage() {
     poseAstreinte,
     epargnerCET,
     deleteHistoryEntry,
+    basculeAnnuelleAConfirmer,
+    confirmerBasculeAnnuelle,
     reset,
   } = useCounters();
 
@@ -128,6 +130,20 @@ export default function DashboardPage() {
       setShowWelcome(true);
     }
   }, [isLoading, isOnboarded]);
+
+  // Nouvelle année : les soldes ont été recrédités aux quotas STANDARDS du régime.
+  // Un agent à temps partiel, arrivé en cours d'année ou en zone DOM doit les
+  // corriger — on ne le laisse pas le découvrir par hasard. Prévenu une seule fois.
+  useEffect(() => {
+    if (isLoading || !basculeAnnuelleAConfirmer) return;
+    toast.info(`Bonne année ${basculeAnnuelleAConfirmer} !`, {
+      duration: 12000,
+      description:
+        'Vos compteurs ont été renouvelés et le reliquat de CA basculé en « CA antérieurs » (à poser avant le 30 avril). Les quotas appliqués sont ceux du régime standard : vérifiez-les dans GesTT et corrigez-les si besoin.',
+      action: { label: 'Compris', onClick: () => confirmerBasculeAnnuelle() },
+      onDismiss: () => confirmerBasculeAnnuelle(),
+    });
+  }, [isLoading, basculeAnnuelleAConfirmer, confirmerBasculeAnnuelle]);
 
   // PERF-001: useCallback pour éviter les re-renders
   const handleRangeSelected = useCallback((start: Date, end: Date, workingDays: number) => {

@@ -205,12 +205,19 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
       case 'ca': {
         const initial = caTotal;
         const consommes = counters.caConsommes;
-        const epargnesCET = Math.max(0, initial - counters.ca - consommes);
+        // Déduit, et non mesuré : après le reset annuel (`caConsommes` remis à 0)
+        // un solde inférieur au quota faisait afficher « Épargnés au CET : 14j »
+        // alors que rien n'avait été épargné. On ne l'affiche donc que si le
+        // compte est cohérent — un écart négatif signale un solde saisi à la main.
+        const epargnesCET = initial - counters.ca - consommes;
+        const epargneFiable = epargnesCET > 0 && counters.cet >= epargnesCET;
         return (
           <>
             <Row label="CA initial" value={`${initial}j`} />
             <Row label="Posés (congés pris)" value={`${consommes}j`} color="text-emerald-600" />
-            <Row label="Épargnés au CET" value={`${epargnesCET}j`} color="text-blue-600" />
+            {epargneFiable && (
+              <Row label="Épargnés au CET" value={`${epargnesCET}j`} color="text-blue-600" />
+            )}
             <Row label="Disponible" value={`${counters.ca}j`} bold color="text-blue-700" separator />
             <Row label="CA HP obtenus" value={`${counters.caHP}j`} color={counters.caHP > 0 ? 'text-red-600' : 'text-slate-400'} />
             <Row label="Posés hors période" value={`${counters.caPosesHorsPeriode}j`} />

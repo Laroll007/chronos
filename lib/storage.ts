@@ -1,16 +1,23 @@
 // LocalStorage helpers pour Chronos
 
 import { UserData, Counters, CycleConfig, HistoryEntry, ExportData } from './types';
-import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_NET_ANNUEL, JOURNEE_SOLIDARITE, RTT_QUOTA_HEBDO } from './constants';
+import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_NET_ANNUEL, RTC_BRUT_ANNUEL, CF_TOTAL_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
 import {
   DEFAULT_WEEK_SCHEDULE,
   DEFAULT_CYCLE_ALTERNE_A,
   DEFAULT_CYCLE_ALTERNE_B,
   DEFAULT_HEBDO_HEURES,
 } from './types';
+import { getCATotalForCycle } from './calculations';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
+
+/**
+ * Version du schéma de données. À incrémenter pour introduire une migration
+ * ponctuelle ; celles déjà appliquées ne sont jamais rejouées.
+ */
+export const SCHEMA_VERSION = 1;
 
 // ============================================
 // DONNÉES PAR DÉFAUT
@@ -154,29 +161,58 @@ export function migrateUserData(data: UserData): UserData {
   // On ne touche QUE la signature exacte du bug : solde à 0 ET aucune consommation
   // enregistrée — un vrai utilisateur CF/RTC a soit un solde > 0, soit de la conso.
   // Placé AVANT le reset annuel pour lire la conso de l'année avant sa remise à 0.
-  if (data.counters.hasCF && data.counters.cf === 0
-      && data.counters.cfConsoS1 === 0 && data.counters.cfConsoS2 === 0) {
-    data.counters.hasCF = false;
-    needsSave = true;
-  }
-  if (data.counters.hasRTC && data.counters.rtc === 0) {
-    data.counters.hasRTC = false;
+  // ⚠️ Ponctuelle : elle se rejouait à CHAQUE chargement, si bien qu'un agent
+  // ayant légitimement soldé ses RTC en fin d'année voyait le compteur désactivé
+  // définitivement — il ne réapparaissait pas l'année suivante. Le numéro de
+  // schéma garantit qu'elle ne s'applique qu'une fois.
+  if ((data.schemaVersion ?? 0) < SCHEMA_VERSION) {
+    if (data.counters.hasCF && data.counters.cf === 0
+        && data.counters.cfConsoS1 === 0 && data.counters.cfConsoS2 === 0) {
+      data.counters.hasCF = false;
+    }
+    if (data.counters.hasRTC && data.counters.rtc === 0) {
+      data.counters.hasRTC = false;
+    }
+    data.schemaVersion = SCHEMA_VERSION;
     needsSave = true;
   }
 
-  // Migration 4: Reset annuel des compteurs périodiques
-  // caPosesHorsPeriode et caHP doivent être remis à 0 chaque année (règle APORTT)
+  // Migration 4: bascule d'année.
+  // Auparavant, seules les CONSOMMATIONS étaient remises à zéro : aucun solde
+  // n'était recrédité et les CA restants disparaissaient purement et simplement.
+  // Un agent retrouvait « 4 CA » au 1er janvier sans savoir d'où ils venaient.
   const currentYear = new Date().getFullYear();
   if ((data.lastResetYear ?? 0) < currentYear) {
-    data.counters.caPosesHorsPeriode = 0;
-    data.counters.caHP = 0;
-    data.counters.cfConsoS1 = 0;
-    data.counters.cfConsoS2 = 0;
-    data.counters.caConsommes = 0;
-    // RTT (cycle hebdo) : perdus au 31/12, crédit annuel de 16j renouvelé au 1er janvier
-    if (data.counters.hasRTT) {
-      data.counters.rtt = RTT_QUOTA_HEBDO;
+    const c = data.counters;
+
+    // 1. Report du reliquat (règle APORTT : consommable jusqu'au 30 avril).
+    //    Remplace et n'additionne pas : le report de l'année précédente a expiré.
+    c.caAnterieur = c.ca;
+    c.caHPAnterieur = c.caHP;
+
+    // 2. Compteurs de consommation remis à zéro.
+    c.caPosesHorsPeriode = 0;
+    c.caHP = 0;
+    c.cfConsoS1 = 0;
+    c.cfConsoS2 = 0;
+    c.caConsommes = 0;
+
+    // 3. Recrédit des quotas annuels, uniquement pour les compteurs activés.
+    c.ca = getCATotalForCycle(data.cycleConfig);
+    if (c.hasCF !== false) c.cf = CF_TOTAL_ANNUEL;
+    if (c.hasRTC !== false) {
+      // Le drapeau dit si l'agent déduit la journée de solidarité de ses RTC.
+      c.rtc = c.journeeSolidariteAppliquee ? RTC_NET_ANNUEL : RTC_BRUT_ANNUEL;
     }
+    if (c.hasARTT) c.artt = ARTT_QUOTA_ANNUEL;
+    if (c.hasRTT) c.rtt = RTT_QUOTA_HEBDO;
+
+    // RPS, HS, CET, CET 2008, HS historiques et congés bonifiés ne sont PAS
+    // touchés : ils se conservent d'une année sur l'autre.
+
+    // 4. Les quotas recrédités sont ceux du régime standard. Un agent à temps
+    //    partiel, arrivé en cours d'année ou en zone DOM doit les corriger :
+    //    le dashboard l'en informe une fois (cf. `basculeNotifiee`).
     data.lastResetYear = currentYear;
     needsSave = true;
   }

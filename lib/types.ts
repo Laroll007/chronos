@@ -120,6 +120,12 @@ export interface UserData {
   history: HistoryEntry[];
   lastUpdated: string; // ISO date string
   lastResetYear?: number; // Année du dernier reset annuel des compteurs
+  // Numéro de schéma : marque les migrations ponctuelles déjà appliquées, pour
+  // qu'elles ne se rejouent pas à chaque chargement (cf. migrateUserData).
+  schemaVersion?: number;
+  // Année pour laquelle l'agent a déjà été informé de la bascule (recrédit des
+  // quotas). Évite de le prévenir à chaque ouverture.
+  basculeNotifiee?: number;
   isOnboarded: boolean;
 }
 

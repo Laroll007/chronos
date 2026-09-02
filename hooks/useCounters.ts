@@ -90,6 +90,7 @@ export function useCounters() {
   // Vérifier si onboarded
   const isOnboarded = useMemo(() => userData?.isOnboarded ?? false, [userData]);
 
+
   // Sauvegarder les données
   const save = useCallback((data: UserData) => {
     const success = saveUserData(data);
@@ -101,6 +102,20 @@ export function useCounters() {
     }
     return success;
   }, []);
+
+  // Une bascule d'année vient d'avoir lieu et l'agent n'en a pas été informé :
+  // ses soldes ont été recrédités aux quotas STANDARDS, qu'il doit vérifier.
+  const basculeAnnuelleAConfirmer = useMemo(() => {
+    if (!userData?.lastResetYear) return null;
+    if ((userData.basculeNotifiee ?? 0) >= userData.lastResetYear) return null;
+    return userData.lastResetYear;
+  }, [userData]);
+
+  const confirmerBasculeAnnuelle = useCallback(() => {
+    const current = userDataRef.current;
+    if (!current?.lastResetYear) return;
+    save({ ...current, basculeNotifiee: current.lastResetYear });
+  }, [save]);
 
   // Initialiser avec les valeurs par défaut
   const initialize = useCallback((cycleConfig: CycleConfig, counters: Counters) => {
@@ -512,6 +527,7 @@ export function useCounters() {
     isOnboarded,
     error,
     recommendations,
+    basculeAnnuelleAConfirmer,
     // Actions
     initialize,
     updateCounters,
@@ -522,6 +538,7 @@ export function useCounters() {
     poseAstreinte,
     epargnerCET,
     deleteHistoryEntry,
+    confirmerBasculeAnnuelle,
     updateRPS,
     reset,
     save,
