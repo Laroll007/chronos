@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours } from '@/lib/types';
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
+import { baremeRPSNuit, baremeRPSParDefaut } from '@/lib/rps';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
 
 interface CycleSetupProps {
@@ -51,6 +52,14 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [semaineA, setSemaineA] = useState<WeekSchedule>(initialConfig?.semaineA ?? DEFAULT_CYCLE_ALTERNE_A);
   const [semaineB, setSemaineB] = useState<WeekSchedule>(initialConfig?.semaineB ?? DEFAULT_CYCLE_ALTERNE_B);
 
+  // Service de jour ou de nuit — détermine le barème de crédit des RPS.
+  // L'APORTT accorde 0,4 le dimanche et 0,1 pour le travail de nuit (21h–6h) :
+  // un agent de nuit récupère à chaque vacation, pas seulement le dimanche.
+  // Déduit du barème existant si l'agent revient modifier son cycle.
+  const [serviceDeNuit, setServiceDeNuit] = useState<boolean>(
+    () => (initialConfig?.rpsParJour?.lundi ?? 0) > 0
+  );
+
   const toggleDay = (week: 'A' | 'B', day: keyof WeekSchedule) => {
     if (week === 'A') setSemaineA((prev) => ({ ...prev, [day]: !prev[day] }));
     else setSemaineB((prev) => ({ ...prev, [day]: !prev[day] }));
@@ -91,6 +100,9 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       semaineActuelle: isHebdo ? 'A' : semaineActuelle,
       semaineA: isHebdo ? hebdoSchedule : semaineA,
       semaineB: isHebdo ? undefined : semaineB,
+      rpsParJour: serviceDeNuit
+        ? baremeRPSNuit(isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : heuresParJour)
+        : baremeRPSParDefaut(),
     });
   };
 
@@ -404,6 +416,51 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           </div>
         </div>
       )}
+
+      {/* Service de jour / de nuit — barème RPS */}
+      <div className={cardClass}>
+        <div className="px-6 mb-4">
+          <div className={titleClass}>Vos vacations</div>
+          <div className={`${labelClass} mt-1`}>
+            Détermine vos repos de pénibilité (RPS) crédités automatiquement
+          </div>
+        </div>
+        <div className="px-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setServiceDeNuit(false)}
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
+              !serviceDeNuit
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <div className="font-medium text-slate-800 text-sm">Service de jour</div>
+            <div className="text-xs text-slate-500 mt-1">
+              RPS les dimanches travaillés
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setServiceDeNuit(true)}
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
+              serviceDeNuit
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <div className="font-medium text-slate-800 text-sm">Service de nuit</div>
+            <div className="text-xs text-slate-500 mt-1">
+              RPS à chaque vacation travaillée
+            </div>
+          </button>
+        </div>
+        <div className="px-6 mt-3">
+          <p className="text-xs text-slate-400">
+            Modifiable à tout moment, jour par jour, depuis Compteurs → RPS.
+          </p>
+        </div>
+      </div>
 
       <button
         type="button"
