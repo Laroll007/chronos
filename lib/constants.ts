@@ -101,6 +101,12 @@ export const CONGES_BONIFIES_REPORT_MAX_MOIS = 12; // report max : +12 mois = 48
 // ============================================
 export const HS_MAX_STOCKABLES = 160 * 60; // 160h = 9600 minutes
 export const HS_MAX_VERS_CET = 5; // jours max vers CET
+// Coût d'un jour de CET payé en HS : 8h21, comme les RTC — et NON la journée de
+// 12h08. Guide APORTT : « 1 jour = 1/5ème de la durée hebdomadaire de travail –
+// base 8h21/jour pour les cycliques », avec un plafond de 41h45, soit exactement
+// 5 × 8h21. L'app divisait par 12h08 et sous-estimait donc l'épargne possible.
+export const HS_COUT_PAR_JOUR_CET = 8 * 60 + 21; // 8h21 = 501 minutes
+export const HS_MAX_MINUTES_VERS_CET = HS_COUT_PAR_JOUR_CET * HS_MAX_VERS_CET; // 41h45
 
 // HS Historique (compte gelé depuis 2020, décret 2020-1398)
 export const HS_HISTORIQUE_TAUX_HORAIRE = 13.25; // €/h brut (indemnisation campagnes)
@@ -109,7 +115,18 @@ export const HS_HISTORIQUE_TAUX_HORAIRE = 13.25; // €/h brut (indemnisation ca
 // CET - COMPTE ÉPARGNE TEMPS
 // ============================================
 export const CET_PLAFOND = 60; // jours max
-export const CET_APPORT_ANNUEL_MAX = 15; // jours max par an
+// Jours maximum épargnables sur le CET par an.
+// ⚠️ Le guide APORTT (« Gestion du temps de travail ») ne fixe pas de plafond
+// annuel global : il liste des limites par source (5 CA + 1-2 HP, 5 j de HS,
+// « tout ou partie » des ARTT/RTC). Les « 10 jours/an » qu'il mentionne visent
+// le droit d'option — ce qu'on peut CONSERVER au-delà du seuil de 15 jours.
+// Valeur retenue sur décision de l'utilisateur, qui applique la pratique de son
+// service. Voir aussi CET_SEUIL_OPTION.
+export const CET_APPORT_ANNUEL_MAX = 10;
+
+// Seuil du droit d'option : en dessous, les jours du CET ne sont utilisables
+// qu'en congés. Au-delà, choix annuel entre maintien, indemnisation ou RAFP.
+export const CET_SEUIL_OPTION = 15; // jours
 
 // ============================================
 // DATES IMPORTANTES

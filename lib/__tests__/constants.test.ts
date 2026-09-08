@@ -39,6 +39,8 @@ import {
   // CET
   CET_PLAFOND,
   CET_APPORT_ANNUEL_MAX,
+  HS_MAX_MINUTES_VERS_CET,
+  HS_COUT_PAR_JOUR_CET,
   // Dates
   DEADLINE_FIN_ANNEE,
   DEADLINE_S1,
@@ -290,12 +292,22 @@ describe('CET - Compte Épargne Temps', () => {
     expect(CET_PLAFOND).toBe(60);
   });
 
-  it('CET_APPORT_ANNUEL_MAX = 15 jours', () => {
-    expect(CET_APPORT_ANNUEL_MAX).toBe(15);
+  it('CET_APPORT_ANNUEL_MAX = 10 jours', () => {
+    expect(CET_APPORT_ANNUEL_MAX).toBe(10);
   });
 
-  it('apport annuel max = 10 RTC + 5 CA = 15', () => {
-    expect(CET_APPORT_ANNUEL_MAX).toBe(RTC_MAX_JOURS_CET + CA_MAX_VERS_CET);
+  // Le plafond annuel n'est PAS la somme des limites par source : celles-ci se
+  // disputent les places. Avec 10 j/an, les seuls RTC peuvent tout consommer —
+  // c'est ce qui rend le conseil « gardez 5 CA pour le CET » faux dans ce cas.
+  it('le plafond annuel est inférieur à la somme des sources', () => {
+    const sommeDesSources = RTC_MAX_JOURS_CET + CA_MAX_VERS_CET + CA_HP_BONUS + HS_MAX_VERS_CET;
+    expect(CET_APPORT_ANNUEL_MAX).toBeLessThan(sommeDesSources);
+  });
+
+  it('un jour de CET payé en HS coûte 8h21, comme en RTC', () => {
+    // Guide APORTT : « base 8h21/jour pour les cycliques », plafond 41h45 = 5 × 8h21.
+    expect(HS_COUT_PAR_JOUR_CET).toBe(RTC_COUT_PAR_JOUR_CET);
+    expect(HS_MAX_MINUTES_VERS_CET).toBe(41 * 60 + 45);
   });
 });
 

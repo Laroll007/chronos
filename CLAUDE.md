@@ -259,7 +259,7 @@ app/onboarding/page.tsx         ← Server Component (HTML statique)
 | RTC net | 175h01 (brut - JS 12h08 - indemnisables 97h04) | 31/12 | Partie |
 | RPS | ~126h06/an | Illimité | Non |
 | HS | Max 160h | Illimité | Max 5j |
-| CET | Max 60j | - | +15j/an max |
+| CET | Max 60j | - | +10j/an max |
 
 ### CA par cycle (ne pas hardcoder 25)
 

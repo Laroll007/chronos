@@ -28,17 +28,18 @@ describe('Bilan de fin d’année', () => {
   });
 
   it('n’annonce pas 5 CA épargnables si le RTC a déjà pris les places', () => {
-    // 15 places : RTC en prend 10, CA HP 2 → il n'en reste que 3 pour les CA.
+    // Les sources se disputent les places du plafond annuel. Avec un RTC plein,
+    // il ne reste rien pour les CA : leur « réserve de 5 jours » est un mirage.
     const c = C({ ca: 18, cet: 0, rtc: 11229, caHP: 2 });
     const b = calculateYearEndBalance(c, cfg, SEPTEMBRE);
 
     expect(b.capaciteCET).toBe(CET_APPORT_ANNUEL_MAX);
-    expect(b.apportCET.rtc).toBe(10);
-    expect(b.apportCET.caHP).toBe(2);
-    expect(b.apportCET.ca).toBe(3); // et non 5
+    expect(b.apportCET.rtc).toBe(CET_APPORT_ANNUEL_MAX);
+    expect(b.apportCET.ca).toBe(0);
+    expect(b.apportCET.caHP).toBe(0);
     expect(b.apportCET.total).toBe(CET_APPORT_ANNUEL_MAX);
-    // Donc 15 CA à poser, pas 13.
-    expect(item(b, 'ca')!.aSolder).toBe(15);
+    // Donc la totalité des CA est à poser.
+    expect(item(b, 'ca')!.aSolder).toBe(18);
   });
 
   it('respecte les CA que l’agent a sécurisés (son intention passe devant)', () => {

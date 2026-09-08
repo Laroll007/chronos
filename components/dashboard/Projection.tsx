@@ -11,7 +11,7 @@ import {
   RTC_MAX_JOURS_CET,
   CA_MAX_VERS_CET,
   HS_MAX_VERS_CET,
-  HEURES_PAR_JOUR,
+  HS_COUT_PAR_JOUR_CET,
 } from '@/lib/constants';
 import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, ShieldCheck, PiggyBank } from 'lucide-react';
 
@@ -144,8 +144,9 @@ export function Projection({ currentCET, counters, projection, onEpargneCET, onU
   const rtcDisabled = counters.rtc < RTC_COUT_PAR_JOUR_CET;
   const caHPDisabled = counters.caHP === 0;
   const caDisabled = counters.ca === 0;
-  const hsJours = Math.floor(counters.hs / HEURES_PAR_JOUR);
-  const hsDisabled = counters.hs < HEURES_PAR_JOUR;
+  // 8h21 par jour de CET, comme les RTC (guide APORTT), et non la journée de 12h08.
+  const hsJours = Math.floor(counters.hs / HS_COUT_PAR_JOUR_CET);
+  const hsDisabled = counters.hs < HS_COUT_PAR_JOUR_CET;
 
   return (
     <Card className="glass border-white/10 overflow-hidden">

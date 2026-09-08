@@ -1,8 +1,9 @@
 // Bilan de fin d'année : ce qui sera réellement perdu au 31/12 si rien n'est fait.
 //
-// Le point clé : le CET n'accepte que 15 jours par an (et 60 au total). Les sources
-// se disputent donc ces places. Si 10 jours partent en RTC, il ne reste que 5 places :
-// inutile de « garder 5 CA pour le CET », ils ne rentreront pas — il faut les poser.
+// Le point clé : le CET n'accepte qu'un nombre limité de jours par an
+// (CET_APPORT_ANNUEL_MAX) et 60 au total. Les sources se disputent donc ces
+// places : si les RTC les consomment, « garder 5 CA pour le CET » est un mauvais
+// conseil — ces CA ne rentreront pas et sont perdus s'ils ne sont pas posés.
 // À l'inverse, les CA que l'agent a explicitement sécurisés (`caReservesCET`) ne
 // doivent jamais apparaître comme « à solder ».
 
@@ -12,6 +13,7 @@ import {
   CET_APPORT_ANNUEL_MAX,
   CA_MAX_VERS_CET,
   HS_MAX_VERS_CET,
+  HS_COUT_PAR_JOUR_CET,
   RTC_MAX_JOURS_CET,
   RTC_COUT_PAR_JOUR_CET,
   RTC_RESERVES_CET,
@@ -98,7 +100,7 @@ function repartirCET(counters: Counters) {
 
   // 5. HS.
   if (reste > 0) {
-    apport.hs = Math.min(HS_MAX_VERS_CET, Math.floor(counters.hs / HEURES_PAR_JOUR), reste);
+    apport.hs = Math.min(HS_MAX_VERS_CET, Math.floor(counters.hs / HS_COUT_PAR_JOUR_CET), reste);
     reste -= apport.hs;
   }
 

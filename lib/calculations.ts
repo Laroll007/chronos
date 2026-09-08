@@ -31,6 +31,7 @@ import {
   RPS_PAR_DIMANCHE,
   HS_MAX_STOCKABLES,
   HS_MAX_VERS_CET,
+  HS_COUT_PAR_JOUR_CET,
   CET_PLAFOND,
   CET_APPORT_ANNUEL_MAX,
   JOURNEE_SOLIDARITE,
@@ -607,7 +608,7 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
 
   // 4. HS (max 5 jours)
   if (resteBesoin > 0) {
-    const hsJours = Math.floor(counters.hs / HEURES_PAR_JOUR);
+    const hsJours = Math.floor(counters.hs / HS_COUT_PAR_JOUR_CET);
     apport.hs = Math.min(HS_MAX_VERS_CET, hsJours, resteBesoin);
   }
 
