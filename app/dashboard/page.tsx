@@ -178,7 +178,7 @@ export default function DashboardPage() {
   // Changement de cycle : les compteurs et l'historique sont conservés, seul le
   // calendrier est recalculé. On purge les caches de `calculations`, dont les clés
   // ne couvrent pas tous les champs du cycle (ni `type`, ni `heuresSemaine`).
-  const handleUpdateCycle = useCallback((config: CycleConfig) => {
+  const handleUpdateCycle = useCallback((config: Partial<CycleConfig>) => {
     const ok = updateCycle(config);
     if (ok) {
       clearCalculationCaches();
@@ -486,6 +486,8 @@ export default function DashboardPage() {
           onUpdateCounters={updateCounters}
           caTotal={getCATotalForCycle(cycleConfig)}
           dayMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
+          cycleConfig={cycleConfig}
+          onUpdateCycle={handleUpdateCycle}
         />
       </Suspense>
 

@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Counters, Recommendation } from '@/lib/types';
+import { Counters, CycleConfig, Recommendation } from '@/lib/types';
 import { CountersOverview } from './CountersOverview';
 import {
   Dialog,
@@ -22,6 +22,8 @@ interface CountersDrawerProps {
   onUpdateCounters: (updates: Partial<Counters>) => void;
   caTotal?: number;
   dayMinutes?: number;
+  cycleConfig?: CycleConfig;
+  onUpdateCycle?: (updates: Partial<CycleConfig>) => boolean;
 }
 
 export function CountersDrawer({
@@ -32,6 +34,8 @@ export function CountersDrawer({
   onUpdateCounters,
   caTotal,
   dayMinutes,
+  cycleConfig,
+  onUpdateCycle,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -76,7 +80,9 @@ export function CountersDrawer({
             <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
               Compteurs
             </h3>
-            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes} />
+            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes}
+            cycleConfig={cycleConfig}
+            onUpdateCycle={onUpdateCycle} />
           </div>
 
           {(highPriority.length > 0 || mediumPriority.length > 0) && (

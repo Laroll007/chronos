@@ -67,6 +67,8 @@ export const RTC_LIBRES = RTC_TOTAL_ANNUEL - RTC_RESERVES_CET; // 103h39 = 6219 
 // RPS - RÉCUPÉRATION DIMANCHE
 // ============================================
 export const RPS_PAR_DIMANCHE = 4 * 60 + 51; // 4h51 = 291 minutes (= 12h08 × 0.4)
+// Coefficient de nuit (créneau 21h–6h) : 12h08 × 0,1 ≈ 1h13.
+export const RPS_PAR_NUIT = Math.round(HEURES_PAR_JOUR * 0.1); // 73 minutes
 export const RPS_DIMANCHES_ANNUELS_ALTERNE = 26; // dimanches/an pour cycle alterné
 export const RPS_ANNUEL_ESTIME = RPS_PAR_DIMANCHE * RPS_DIMANCHES_ANNUELS_ALTERNE; // 126h06 = 7566 minutes
 

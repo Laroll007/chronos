@@ -11,7 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Counters } from '@/lib/types';
+import { Counters, CycleConfig, WeekHours } from '@/lib/types';
+import { RPSBaremeEditor } from './RPSBaremeEditor';
 import { formatMinutes } from '@/lib/calculations';
 import {
   CA_TOTAL_ANNUEL,
@@ -28,11 +29,14 @@ import {
   CONGES_BONIFIES_EXPIRATION_MOIS,
   CONGES_BONIFIES_REPORT_MAX_MOIS,
 } from '@/lib/constants';
-import { AlertTriangle, Shield, TrendingUp, Info, Pencil, X } from 'lucide-react';
+import { AlertTriangle, Shield, TrendingUp, Info, Pencil, X, Sliders } from 'lucide-react';
 
 interface CounterDetailsModalProps {
   counterId: string | null;
   counters: Counters;
+  /** Nécessaires au paramétrage du barème RPS (fiche RPS uniquement). */
+  cycleConfig?: CycleConfig;
+  onUpdateCycle?: (updates: Partial<CycleConfig>) => boolean;
   caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
   onClose: () => void;
   onUpdate: (updates: Partial<Counters>) => void;
@@ -87,7 +91,7 @@ function Alert({ text, type }: { text: string; type: 'warning' | 'error' | 'info
 
 const TIME_COUNTERS = ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique'];
 
-export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_ANNUEL, onClose, onUpdate }: CounterDetailsModalProps) {
+export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_ANNUEL, cycleConfig, onUpdateCycle, onClose, onUpdate }: CounterDetailsModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputH, setInputH] = useState(0);
   const [inputM, setInputM] = useState(0);
@@ -246,6 +250,21 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
             <Row label="Accumulés cette année" value={formatMinutes(accumuleCetteAnnee)} color="text-emerald-600" />
             <Row label="Total disponible" value={formatMinutes(counters.rps)} bold color="text-blue-700" separator />
             <Alert type="info" text="Les RPS (dimanches, nuits, décalés) sont reportables indéfiniment. Réserve stratégique à conserver." />
+
+            {cycleConfig && onUpdateCycle && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sliders className="w-4 h-4 text-blue-500 shrink-0" />
+                  <span className="text-sm font-semibold text-slate-700">
+                    Paramétrer mon crédit de RPS
+                  </span>
+                </div>
+                <RPSBaremeEditor
+                  cycleConfig={cycleConfig}
+                  onSave={(rpsParJour: WeekHours) => onUpdateCycle({ rpsParJour })}
+                />
+              </div>
+            )}
           </>
         );
       }

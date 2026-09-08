@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { CounterDetailsModal } from './CounterDetailsModal';
 import { CounterCard } from './CounterCard';
 import { CounterHelpModal } from '@/components/shared/CounterHelpModal';
-import { Counters } from '@/lib/types';
+import { Counters, CycleConfig } from '@/lib/types';
 import {
   CA_TOTAL_ANNUEL,
   CF_TOTAL_ANNUEL,
@@ -34,10 +34,12 @@ interface CountersOverviewProps {
   counters: Counters;
   onUpdateCounters: (updates: Partial<Counters>) => void;
   caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
+  cycleConfig?: CycleConfig;
+  onUpdateCycle?: (updates: Partial<CycleConfig>) => boolean;
   dayMinutes?: number; // durée d'un jour du régime (minutes) pour l'équivalent « ≈ Xj »
 }
 
-export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL, dayMinutes }: CountersOverviewProps) {
+export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL, dayMinutes, cycleConfig, onUpdateCycle }: CountersOverviewProps) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
@@ -295,6 +297,8 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         counterId={detailsId}
         counters={counters}
         caTotal={caTotal}
+        cycleConfig={cycleConfig}
+        onUpdateCycle={onUpdateCycle}
         onClose={() => setDetailsId(null)}
         onUpdate={onUpdateCounters}
       />

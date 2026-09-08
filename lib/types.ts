@@ -43,6 +43,13 @@ export interface CycleConfig {
   semaineActuelle: WeekType;
   semaineA: WeekSchedule;
   semaineB?: WeekSchedule; // seulement si alterné
+  // RPS crédités par jour TRAVAILLÉ, en minutes, selon le jour de la semaine.
+  // Absent = comportement historique (seuls les dimanches, 4h51).
+  // L'APORTT définit des coefficients non cumulables appliqués aux heures
+  // travaillées : 0,4 le dimanche, 0,1 pour le travail de nuit (21h–6h). Un
+  // agent de nuit récupère donc à chaque vacation, pas seulement le dimanche —
+  // d'où le paramétrage jour par jour plutôt qu'une règle figée.
+  rpsParJour?: WeekHours;
 }
 
 export interface Counters {

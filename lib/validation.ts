@@ -95,6 +95,16 @@ function checkCycleConfig(v: unknown): string[] {
       }
     }
   }
+  if (v.rpsParJour !== undefined) {
+    if (!isObj(v.rpsParJour)) {
+      errors.push('rpsParJour: objet attendu');
+    } else {
+      const r = v.rpsParJour as Record<string, unknown>;
+      for (const day of ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']) {
+        if (!isNum(r[day], 0, 1440)) errors.push(`rpsParJour.${day}: 0-1440 attendu`);
+      }
+    }
+  }
   if (!isStr(v.dateDebutCycle) || !DATE_RE.test(v.dateDebutCycle as string))
     errors.push('dateDebutCycle: YYYY-MM-DD attendu');
   if (!(WEEK_TYPES as readonly unknown[]).includes(v.semaineActuelle))
