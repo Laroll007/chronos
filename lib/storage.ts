@@ -212,7 +212,7 @@ export function migrateUserData(data: UserData): UserData {
 
     // 4. Les quotas recrédités sont ceux du régime standard. Un agent à temps
     //    partiel, arrivé en cours d'année ou en zone DOM doit les corriger :
-    //    le dashboard l'en informe une fois (cf. `basculeNotifiee`).
+    //    le dashboard l'en informe une fois (cf. `basculeAConfirmer`).
     data.lastResetYear = currentYear;
     data.basculeAConfirmer = currentYear;
     needsSave = true;
