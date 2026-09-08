@@ -564,6 +564,8 @@ export default function DashboardPage() {
                       projection={cetProjection}
                       onEpargneCET={handleEpargneCET}
                       onUpdateCounters={updateCounters}
+                      cycleConfig={cycleConfig}
+                      history={history}
                     />
                   </Suspense>
                 )}

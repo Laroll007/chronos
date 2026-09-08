@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CETProjection, Counters } from '@/lib/types';
+import { CETProjection, Counters, CycleConfig, HistoryEntry } from '@/lib/types';
+import { canEpargnerCA } from '@/lib/cet';
 import { formatMinutes } from '@/lib/calculations';
 import {
   CET_PLAFOND,
@@ -13,7 +14,7 @@ import {
   HS_MAX_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
 } from '@/lib/constants';
-import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, ShieldCheck, PiggyBank } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, ShieldCheck, PiggyBank, Lock } from 'lucide-react';
 
 interface ProjectionProps {
   currentCET: number;
@@ -23,6 +24,9 @@ interface ProjectionProps {
   onEpargneCET?: (joursCA: number) => void;
   /** Met à jour le nombre de CA sécurisés pour le CET. */
   onUpdateCounters?: (updates: Partial<Counters>) => void;
+  /** Nécessaires pour vérifier les conditions d'alimentation (fenêtre + seuil). */
+  cycleConfig?: CycleConfig;
+  history?: HistoryEntry[];
 }
 
 interface SourceRowProps {
@@ -127,7 +131,7 @@ function SourceRow({ label, sublabel, balance, towardsCET, maxAllowed, note, gai
   );
 }
 
-export function Projection({ currentCET, counters, projection, onEpargneCET, onUpdateCounters }: ProjectionProps) {
+export function Projection({ currentCET, counters, projection, onEpargneCET, onUpdateCounters, cycleConfig, history }: ProjectionProps) {
   const progressBefore = (currentCET / CET_PLAFOND) * 100;
   const progressAfter = (projection.cetFinal / CET_PLAFOND) * 100;
 
@@ -137,7 +141,12 @@ export function Projection({ currentCET, counters, projection, onEpargneCET, onU
   const reserveMax = Math.min(CA_MAX_VERS_CET, counters.ca + reserve);
   const epargneMax = Math.min(counters.ca, CA_MAX_VERS_CET, CET_PLAFOND - currentCET);
   const [epargne, setEpargne] = useState<number | ''>('');
-  const epargneValide = typeof epargne === 'number' && epargne > 0 && epargne <= epargneMax;
+  // Conditions APORTT : alimentation du 1er au 31 janvier, et seuil de congés
+  // déjà pris dans l'année de référence.
+  const verdict = cycleConfig ? canEpargnerCA(cycleConfig, history ?? []) : null;
+  const epargneOuverte = verdict?.ok ?? true;
+  const epargneValide =
+    epargneOuverte && typeof epargne === 'number' && epargne > 0 && epargne <= epargneMax;
 
   // Calculs des soldes lisibles
   const rtcJoursDisponibles = Math.floor(counters.rtc / RTC_COUT_PAR_JOUR_CET);
@@ -327,6 +336,20 @@ export function Projection({ currentCET, counters, projection, onEpargneCET, onU
               Transfère des CA vers votre CET. Ces jours <strong>ne sont pas posés</strong> sur
               le calendrier : ils quittent vos CA et rejoignent votre solde CET.
             </p>
+
+            {verdict && !verdict.ok && (
+              <div className="flex items-start gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 px-2.5 py-2">
+                <Lock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="text-[11px] text-amber-200/90">
+                  <span className="font-medium text-amber-300">Épargne fermée.</span> {verdict.raison}
+                  {verdict.fenetreOuverte && (
+                    <span className="block mt-0.5 opacity-80">
+                      Congés annuels posés : {verdict.poses} / {verdict.seuil} requis.
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <input
                 type="number"
@@ -337,7 +360,8 @@ export function Projection({ currentCET, counters, projection, onEpargneCET, onU
                 inputMode="numeric"
                 aria-label="Nombre de CA à épargner"
                 onChange={(e) => setEpargne(parseInt(e.target.value) || '')}
-                className="w-20 rounded-md border border-emerald-500/30 bg-background px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={!epargneOuverte}
+                className="w-20 rounded-md border border-emerald-500/30 bg-background px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
               />
               <span className="text-xs text-muted-foreground">
                 jour(s) · CET {currentCET}j → {currentCET + (epargneValide ? epargne : 0)}j

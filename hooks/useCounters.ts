@@ -13,6 +13,7 @@ import { CET_PLAFOND, CA_MAX_VERS_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
+import { canEpargnerCA } from '@/lib/cet';
 
 /**
  * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
@@ -338,6 +339,13 @@ export function useCounters() {
       if (joursCA <= 0) return { success: false, error: 'Nombre de jours invalide' };
       if (joursCA > CA_MAX_VERS_CET) {
         return { success: false, error: `Max ${CA_MAX_VERS_CET}j de CA classiques vers le CET par an (règle APORTT)` };
+      }
+      // Conditions du guide APORTT : fenêtre du 1er au 31 janvier, et seuil de
+      // congés déjà pris. Vérifiées ici pour que le blocage vaille quel que soit
+      // le chemin d'appel, l'UI se contentant de l'expliquer en amont.
+      const verdict = canEpargnerCA(userData.cycleConfig, userData.history);
+      if (!verdict.ok) {
+        return { success: false, error: verdict.raison };
       }
       if (joursCA > userData.counters.ca) {
         return { success: false, error: `Seulement ${userData.counters.ca} CA disponibles` };
