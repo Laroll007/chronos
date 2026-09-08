@@ -1,7 +1,8 @@
 // Export PDF pour Chronos - Rapport annuel et récapitulatif CET
 
 import { Counters, CycleConfig, HistoryEntry } from './types';
-import { formatMinutes, getRTCLibres, calculateOptimalCETStrategy, getWeeklyMinutes } from './calculations';
+import { formatMinutes, getRTCLibres, getWeeklyMinutes } from './calculations';
+import { calculateOptimalCETStrategy } from './cet';
 import {
   CA_MAX_VERS_CET,
   RTC_RESERVES_CET,

@@ -15,9 +15,11 @@ import {
   getSeuilCAPourEpargne,
   isPeriodeAlimentationCET,
 } from '@/lib/cet';
-import { DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
+import { DEFAULT_CYCLE_CONFIG, DEFAULT_COUNTERS } from '@/lib/storage';
+import { calculateOptimalCETStrategy } from '@/lib/cet';
+import { calculateYearEndBalance } from '@/lib/yearEnd';
 import { DEFAULT_HEBDO_SCHEDULE, DEFAULT_HEBDO_HEURES } from '@/lib/types';
-import type { CycleConfig, HistoryEntry } from '@/lib/types';
+import type { CycleConfig, HistoryEntry, Counters } from '@/lib/types';
 
 const CYCLIQUE = DEFAULT_CYCLE_CONFIG; // 18 CA
 const HEBDO: CycleConfig = {
@@ -117,5 +119,36 @@ describe('Seuil de congés pris', () => {
     const v = canEpargnerCA(CYCLIQUE, history, JANVIER);
     expect(v.poses).toBe(0);
     expect(v.ok).toBe(false);
+  });
+});
+
+describe('Répartition de l’apport CET — source unique', () => {
+  // Régression : la répartition existait en deux exemplaires — Projection du
+  // Profil et bilan de fin d'année — et seul le second respectait les CA
+  // sécurisés. Les deux écrans annonçaient des chiffres différents pour les
+  // mêmes données.
+  const C = (o: Partial<Counters> = {}): Counters => ({ ...DEFAULT_COUNTERS, ...o });
+
+  it('le Profil et le bilan annoncent la même répartition', () => {
+    for (const profil of [
+      { ca: 18, caReservesCET: 5, rtc: 11229, caHP: 2, hs: 3000 },
+      { ca: 18, rtc: 11229, caHP: 2 },
+      { ca: 18, caReservesCET: 5, rtc: 0, hasRTC: false, caHP: 2, hs: 3000 },
+      { ca: 0, rtc: 0, hasRTC: false, caHP: 0, hs: 0 },
+      { ca: 18, cet: 58, rtc: 11229 },
+    ]) {
+      const c = C(profil);
+      const proj = calculateOptimalCETStrategy(c).apportCET;
+      const bil = calculateYearEndBalance(c, CYCLIQUE, new Date(2026, 8, 15)).apportCET;
+      expect(proj, JSON.stringify(profil)).toEqual({
+        rtc: bil.rtc, caHP: bil.caHP, ca: bil.ca, hs: bil.hs,
+      });
+    }
+  });
+
+  it('les CA sécurisés passent avant les RTC dans les deux écrans', () => {
+    const c = C({ ca: 18, caReservesCET: 5, rtc: 11229, caHP: 2 });
+    expect(calculateOptimalCETStrategy(c).apportCET.ca).toBe(5);
+    expect(calculateYearEndBalance(c, CYCLIQUE, new Date(2026, 8, 15)).apportCET.ca).toBe(5);
   });
 });

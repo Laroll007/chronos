@@ -79,6 +79,15 @@ describe('Bascule d’année', () => {
     expect(apres.artt).toBeUndefined();
   });
 
+  it('remet à zéro les CA sécurisés, devenus caducs', () => {
+    // La réserve visait les jours de l'année écoulée, qui viennent de basculer en
+    // report. La conserver la ferait pointer vers la nouvelle dotation, et le
+    // moteur écarterait des CA que l'agent n'a jamais mis de côté.
+    const apres = migrateUserData(finDAnnee({ ca: 5, caReservesCET: 5 })).counters;
+    expect(apres.caReservesCET).toBe(0);
+    expect(apres.caAnterieur).toBe(5); // le reliquat, lui, est bien reporté
+  });
+
   it('ne touche pas aux compteurs qui se conservent', () => {
     const avant = { rps: 5000, hs: 3000, cet: 12, hsHistorique: 800 };
     const apres = migrateUserData(finDAnnee(avant)).counters;

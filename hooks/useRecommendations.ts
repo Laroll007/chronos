@@ -8,7 +8,7 @@ import {
   getMonthlyGoals,
   countAlertsByPriority,
 } from '@/lib/recommendations';
-import { calculateOptimalCETStrategy } from '@/lib/calculations';
+import { calculateOptimalCETStrategy } from '@/lib/cet';
 
 interface RecommendationsData {
   all: Recommendation[];

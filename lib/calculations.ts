@@ -6,7 +6,6 @@ import {
   WeekSchedule,
   WeekHours,
   WeekType,
-  CETProjection,
   SimulationResult,
   CounterType,
   Alert,
@@ -18,20 +17,14 @@ import {
   CA_TOTAL_ANNUEL,
   CA_PAR_CYCLE,
   CA_HEBDO,
-  CA_MAX_VERS_CET,
   CA_REQUIS_POUR_HP,
   CA_HP_PALIER_1,
   CA_HP_BONUS,
   CF_PAR_SEMESTRE,
   RTC_RESERVES_CET,
-  RTC_LIBRES,
   RTC_COUT_PAR_JOUR_CET,
-  RTC_MAX_JOURS_CET,
   RTC_GAIN_PAR_JOUR,
   RPS_PAR_DIMANCHE,
-  HS_MAX_STOCKABLES,
-  HS_MAX_VERS_CET,
-  HS_COUT_PAR_JOUR_CET,
   CET_PLAFOND,
   CET_APPORT_ANNUEL_MAX,
   JOURNEE_SOLIDARITE,
@@ -360,7 +353,6 @@ export function calculerRTCNet(
  */
 export function isInCAHPPeriod(date: Date): boolean {
   const month = date.getMonth() + 1;
-  const day = date.getDate();
 
   // Période 1 : 01/01 - 30/04
   const inPeriod1 = month >= 1 && month <= 4;
@@ -558,77 +550,6 @@ export function getCETMargeDisponible(cetActuel: number): number {
 export function getCETApportMaxAnnee(cetActuel: number): number {
   const margePlafond = getCETMargeDisponible(cetActuel);
   return Math.min(margePlafond, CET_APPORT_ANNUEL_MAX);
-}
-
-/**
- * Calcule la stratégie CET optimale
- */
-export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
-  const apportMax = getCETApportMaxAnnee(counters.cet);
-  // Toujours cibler le maximum épargnable — pas d'objectif manuel
-  const besoin = apportMax;
-
-  if (besoin <= 0) {
-    return {
-      apportCET: { rtc: 0, caHP: 0, ca: 0, hs: 0 },
-      totalApport: 0,
-      cetFinal: counters.cet,
-      gainNetRTC: 0,
-      joursEconomises: 0,
-      joursPerdus: 0,
-      isOptimal: true,
-    };
-  }
-
-  const apport = {
-    rtc: 0,
-    caHP: 0,
-    ca: 0,
-    hs: 0,
-  };
-
-  let resteBesoin = besoin;
-
-  // 1. Priorité absolue : RTC (gain 3h47/jour)
-  const rtcDisponibles = Math.floor(counters.rtc / RTC_COUT_PAR_JOUR_CET);
-  apport.rtc = Math.min(RTC_MAX_JOURS_CET, rtcDisponibles, resteBesoin);
-  resteBesoin -= apport.rtc;
-
-  // 2. CA HP (si obtenus)
-  if (resteBesoin > 0 && counters.caHP > 0) {
-    apport.caHP = Math.min(counters.caHP, resteBesoin);
-    resteBesoin -= apport.caHP;
-  }
-
-  // 3. CA classiques (max 5)
-  if (resteBesoin > 0) {
-    apport.ca = Math.min(CA_MAX_VERS_CET, counters.ca, resteBesoin);
-    resteBesoin -= apport.ca;
-  }
-
-  // 4. HS (max 5 jours)
-  if (resteBesoin > 0) {
-    const hsJours = Math.floor(counters.hs / HS_COUT_PAR_JOUR_CET);
-    apport.hs = Math.min(HS_MAX_VERS_CET, hsJours, resteBesoin);
-  }
-
-  const totalApport = apport.rtc + apport.caHP + apport.ca + apport.hs;
-  const gainNetRTC = apport.rtc * RTC_GAIN_PAR_JOUR;
-
-  // Calcul des jours perdus (CA et RTC libres non utilisés)
-  const caExcedentaires = Math.max(0, counters.ca - CA_MAX_VERS_CET - apport.ca);
-  const rtcLibresRestants = Math.max(0, getRTCLibres(counters.rtc) - (apport.rtc * RTC_COUT_PAR_JOUR_CET));
-  const rtcJoursPerdus = Math.floor(rtcLibresRestants / HEURES_PAR_JOUR);
-
-  return {
-    apportCET: apport,
-    totalApport,
-    cetFinal: counters.cet + totalApport,
-    gainNetRTC,
-    joursEconomises: Math.floor(gainNetRTC / HEURES_PAR_JOUR),
-    joursPerdus: caExcedentaires + rtcJoursPerdus,
-    isOptimal: totalApport >= besoin,
-  };
 }
 
 // ============================================

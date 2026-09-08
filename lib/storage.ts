@@ -190,6 +190,12 @@ export function migrateUserData(data: UserData): UserData {
     c.caAnterieur = c.ca;
     c.caHPAnterieur = c.caHP;
 
+    //    Les CA « sécurisés pour le CET » visaient les jours de l'année écoulée,
+    //    qui viennent de basculer en report. Conserver le nombre le ferait
+    //    pointer vers la nouvelle dotation, et le moteur écarterait des CA que
+    //    l'agent n'a jamais mis de côté.
+    c.caReservesCET = 0;
+
     // 2. Compteurs de consommation remis à zéro.
     c.caPosesHorsPeriode = 0;
     c.caHP = 0;
