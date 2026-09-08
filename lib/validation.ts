@@ -234,7 +234,7 @@ export function validateUserData(data: unknown): ValidationResult<UserData> {
   ];
 
   if (data.schemaVersion !== undefined && !isNum(data.schemaVersion, 0)) errors.push('schemaVersion: nombre attendu');
-  if (data.basculeNotifiee !== undefined && !isNum(data.basculeNotifiee, 0)) errors.push('basculeNotifiee: nombre attendu');
+  if (data.basculeAConfirmer !== undefined && !isNum(data.basculeAConfirmer, 0)) errors.push('basculeAConfirmer: nombre attendu');
   if (!isBool(data.isOnboarded)) errors.push('isOnboarded: boolean attendu');
 
   if (errors.length > 0) {

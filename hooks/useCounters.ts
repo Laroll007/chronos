@@ -105,16 +105,16 @@ export function useCounters() {
 
   // Une bascule d'année vient d'avoir lieu et l'agent n'en a pas été informé :
   // ses soldes ont été recrédités aux quotas STANDARDS, qu'il doit vérifier.
-  const basculeAnnuelleAConfirmer = useMemo(() => {
-    if (!userData?.lastResetYear) return null;
-    if ((userData.basculeNotifiee ?? 0) >= userData.lastResetYear) return null;
-    return userData.lastResetYear;
-  }, [userData]);
+  const basculeAnnuelleAConfirmer = useMemo(
+    () => userData?.basculeAConfirmer ?? null,
+    [userData]
+  );
 
   const confirmerBasculeAnnuelle = useCallback(() => {
     const current = userDataRef.current;
-    if (!current?.lastResetYear) return;
-    save({ ...current, basculeNotifiee: current.lastResetYear });
+    if (!current?.basculeAConfirmer) return;
+    const { basculeAConfirmer: _vu, ...reste } = current;
+    save(reste as typeof current);
   }, [save]);
 
   // Initialiser avec les valeurs par défaut

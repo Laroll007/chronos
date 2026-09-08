@@ -165,6 +165,31 @@ describe('Sauvegarde — aller-retour export/import', () => {
     expect(reloaded.cet).toBe(80);
   });
 
+  it('un import n’écrase JAMAIS les soldes restaurés', () => {
+    // Régression : `importData` ne posait pas `lastResetYear`, si bien que le
+    // chargement suivant croyait à un changement d'année et remplaçait les soldes
+    // importés par les quotas annuels — l'inverse exact du but d'une restauration.
+    saveUserData(userDataWith([poseEntry()]));
+    const sauvegarde = exportData()!;
+
+    // Sauvegarde d'un agent en cours d'année : soldes entamés.
+    sauvegarde.counters = {
+      ...DEFAULT_COUNTERS,
+      ca: 6, caConsommes: 12, cf: 1500, rtc: 900, cet: 8,
+    };
+
+    store.clear(); // nouvel appareil : rien en local
+    expect(importData(JSON.stringify(sauvegarde), false).success).toBe(true);
+
+    const relu = loadUserData()!;
+    expect(relu.counters.ca).toBe(6);        // et non 18
+    expect(relu.counters.cf).toBe(1500);     // et non 6552
+    expect(relu.counters.rtc).toBe(900);
+    expect(relu.counters.caConsommes).toBe(12);
+    expect(relu.counters.caAnterieur).toBe(0); // pas de faux report
+    expect(relu.basculeAConfirmer).toBeUndefined(); // pas de message intempestif
+  });
+
   it('l’import en fusion conserve l’historique existant', () => {
     saveUserData(userDataWith([poseEntry({ id: 'existant' })]));
     const exported = exportData()!;

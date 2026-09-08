@@ -214,6 +214,7 @@ export function migrateUserData(data: UserData): UserData {
     //    partiel, arrivé en cours d'année ou en zone DOM doit les corriger :
     //    le dashboard l'en informe une fois (cf. `basculeNotifiee`).
     data.lastResetYear = currentYear;
+    data.basculeAConfirmer = currentYear;
     needsSave = true;
   }
 
@@ -466,6 +467,17 @@ export function importData(jsonData: string, merge: boolean = false): { success:
     const data = validation.data;
     const currentData = loadUserData();
 
+    // ⚠️ `lastResetYear` et `schemaVersion` sont indispensables ici : sans eux,
+    // `migrateUserData` croit à un changement d'année au prochain chargement et
+    // ÉCRASE les soldes qu'on vient d'importer par les quotas annuels — soit
+    // exactement l'inverse du but d'une restauration de sauvegarde.
+    const commun = {
+      lastUpdated: new Date().toISOString(),
+      lastResetYear: currentData?.lastResetYear ?? new Date().getFullYear(),
+      schemaVersion: SCHEMA_VERSION,
+      isOnboarded: true,
+    };
+
     let newData: UserData;
     if (merge && currentData) {
       // Fusion : garde l'historique existant + nouveau
@@ -473,8 +485,7 @@ export function importData(jsonData: string, merge: boolean = false): { success:
         cycleConfig: data.cycleConfig,
         counters: data.counters,
         history: [...currentData.history, ...data.history],
-        lastUpdated: new Date().toISOString(),
-        isOnboarded: true,
+        ...commun,
       };
     } else {
       // Remplacement total
@@ -482,8 +493,7 @@ export function importData(jsonData: string, merge: boolean = false): { success:
         cycleConfig: data.cycleConfig,
         counters: data.counters,
         history: data.history,
-        lastUpdated: new Date().toISOString(),
-        isOnboarded: true,
+        ...commun,
       };
     }
 

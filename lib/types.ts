@@ -123,9 +123,11 @@ export interface UserData {
   // Numéro de schéma : marque les migrations ponctuelles déjà appliquées, pour
   // qu'elles ne se rejouent pas à chaque chargement (cf. migrateUserData).
   schemaVersion?: number;
-  // Année pour laquelle l'agent a déjà été informé de la bascule (recrédit des
-  // quotas). Évite de le prévenir à chaque ouverture.
-  basculeNotifiee?: number;
+  // Année d'une bascule qui vient d'avoir lieu et dont l'agent n'a pas encore
+  // été informé. Posé UNIQUEMENT par le recrédit annuel, et effacé dès que le
+  // message a été vu. Un champ « déjà notifié » ne convenait pas : absent chez
+  // les utilisateurs existants, il déclenchait le message pour tout le monde.
+  basculeAConfirmer?: number;
   isOnboarded: boolean;
 }
 

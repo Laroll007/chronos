@@ -110,6 +110,30 @@ describe('Bascule d’année', () => {
   });
 });
 
+describe('Information de bascule', () => {
+  // Régression : le drapeau était « année déjà notifiée ». Absent chez tous les
+  // utilisateurs existants, il déclenchait le message à la première ouverture
+  // après mise à jour — en septembre, sans qu'aucune bascule ait eu lieu.
+  it('ne signale rien sans bascule réelle', () => {
+    expect(migrateUserData(donnees({ ca: 6 }, { lastResetYear: ANNEE })).basculeAConfirmer)
+      .toBeUndefined();
+  });
+
+  it('signale une bascule qui vient d’avoir lieu', () => {
+    expect(migrateUserData(finDAnnee({ ca: 6 })).basculeAConfirmer).toBe(ANNEE);
+  });
+
+  it('ne resignale rien au chargement suivant', () => {
+    const apres = migrateUserData(finDAnnee({ ca: 6 }));
+    expect(apres.basculeAConfirmer).toBe(ANNEE);
+
+    // L'agent a vu le message : le drapeau est retiré (cf. confirmerBasculeAnnuelle).
+    delete apres.basculeAConfirmer;
+    expect(migrateUserData(JSON.parse(JSON.stringify(apres))).basculeAConfirmer)
+      .toBeUndefined();
+  });
+});
+
 describe('Migration ponctuelle CF/RTC', () => {
   it('n’est plus rejouée une fois le schéma à jour', () => {
     // Agent ayant légitimement soldé ses RTC : le compteur doit rester actif.
