@@ -412,6 +412,30 @@ export function getCANeededForHP(caPosesHorsPeriode: number): number {
 }
 
 /**
+ * Bonus CA HP déjà posé, déduit de l'écart entre l'acquis et le solde restant.
+ */
+export function getCAHPUtilises(caPosesHorsPeriode: number, caHPRestants: number): number {
+  return Math.max(0, checkCAHPCondition(caPosesHorsPeriode) - caHPRestants);
+}
+
+/**
+ * Nouveau solde de CA HP quand le nombre de CA posés hors période change.
+ *
+ * Conserve le nombre de jours DÉJÀ POSÉS plutôt que le solde : un agent qui
+ * déclare 8 CA hors période puis corrige à 9 ne doit pas voir revenir un bonus
+ * qu'il a consommé. Et replafonner le solde (`min(solde, acquis)`) le ferait
+ * partir de zéro à la première saisie — le bonus ne serait jamais crédité.
+ */
+export function ajusterSoldeCAHP(
+  caPosesAvant: number,
+  caHPRestantsAvant: number,
+  caPosesApres: number
+): number {
+  const utilises = getCAHPUtilises(caPosesAvant, caHPRestantsAvant);
+  return Math.max(0, checkCAHPCondition(caPosesApres) - utilises);
+}
+
+/**
  * CA restants à poser pour atteindre le PROCHAIN palier (1er ou 2e jour de bonus).
  * 0 si les deux paliers sont déjà franchis.
  */

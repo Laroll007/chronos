@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Counters, CycleConfig } from '@/lib/types';
 import { COUNTER_LABELS, COUNTER_COLORS } from '@/lib/constants';
-import { getCATotalForCycle, checkCAHPCondition } from '@/lib/calculations';
+import { getCATotalForCycle, checkCAHPCondition, ajusterSoldeCAHP, getCAHPUtilises } from '@/lib/calculations';
 import { DEFAULT_COUNTERS } from '@/lib/storage';
 import { ChevronRight, ChevronLeft, Sparkles, ShieldCheck, ListChecks } from 'lucide-react';
 import { CounterHelpButton as HelpButton, CounterHelpModal as HelpModal } from '@/components/shared/CounterHelpModal';
@@ -157,6 +157,9 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
 
   // Nombre de CA annuels selon le cycle (hebdo = 25, sinon 18/23)
   const caTotal = getCATotalForCycle(cycleConfig);
+  // Bonus CA HP acquis d'après les CA posés hors période, et part déjà consommée.
+  const caHPAcquis = checkCAHPCondition(counters.caPosesHorsPeriode);
+  const caHPUtilises = getCAHPUtilises(counters.caPosesHorsPeriode, counters.caHP);
 
   // Aucun pré-cochage : l'utilisateur coche lui-même ce qu'il possède
   const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(new Set(DEFAULT_SELECTED));
@@ -433,16 +436,39 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
                 <DaysInput
                   label="CA posés hors période"
                   value={counters.caPosesHorsPeriode}
-                  onChange={(v) => { updateCounter('caPosesHorsPeriode', v); updateCounter('caHP', checkCAHPCondition(v)); }}
+                  onChange={(v) => {
+                    updateCounter('caPosesHorsPeriode', v);
+                    // Le bonus acquis change : on conserve le nombre de jours
+                    // DÉJÀ POSÉS et on en déduit le nouveau solde. Replafonner le
+                    // solde ferait repartir de zéro (min(0, 2) = 0) et le bonus
+                    // ne serait jamais crédité à la première saisie.
+                    updateCounter('caHP', ajusterSoldeCAHP(counters.caPosesHorsPeriode, counters.caHP, v));
+                  }}
                   max={caTotal}
                   hint="01/01-30/04 ou 01/11-31/12 — 4 CA : 1 jour de bonus, 8 CA : 2 jours"
                   colorKey="caHP"
                 />
               </div>
-              {checkCAHPCondition(counters.caPosesHorsPeriode) > 0 && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <Sparkles className="w-5 h-5 text-emerald-500" />
-                  <span className="text-emerald-700 font-medium">{checkCAHPCondition(counters.caPosesHorsPeriode)} CA Hors Période bonus obtenu{checkCAHPCondition(counters.caPosesHorsPeriode) > 1 ? 's' : ''} !</span>
+
+              {/* Bonus acquis ≠ bonus restant : un agent inscrit en cours d'année
+                  a pu déjà poser ses CA HP. Sans cette distinction, l'app les lui
+                  recréditait. */}
+              {caHPAcquis > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <Sparkles className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span className="text-emerald-700 font-medium">
+                      {caHPAcquis} CA Hors Période bonus acquis{caHPAcquis > 1 ? '' : ''}
+                    </span>
+                  </div>
+                  <DaysInput
+                    label="Dont déjà posés"
+                    value={caHPUtilises}
+                    onChange={(v) => updateCounter('caHP', Math.max(0, caHPAcquis - Math.min(v, caHPAcquis)))}
+                    max={caHPAcquis}
+                    hint={`Il vous en reste ${counters.caHP} sur ${caHPAcquis}`}
+                    colorKey="caHP"
+                  />
                 </div>
               )}
             </div>

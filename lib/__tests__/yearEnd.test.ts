@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { calculateYearEndBalance, BILAN_MOIS_DEBUT } from '@/lib/yearEnd';
-import { simulatePose, countCAHPDays, countWorkingDays } from '@/lib/calculations';
+import { simulatePose, countCAHPDays, countWorkingDays, ajusterSoldeCAHP, getCAHPUtilises } from '@/lib/calculations';
 import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
 import { CA_HP_BONUS, CET_APPORT_ANNUEL_MAX, CA_MAX_VERS_CET } from '@/lib/constants';
 import type { Counters } from '@/lib/types';
@@ -174,6 +174,34 @@ describe('CA HP — cohérence du bonus', () => {
     expect(r.newCounters.caPosesHorsPeriode).toBe(1);
     const hors = simulatePose(C({ ca: 18 }), 'ca', 1, new Date(2026, 6, 10));
     expect(hors.newCounters.caPosesHorsPeriode).toBe(0);
+  });
+
+  // Signalé par l'utilisateur : l'onboarding déduisait le bonus des CA posés hors
+  // période et le créditait intégralement, sans permettre de dire qu'on l'avait
+  // DÉJÀ consommé. Un agent inscrit en cours d'année se voyait rendre 2 CA HP
+  // qu'il avait pourtant posés.
+  it('la saisie d’onboarding distingue le bonus acquis du bonus restant', () => {
+    // 8 CA hors période, aucun bonus encore posé.
+    expect(ajusterSoldeCAHP(0, 0, 8)).toBe(CA_HP_BONUS);
+
+    // L'agent déclare en avoir déjà posé 2 : il ne lui en reste aucun.
+    expect(getCAHPUtilises(8, 0)).toBe(CA_HP_BONUS);
+
+    // Il corrige sa saisie à 9 CA : le bonus consommé ne doit pas revenir.
+    expect(ajusterSoldeCAHP(8, 0, 9)).toBe(0);
+
+    // Repasser sous le palier annule l'acquis.
+    expect(ajusterSoldeCAHP(9, 0, 3)).toBe(0);
+
+    // Un agent n'ayant rien posé conserve son solde en corrigeant sa saisie.
+    expect(ajusterSoldeCAHP(8, CA_HP_BONUS, 9)).toBe(CA_HP_BONUS);
+  });
+
+  it('le bonus partiellement consommé est préservé d’un palier à l’autre', () => {
+    // 4 CA → 1 jour acquis, posé aussitôt → solde 0, utilisés 1.
+    expect(getCAHPUtilises(4, 0)).toBe(1);
+    // Il atteint 8 CA : le 2e jour est crédité, pas le premier.
+    expect(ajusterSoldeCAHP(4, 0, 8)).toBe(1);
   });
 
   it('n’accorde rien pour des CA posés en période estivale', () => {
