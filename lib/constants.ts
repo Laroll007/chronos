@@ -360,5 +360,5 @@ export const JOURS_SEMAINE = [
 // tests et au dev ; `constants.test.ts` vérifie qu'il ne diverge ni de
 // package.json ni de la version iOS — c'est ce garde-fou qui empêche le retour
 // du bug des trois numéros de version différents.
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? '1.8.0';
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? '1.9.0';
 export const STORAGE_KEY = 'chronos_data';
