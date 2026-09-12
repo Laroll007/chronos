@@ -252,7 +252,12 @@ export function RetraiteCalculator({
                     <span className="text-slate-600">{LIBELLE[d.type] ?? d.type}</span>
                     <span className="text-slate-800 font-medium">
                       {d.unite === 'jours' ? `${d.quantite} j` : formatMinutes(d.quantite)}
-                      <span className="text-slate-400 font-normal"> · {d.joursCouverts} jours couverts</span>
+                      <span className="text-slate-400 font-normal">
+                        {' · '}
+                        {d.joursCouverts < 1
+                          ? `${Math.round(d.joursCouverts * 100)} % d'une journée`
+                          : `${Math.round(d.joursCouverts * 10) / 10} jours couverts`}
+                      </span>
                     </span>
                   </div>
                 ))}

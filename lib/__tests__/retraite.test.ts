@@ -163,7 +163,37 @@ describe('Cohérence du décompte', () => {
   it('les jours couverts par compteur totalisent les jours couverts', () => {
     const r = calculerDepartRetraite(RADIATION, PROFIL, cfg, [], {}, AUJOURDHUI);
     const somme = r.detail.reduce((s, d) => s + d.joursCouverts, 0);
-    expect(somme).toBe(r.joursCouverts);
+    // Fractionnaire : une journée peut être payée par plusieurs compteurs horaires.
+    expect(somme).toBeCloseTo(r.joursCouverts, 6);
+  });
+
+  it('cumule les compteurs horaires pour couvrir une journée', () => {
+    // Cinq soldes sous la journée de 12h08 : aucun ne la couvre seul, mais leur
+    // total dépasse une journée. Exiger un compteur unique gâchait tout.
+    const miettes = C({
+      ca: 0, caHP: 0, cet: 0,
+      cf: 6 * 60, hasCF: true, rtc: 5 * 60, hasRTC: true,
+      rps: 4 * 60, hs: 3 * 60, hsHistorique: 2 * 60,
+    });
+    const r = calculerDepartRetraite(
+      new Date(2026, 11, 31), miettes, cfg, [], { exclus: ['rps'] }, new Date(2026, 11, 1)
+    );
+    // 6+5+3+2 = 16h, soit une journée de 12h08 et un reliquat.
+    expect(r.joursCouverts).toBe(1);
+    expect(r.detail.length).toBeGreaterThan(1); // plusieurs compteurs mobilisés
+    expect(r.reliquatMinutes).toBeLessThan(12 * 60 + 8);
+  });
+
+  it('s’arrête quand le reliquat ne couvre plus une journée entière', () => {
+    const presqueRien = C({
+      ca: 0, caHP: 0, cet: 0,
+      cf: 2 * 60, hasCF: true, rtc: 0, hasRTC: false, rps: 0, hs: 60,
+    });
+    const r = calculerDepartRetraite(
+      new Date(2026, 11, 31), presqueRien, cfg, [], { exclus: ['rps'] }, new Date(2026, 11, 1)
+    );
+    expect(r.joursCouverts).toBe(0);
+    expect(r.reliquatMinutes).toBe(3 * 60);
   });
 
   it('ne consomme jamais plus que le stock disponible', () => {

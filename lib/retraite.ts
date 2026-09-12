@@ -275,10 +275,12 @@ function parcourir(
   const minutes = new Map(stockMinutesSrc);
   const consomme = new Map<CounterType, { quantite: number; joursCouverts: number }>();
 
-  const noter = (type: CounterType, quantite: number) => {
+  // `part` = fraction de journée couverte : une journée peut être payée par
+  // plusieurs compteurs horaires cumulés, chacun n'en couvrant qu'un morceau.
+  const noter = (type: CounterType, quantite: number, part: number) => {
     const e = consomme.get(type) ?? { quantite: 0, joursCouverts: 0 };
     e.quantite += quantite;
-    e.joursCouverts += 1;
+    e.joursCouverts += part;
     consomme.set(type, e);
   };
 
@@ -303,14 +305,27 @@ function parcourir(
     const typeJour = COMPTEURS_RETRAITE.find((t) => (jours.get(t) ?? 0) >= 1);
     if (typeJour) {
       jours.set(typeJour, (jours.get(typeJour) ?? 0) - 1);
-      noter(typeJour, 1);
+      noter(typeJour, 1, 1);
     } else {
-      // Puis les compteurs horaires, si le solde couvre la journée entière.
+      // Puis les compteurs horaires, CUMULÉS pour couvrir la journée. Exiger
+      // qu'un seul compteur la couvre entièrement laissait dormir tous les
+      // reliquats : cinq soldes de quelques heures, soit plus d'une journée au
+      // total, ne couvraient aucun jour. C'est précisément ce qu'un agent fait
+      // en fin de carrière — il vide tout, en mélangeant les compteurs.
       const cout = getJourMinutes(curseur, cycleConfig) || HEURES_PAR_JOUR;
-      const typeHeure = COMPTEURS_RETRAITE.find((t) => (minutes.get(t) ?? 0) >= cout);
-      if (!typeHeure) break; // plus rien ne couvre une journée complète
-      minutes.set(typeHeure, (minutes.get(typeHeure) ?? 0) - cout);
-      noter(typeHeure, cout);
+      const dispo = COMPTEURS_RETRAITE.reduce((s, t) => s + (minutes.get(t) ?? 0), 0);
+      if (dispo < cout) break; // le reliquat ne suffit plus à une journée entière
+
+      let reste = cout;
+      for (const t of COMPTEURS_RETRAITE) {
+        if (reste <= 0) break;
+        const solde = minutes.get(t) ?? 0;
+        if (solde <= 0) continue;
+        const pris = Math.min(solde, reste);
+        minutes.set(t, solde - pris);
+        noter(t, pris, pris / cout);
+        reste -= pris;
+      }
     }
 
     joursCouverts++;
