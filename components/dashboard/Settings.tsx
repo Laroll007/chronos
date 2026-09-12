@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { APP_VERSION } from '@/lib/constants';
-import { CycleConfig, HistoryEntry } from '@/lib/types';
+import { CycleConfig, Counters, HistoryEntry } from '@/lib/types';
 import { downloadExport, importData, resetAllData } from '@/lib/storage';
 import {
   Settings as SettingsIcon,
@@ -30,6 +30,7 @@ import {
   Database,
   Heart,
   Briefcase,
+  Hourglass,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -45,6 +46,10 @@ const WorkedDaysCalculator = lazy(() =>
 // Réutilise l'écran d'onboarding, qui accepte déjà un `initialConfig`.
 const CycleSetup = lazy(() =>
   import('@/components/onboarding/CycleSetup').then((m) => ({ default: m.CycleSetup }))
+);
+
+const RetraiteCalculator = lazy(() =>
+  import('@/components/dashboard/RetraiteCalculator').then((m) => ({ default: m.RetraiteCalculator }))
 );
 
 // ─── Sous-composants de mise en page ─────────────────────────────────────────
@@ -100,6 +105,7 @@ function ClickableRow({
 
 interface SettingsProps {
   cycleConfig: CycleConfig;
+  counters: Counters;
   history: HistoryEntry[];
   onReset: () => void;
   onShowWelcome?: () => void;
@@ -109,6 +115,7 @@ interface SettingsProps {
 
 export function Settings({
   cycleConfig,
+  counters,
   history,
   onReset,
   onShowWelcome,
@@ -120,6 +127,7 @@ export function Settings({
   const [showFeedback, setShowFeedback] = useState(false);
   const [showWorkedDays, setShowWorkedDays] = useState(false);
   const [showCycle, setShowCycle] = useState(false);
+  const [showRetraite, setShowRetraite] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
   const handleExport = () => {
@@ -216,6 +224,12 @@ export function Settings({
               label="Calculer les jours travaillés"
               sublabel="Sur une période, congés et CMO déduits"
               onClick={() => setShowWorkedDays(true)}
+            />
+            <ClickableRow
+              icon={<Hourglass className="w-4 h-4 text-blue-500 shrink-0" />}
+              label="Simuler mon départ à la retraite"
+              sublabel="Tous compteurs soldés : à partir de quand cesser de travailler"
+              onClick={() => setShowRetraite(true)}
             />
           </section>
 
@@ -388,6 +402,18 @@ export function Settings({
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {showRetraite && (
+        <Suspense fallback={null}>
+          <RetraiteCalculator
+            isOpen={showRetraite}
+            onClose={() => setShowRetraite(false)}
+            counters={counters}
+            cycleConfig={cycleConfig}
+            history={history}
+          />
+        </Suspense>
       )}
 
       {showWorkedDays && (
