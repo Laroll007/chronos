@@ -221,3 +221,46 @@ describe('Cohérence du décompte', () => {
     expect(r.joursCouverts).toBe(0);
   });
 });
+
+describe('Détail par provenance', () => {
+  const r = calculerDepartRetraite(RADIATION, PROFIL, cfg, [], {}, AUJOURDHUI);
+  const groupe = (o: string | number) => r.parOrigine.find((g) => g.origine === o);
+
+  it('distingue soldes actuels, dotations à venir et RPS à acquérir, dans l’ordre', () => {
+    expect(r.parOrigine.map((g) => g.origine)).toEqual(['soldes', 'rpsAVenir', 2027, 2028]);
+    expect(groupe(2028)!.prorata).toBeLessThan(1);
+    expect(groupe(2027)!.prorata).toBe(1);
+  });
+
+  it('la somme utilisée par compteur égale le total consommé', () => {
+    for (const d of r.detail) {
+      const somme = r.parOrigine
+        .flatMap((g) => g.lignes)
+        .filter((l) => l.type === d.type)
+        .reduce((s, l) => s + l.utilise, 0);
+      expect(somme).toBeCloseTo(d.quantite, 6);
+    }
+  });
+
+  it('épuise les soldes actuels avant les dotations futures', () => {
+    const caActuel = groupe('soldes')!.lignes.find((l) => l.type === 'ca')!;
+    expect(caActuel.utilise).toBe(caActuel.acquis);
+    for (const g of r.parOrigine) {
+      for (const l of g.lignes) expect(l.utilise).toBeLessThanOrEqual(l.acquis);
+    }
+  });
+
+  it('le CET non posé apparaît comme récupéré mais pas utilisé', () => {
+    const r2 = calculerDepartRetraite(RADIATION, PROFIL, cfg, [], { cetPoseEnConges: 20 }, AUJOURDHUI);
+    const cet = r2.parOrigine.find((g) => g.origine === 'soldes')!.lignes.find((l) => l.type === 'cet')!;
+    expect(cet.acquis).toBe(60);
+    expect(cet.utilise).toBe(20);
+    expect(r2.cetIndemnise).toBe(40);
+  });
+
+  it('range les CA antérieurs à part', () => {
+    const r3 = calculerDepartRetraite(RADIATION, C({ ...PROFIL, caAnterieur: 5 }), cfg, [], {}, AUJOURDHUI);
+    expect(r3.parOrigine[0].origine).toBe('anterieur');
+    expect(r3.parOrigine[0].lignes[0]).toMatchObject({ type: 'caAnterieur', acquis: 5, utilise: 5 });
+  });
+});

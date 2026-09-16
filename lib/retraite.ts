@@ -73,6 +73,29 @@ export interface ConsommationCompteur {
   joursCouverts: number;
 }
 
+/**
+ * Provenance d'un stock : reliquats de l'année précédente, soldes actuels, RPS
+ * encore à acquérir en travaillant d'ici au départ, ou dotation d'une année à
+ * venir (le numéro de l'année).
+ */
+export type OrigineStock = 'anterieur' | 'soldes' | 'rpsAVenir' | number;
+
+export interface LigneOrigine {
+  type: CounterType;
+  /** Quantité disponible depuis cette origine, dans l'unité du compteur. */
+  acquis: number;
+  /** Part effectivement utilisée pour le départ. */
+  utilise: number;
+  unite: 'jours' | 'heures';
+}
+
+export interface GroupeOrigine {
+  origine: OrigineStock;
+  /** Prorata de la dotation (années à venir uniquement). */
+  prorata?: number;
+  lignes: LigneOrigine[];
+}
+
 export interface ResultatRetraite {
   /** Dernier jour effectivement travaillé (null si les compteurs couvrent tout). */
   dernierJourTravaille: Date | null;
@@ -84,6 +107,8 @@ export interface ResultatRetraite {
   dureeCalendaire: number;
   /** Détail par compteur. */
   detail: ConsommationCompteur[];
+  /** Acquis et utilisé par provenance, dans l'ordre chronologique. */
+  parOrigine: GroupeOrigine[];
   /** Dotations futures intégrées, par année. */
   dotationsFutures: { annee: number; prorata: number; jours: number; minutes: number }[];
   /** Jours de CET non posés, donc indemnisés. */
@@ -186,10 +211,13 @@ export function calculerDepartRetraite(
   // ── Stock disponible, par compteur ────────────────────────────────────────
   const stockJours = new Map<CounterType, number>();
   const stockMinutes = new Map<CounterType, number>();
+  // Même stock, ventilé par provenance, pour le détail restitué à l'agent.
+  const lots: { origine: OrigineStock; prorata?: number; type: CounterType; acquis: number; stock: number }[] = [];
 
   for (const type of COMPTEURS_RETRAITE) {
     if (exclus.has(type)) continue;
-    let solde = soldeCourant(counters, type);
+    const soldeReel = soldeCourant(counters, type);
+    let solde = soldeReel;
     if (solde <= 0) continue;
 
     // Le CET est le seul compteur dont une part peut être indemnisée plutôt que
@@ -202,6 +230,10 @@ export function calculerDepartRetraite(
 
     if (isDayBasedType(type)) stockJours.set(type, solde);
     else stockMinutes.set(type, solde);
+    const origine = type === 'caAnterieur' || type === 'caHPAnterieur' ? 'anterieur' : 'soldes';
+    // Pour le CET, `acquis` garde le solde réel : l'écart avec `stock` est la
+    // part indemnisée.
+    lots.push({ origine, type, acquis: soldeReel, stock: solde });
   }
 
   // ── Dotations des années à venir ──────────────────────────────────────────
@@ -216,11 +248,13 @@ export function calculerDepartRetraite(
     for (const [type, valeur] of Object.entries(dot.jours) as [CounterType, number][]) {
       if (exclus.has(type) || valeur <= 0) continue;
       stockJours.set(type, (stockJours.get(type) ?? 0) + valeur);
+      lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
       totalJours += valeur;
     }
     for (const [type, valeur] of Object.entries(dot.minutes) as [CounterType, number][]) {
       if (exclus.has(type) || valeur <= 0) continue;
       stockMinutes.set(type, (stockMinutes.get(type) ?? 0) + valeur);
+      lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
       totalMinutes += valeur;
     }
     dotationsFutures.push({ annee, prorata, jours: totalJours, minutes: totalMinutes });
@@ -248,16 +282,60 @@ export function calculerDepartRetraite(
     resultat = parcourir(dateRetraite, cycleConfig, stockJours, stockMinutes);
   }
 
+  if (rpsAjoutes > 0) {
+    lots.push({ origine: 'rpsAVenir', type: 'rps', acquis: rpsAjoutes, stock: rpsAjoutes });
+  }
+
   // ── Restitution ───────────────────────────────────────────────────────────
   const cetPose = stockJours.get('cet') ?? 0;
   const cetIndemnise = exclus.has('cet') ? counters.cet : Math.max(0, counters.cet - cetPose);
 
   return {
     ...resultat,
+    parOrigine: ventilerParOrigine(lots, resultat.detail),
     dotationsFutures,
     cetIndemnise,
     indemnisationEuros: Math.round(cetIndemnise * INDEMNISATION_CET[categorie]),
   };
+}
+
+const RANG_ORIGINE = (o: OrigineStock) =>
+  o === 'anterieur' ? 0 : o === 'soldes' ? 1 : o === 'rpsAVenir' ? 2 : o;
+
+/**
+ * Répartit la consommation de chaque compteur entre ses provenances, la plus
+ * ancienne d'abord : c'est l'ordre dans lequel l'agent pose réellement ses
+ * congés, les reliquats et soldes actuels étant les premiers à périmer.
+ */
+function ventilerParOrigine(
+  lots: { origine: OrigineStock; prorata?: number; type: CounterType; acquis: number; stock: number }[],
+  detail: ConsommationCompteur[]
+): GroupeOrigine[] {
+  const aRepartir = new Map(detail.map((d) => [d.type, d.quantite]));
+  const tries = [...lots].sort((a, b) => RANG_ORIGINE(a.origine) - RANG_ORIGINE(b.origine));
+  const groupes = new Map<OrigineStock, GroupeOrigine>();
+
+  for (const lot of tries) {
+    if (lot.acquis <= 0) continue;
+    const reste = aRepartir.get(lot.type) ?? 0;
+    const utilise = Math.min(lot.stock, reste);
+    aRepartir.set(lot.type, reste - utilise);
+
+    let groupe = groupes.get(lot.origine);
+    if (!groupe) {
+      groupe = { origine: lot.origine, lignes: [] };
+      if (lot.prorata !== undefined) groupe.prorata = lot.prorata;
+      groupes.set(lot.origine, groupe);
+    }
+    groupe.lignes.push({
+      type: lot.type,
+      acquis: lot.acquis,
+      utilise,
+      unite: isDayBasedType(lot.type) ? 'jours' : 'heures',
+    });
+  }
+
+  return Array.from(groupes.values());
 }
 
 /**
@@ -270,7 +348,7 @@ function parcourir(
   cycleConfig: CycleConfig,
   stockJoursSrc: Map<CounterType, number>,
   stockMinutesSrc: Map<CounterType, number>
-): Omit<ResultatRetraite, 'dotationsFutures' | 'cetIndemnise' | 'indemnisationEuros'> {
+): Omit<ResultatRetraite, 'parOrigine' | 'dotationsFutures' | 'cetIndemnise' | 'indemnisationEuros'> {
   const jours = new Map(stockJoursSrc);
   const minutes = new Map(stockMinutesSrc);
   const consomme = new Map<CounterType, { quantite: number; joursCouverts: number }>();

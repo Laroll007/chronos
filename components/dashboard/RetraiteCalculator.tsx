@@ -7,6 +7,7 @@ import {
   COMPTEURS_RETRAITE,
   INDEMNISATION_CET,
   type CategorieAgent,
+  type GroupeOrigine,
 } from '@/lib/retraite';
 import { formatMinutes } from '@/lib/calculations';
 import { CET_SEUIL_OPTION, COUNTER_LABELS } from '@/lib/constants';
@@ -42,6 +43,21 @@ const LIBELLE: Partial<Record<CounterType, string>> = {
   hsHistorique: 'HS historiques', cet: 'CET', cet2008: 'CET 2008',
   congesBonifies: 'Congés bonifiés',
 };
+
+const formatQuantite = (q: number, unite: 'jours' | 'heures') =>
+  unite === 'jours' ? `${q.toLocaleString('fr-FR')} j` : formatMinutes(q);
+
+function titreOrigine(g: GroupeOrigine, anneeCourante: number, anneeRadiation: number): string {
+  switch (g.origine) {
+    case 'anterieur': return `Reliquats ${anneeCourante - 1}`;
+    case 'soldes': return `Soldes actuels (${anneeCourante})`;
+    case 'rpsAVenir': return "RPS acquis en travaillant d'ici au départ";
+    default:
+      return g.origine === anneeRadiation && (g.prorata ?? 1) < 1
+        ? `Dotation ${g.origine} — année de radiation (${Math.round((g.prorata ?? 1) * 100)} %)`
+        : `Dotation ${g.origine} — prise par anticipation`;
+  }
+}
 
 export function RetraiteCalculator({
   isOpen, onClose, counters, cycleConfig, history,
@@ -242,47 +258,66 @@ export function RetraiteCalculator({
             </div>
           )}
 
-          {/* Détail */}
+          {/* Détail par provenance */}
+          {resultat && dateRetraite && resultat.parOrigine.length > 0 && (
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-medium text-slate-700 mb-1">Détail par année</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Congés récupérés et utilisés, des plus anciens aux plus récents.
+              </p>
+              <div className="space-y-3">
+                {resultat.parOrigine.map((g) => (
+                  <div key={String(g.origine)}>
+                    <p className="text-xs font-semibold text-slate-700 mb-1">
+                      {titreOrigine(g, new Date().getFullYear(), dateRetraite.getFullYear())}
+                    </p>
+                    <div className="space-y-1 pl-2 border-l-2 border-blue-100">
+                      {g.lignes.map((l) => {
+                        const reste = l.acquis - l.utilise;
+                        return (
+                          <div key={l.type} className="flex items-start justify-between gap-2 text-xs">
+                            <span className="text-slate-600">{LIBELLE[l.type] ?? l.type}</span>
+                            <span className="text-right">
+                              <span className="text-slate-800 font-medium">
+                                {formatQuantite(l.utilise, l.unite)} utilisé{l.unite === 'heures' ? 'es' : 's'}
+                              </span>
+                              <span className="text-slate-400"> / {formatQuantite(l.acquis, l.unite)} récupéré{l.unite === 'heures' ? 'es' : 's'}</span>
+                              {reste > 0 && (
+                                <span className="block text-amber-600">
+                                  {l.type === 'cet' ? 'indemnisé' : 'non utilisé'} : {formatQuantite(reste, l.unite)}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Total par compteur */}
           {resultat && resultat.detail.length > 0 && (
             <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-sm font-medium text-slate-700 mb-3">Ce qui est consommé</p>
+              <p className="text-sm font-medium text-slate-700 mb-3">Total par compteur</p>
               <div className="space-y-1.5">
                 {resultat.detail.map((d) => (
                   <div key={d.type} className="flex items-center justify-between text-xs">
                     <span className="text-slate-600">{LIBELLE[d.type] ?? d.type}</span>
                     <span className="text-slate-800 font-medium">
-                      {d.unite === 'jours' ? `${d.quantite} j` : formatMinutes(d.quantite)}
+                      {formatQuantite(d.quantite, d.unite)}
                       <span className="text-slate-400 font-normal">
                         {' · '}
                         {d.joursCouverts < 1
                           ? `${Math.round(d.joursCouverts * 100)} % d'une journée`
-                          : `${Math.round(d.joursCouverts * 10) / 10} jours couverts`}
+                          : `${(Math.round(d.joursCouverts * 10) / 10).toLocaleString('fr-FR')} jours couverts`}
                       </span>
                     </span>
                   </div>
                 ))}
               </div>
-
-              {resultat.dotationsFutures.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-xs font-medium text-slate-600 mb-1.5">
-                    Dotations à venir, prises par anticipation
-                  </p>
-                  {resultat.dotationsFutures.map((d) => (
-                    <div key={d.annee} className="flex items-center justify-between text-xs text-slate-500">
-                      <span>
-                        {d.annee}
-                        {d.prorata < 1 && ` (${Math.round(d.prorata * 100)} % — année incomplète)`}
-                      </span>
-                      <span>
-                        {d.jours > 0 && `${d.jours} j`}
-                        {d.jours > 0 && d.minutes > 0 && ' + '}
-                        {d.minutes > 0 && formatMinutes(d.minutes)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
