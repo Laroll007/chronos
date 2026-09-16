@@ -257,7 +257,6 @@ export function Settings({
                 <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-amber-700">Soutenir le développement ☕</div>
-                  <div className="text-xs text-amber-500">My Chronos est gratuit et le restera.</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-amber-300 group-hover:text-amber-500 transition-colors shrink-0" />
               </button>
