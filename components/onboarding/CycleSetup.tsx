@@ -5,12 +5,28 @@ import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
 import { baremeRPSNuit, baremeRPSParDefaut } from '@/lib/rps';
-import { aujourdhuiISO, lundiDeLaSemaine } from '@/lib/calculations';
+import { aujourdhuiISO, getWeekType, lundiDeLaSemaine } from '@/lib/calculations';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
 
-const formatLundi = (iso: string): string => {
+const JOURS_CLES: (keyof WeekSchedule)[] = [
+  'dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi',
+];
+
+const formatJour = (d: Date): string =>
+  d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/** « Du lundi 21 au dimanche 27 septembre 2026 » pour la semaine du lundi `iso`. */
+const formatSemaine = (iso: string): string => {
   const [a, m, j] = iso.split('-').map(Number);
-  return new Date(a, m - 1, j).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const lundi = new Date(a, m - 1, j);
+  const dimanche = new Date(a, m - 1, j + 6);
+  const debut = lundi.toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric',
+    ...(lundi.getMonth() !== dimanche.getMonth() ? { month: 'long' } : {}),
+    ...(lundi.getFullYear() !== dimanche.getFullYear() ? { year: 'numeric' } : {}),
+  });
+  const fin = dimanche.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return `Du ${debut} au ${fin}`;
 };
 
 interface CycleSetupProps {
@@ -48,10 +64,22 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   // le DIMANCHE pour une inscription faite entre minuit et 2 h du matin.
   const getMondayOfCurrentWeek = (): string => lundiDeLaSemaine(aujourdhuiISO());
 
-  const [dateDebutCycle, setDateDebutCycle] = useState(initialConfig?.dateDebutCycle ?? getMondayOfCurrentWeek());
-  const [semaineActuelle, setSemaineActuelle] = useState<WeekType>(initialConfig?.semaineActuelle ?? 'B');
+  const lundiCourant = getMondayOfCurrentWeek();
+  // Nouvel agent : aucune semaine présélectionnée, le choix doit être explicite
+  // (une valeur par défaut laissée telle quelle donnait un cycle inversé).
+  // Modification du cycle : on reprend la semaine que l'ancien réglage donne
+  // pour la semaine en cours.
+  const [semaineActuelle, setSemaineActuelle] = useState<WeekType | null>(() => {
+    if (!initialConfig || initialConfig.type !== 'alterne') return null;
+    const [a, m, j] = lundiCourant.split('-').map(Number);
+    return getWeekType(new Date(a, m - 1, j), initialConfig);
+  });
   const [semaineA, setSemaineA] = useState<WeekSchedule>(initialConfig?.semaineA ?? DEFAULT_CYCLE_ALTERNE_A);
   const [semaineB, setSemaineB] = useState<WeekSchedule>(initialConfig?.semaineB ?? DEFAULT_CYCLE_ALTERNE_B);
+  const aujourdhuiTravaille =
+    semaineActuelle !== null &&
+    (semaineActuelle === 'A' ? semaineA : semaineB)[JOURS_CLES[new Date().getDay()]];
+  const choixManquant = cycleType === 'alterne' && semaineActuelle === null;
 
   // Service de jour ou de nuit — détermine le barème de crédit des RPS.
   // L'APORTT accorde 0,4 le dimanche et 0,1 pour le travail de nuit (21h–6h) :
@@ -78,6 +106,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const hebdoTotal = HEBDO_DAYS.reduce((sum, d) => sum + (heuresSemaine[d.key] || 0), 0);
 
   const handleSubmit = () => {
+    if (choixManquant) return;
     const isHebdo = cycleType === 'hebdo';
     // En hebdo, un jour est "travaillé" s'il a des heures > 0 (samedi/dimanche = repos)
     const hebdoSchedule: WeekSchedule = {
@@ -97,8 +126,8 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       heuresSemaine: isHebdo ? { ...heuresSemaine, samedi: 0, dimanche: 0 } : undefined,
       // Hebdo : on force une semaine de référence stable (lundi du jour J),
       // car la date de réf et l'alternance A/B n'ont pas de sens en hebdo.
-      dateDebutCycle: isHebdo ? getMondayOfCurrentWeek() : dateDebutCycle,
-      semaineActuelle: isHebdo ? 'A' : semaineActuelle,
+      dateDebutCycle: lundiCourant,
+      semaineActuelle: isHebdo ? 'A' : semaineActuelle ?? 'A',
       semaineA: isHebdo ? hebdoSchedule : semaineA,
       semaineB: isHebdo ? undefined : semaineB,
       rpsParJour: serviceDeNuit
@@ -316,55 +345,46 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
         )}
       </div>
 
-      {/* Date de référence — uniquement pour cycle alterné (en hebdo, semaine = Lu-Ve) */}
+      {/* Semaine en cours — uniquement pour cycle alterné (en hebdo, semaine = Lu-Ve).
+          On ne demande plus de date : une date saisie à la main qui n'était pas
+          un lundi décalait toute l'alternance A/B. L'agent dit seulement si la
+          semaine en cours est A ou B ; la référence interne est son lundi. */}
       {cycleType === 'alterne' && (
       <div className={cardClass}>
         <div className="px-6 mb-4">
-          <div className={titleClass}>Date de référence</div>
-          <div className={labelClass}>Une semaine dont vous connaissez la lettre (A ou B)</div>
+          <div className={titleClass}>Semaine en cours</div>
+          <div className={labelClass}>{formatSemaine(lundiCourant)}</div>
         </div>
         <div className="px-6">
-          <div className="grid grid-cols-2 gap-4 items-end">
-            <div>
-              <label htmlFor="dateDebut" className="text-sm font-medium text-slate-600">Semaine du</label>
-              <input
-                id="dateDebut"
-                type="date"
-                value={dateDebutCycle}
-                // Toute date est ramenée au lundi de sa semaine : les semaines
-                // A/B basculent le jour de la référence (cf. lundiDeLaSemaine).
-                onChange={(e) => setDateDebutCycle(lundiDeLaSemaine(e.target.value))}
-                className={`mt-2 w-full h-9 ${inputClass}`}
-              />
-            </div>
-            {cycleType === 'alterne' && (
-              <div>
-                <label className="text-sm font-medium text-slate-600 leading-tight">Semaine à cette date</label>
-                <select
-                  value={semaineActuelle}
-                  onChange={(e) => setSemaineActuelle(e.target.value as WeekType)}
-                  aria-label="Semaine à la date de référence"
-                  className={`mt-2 w-full h-9 cursor-pointer ${inputClass}`}
-                >
-                  <option value="A">Semaine A</option>
-                  <option value="B">Semaine B</option>
-                </select>
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Semaine en cours">
+            {(['A', 'B'] as WeekType[]).map((w) => (
+              <button
+                key={w}
+                type="button"
+                role="radio"
+                aria-checked={semaineActuelle === w}
+                onClick={() => setSemaineActuelle(w)}
+                className={`h-12 rounded-xl border-2 text-base font-semibold transition-all ${
+                  semaineActuelle === w
+                    ? w === 'A'
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+                      : 'border-red-500 bg-red-500 text-white shadow-md'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                Semaine {w}
+              </button>
+            ))}
           </div>
-          {lundiDeLaSemaine(dateDebutCycle) === dateDebutCycle ? (
+          {semaineActuelle ? (
             <p className="mt-3 text-xs text-slate-500">
-              Vos semaines commencent le lundi : la date choisie est ramenée au lundi de sa semaine.
-              Indiquez si la semaine du{' '}
-              <strong>{formatLundi(dateDebutCycle)}</strong> est une semaine A ou B.
+              D&apos;après votre choix, aujourd&apos;hui ({formatJour(new Date())}) est un{' '}
+              <strong>{aujourdhuiTravaille ? 'jour travaillé' : 'jour de repos'}</strong>.
+              Si ce n&apos;est pas le cas, changez de semaine.
             </p>
           ) : (
-            // Cas d'une référence enregistrée avant le recalage au lundi : les
-            // semaines A/B basculent alors en milieu de semaine.
-            <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-              Votre date de référence n&apos;est pas un lundi : vos semaines A/B changent en
-              cours de semaine, ce qui fausse votre cycle. Choisissez à nouveau la date
-              pour la recaler sur le lundi, puis vérifiez la semaine A ou B.
+            <p className="mt-3 text-xs text-slate-500">
+              Choisissez la semaine dans laquelle vous êtes cette semaine.
             </p>
           )}
         </div>
@@ -483,13 +503,14 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       <button
         type="button"
         onClick={handleSubmit}
-        className="inline-flex items-center justify-center gap-2 w-full h-14 text-lg font-semibold rounded-xl text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+        disabled={choixManquant}
+        className="inline-flex items-center justify-center gap-2 w-full h-14 text-lg font-semibold rounded-xl text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:pointer-events-none"
         style={{
           background: 'linear-gradient(135deg, #0055A4 0%, #1a7de8 45%, #EF4135 100%)',
           boxShadow: '0 8px 24px rgba(0,85,164,0.25)',
         }}
       >
-        Continuer
+        {choixManquant ? 'Choisissez la semaine en cours' : 'Continuer'}
         <ChevronRight className="w-5 h-5" />
       </button>
     </div>
