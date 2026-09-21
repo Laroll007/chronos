@@ -21,6 +21,8 @@ import {
   getCANeededForHP,
   checkCAHPCondition as getCAHPAcquis,
   getDaysUntil,
+  jourLocal,
+  aujourdhuiISO,
   calculateUrgencyPercent,
 } from './calculations';
 import { generateId } from './storage';
@@ -98,7 +100,7 @@ export function generateRecommendations(
 
     // Ensuite par deadline (les plus proches d'abord)
     if (a.deadline && b.deadline) {
-      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      return jourLocal(a.deadline).getTime() - jourLocal(b.deadline).getTime();
     }
     if (a.deadline) return -1;
     if (b.deadline) return 1;
@@ -431,7 +433,7 @@ function checkCongesBonifies(
     }];
   }
 
-  const ouverture = new Date(counters.congesBonifiesDateOuverture);
+  const ouverture = jourLocal(counters.congesBonifiesDateOuverture);
   const expirationMs = CONGES_BONIFIES_EXPIRATION_MOIS + CONGES_BONIFIES_REPORT_MAX_MOIS;
   const expiration = new Date(ouverture);
   expiration.setMonth(expiration.getMonth() + expirationMs); // 48 mois max
@@ -446,7 +448,7 @@ function checkCongesBonifies(
     priority: daysRemaining <= 90 ? 'high' : daysToSoft <= 180 ? 'medium' : 'low',
     action: `Planifier ${jours}j de congés bonifiés`,
     reason: `Expire ${daysToSoft > 0 ? `dans ${daysToSoft}j` : 'bientôt'} (max ${daysRemaining}j avec report). Droit ouvert le ${ouverture.toLocaleDateString('fr-FR')}.`,
-    deadline: expiration.toISOString().split('T')[0],
+    deadline: aujourdhuiISO(expiration),
     counterType: 'congesBonifies',
     amountToConsume: jours,
   }];
@@ -521,7 +523,7 @@ export function getMonthlyGoals(
   return recommendations
     .filter((r) => {
       if (!r.deadline) return false;
-      const deadline = new Date(r.deadline);
+      const deadline = jourLocal(r.deadline);
       return deadline <= endOfMonth;
     })
     .map((r) => r.action);

@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Counters, CycleConfig, WeekHours } from '@/lib/types';
 import { RPSBaremeEditor } from './RPSBaremeEditor';
-import { formatMinutes } from '@/lib/calculations';
+import { formatMinutes, getDaysUntil, jourLocal } from '@/lib/calculations';
 import {
   CA_TOTAL_ANNUEL,
   CA_HP_BONUS,
@@ -319,7 +319,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
       case 'caAnterieur': {
         const year = new Date().getFullYear();
         const deadline = new Date(year, 3, 30);
-        const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const daysLeft = getDaysUntil(deadline);
         return (
           <>
             <Row label="CA antérieurs disponibles" value={`${counters.caAnterieur}j`} bold color="text-amber-700" />
@@ -334,7 +334,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
       case 'caHPAnterieur': {
         const year = new Date().getFullYear();
         const deadline = new Date(year, 3, 30);
-        const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const daysLeft = getDaysUntil(deadline);
         return (
           <>
             <Row label="CA HP antérieurs disponibles" value={`${counters.caHPAnterieur}j`} bold color="text-orange-700" />
@@ -348,7 +348,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
 
       case 'artt': {
         const year = new Date().getFullYear();
-        const daysLeft = Math.ceil((new Date(year, 11, 31).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const daysLeft = getDaysUntil(new Date(year, 11, 31));
         return (
           <>
             <Row label="ARTT disponibles" value={`${counters.artt ?? 0}j`} bold color="text-slate-700" />
@@ -363,7 +363,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
 
       case 'rtt': {
         const year = new Date().getFullYear();
-        const daysLeft = Math.ceil((new Date(year, 11, 31).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const daysLeft = getDaysUntil(new Date(year, 11, 31));
         return (
           <>
             <Row label="RTT disponibles" value={`${counters.rtt ?? 0}j`} bold color="text-slate-700" />
@@ -394,12 +394,12 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
 
       case 'congesBonifies': {
         const ouverture = counters.congesBonifiesDateOuverture
-          ? new Date(counters.congesBonifiesDateOuverture)
+          ? jourLocal(counters.congesBonifiesDateOuverture)
           : null;
         const maxExpiration = ouverture
           ? (() => { const d = new Date(ouverture); d.setMonth(d.getMonth() + CONGES_BONIFIES_EXPIRATION_MOIS + CONGES_BONIFIES_REPORT_MAX_MOIS); return d; })()
           : null;
-        const daysLeft = maxExpiration ? Math.ceil((maxExpiration.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+        const daysLeft = maxExpiration ? getDaysUntil(maxExpiration) : null;
         return (
           <>
             <div className="flex items-center gap-2 mb-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">

@@ -66,39 +66,39 @@ const mockCycleConfig: CycleConfig = {
 describe('Calculs de cycle', () => {
   describe('getWeekType', () => {
     it('retourne B pour la semaine de début de cycle', () => {
-      const date = new Date('2026-01-05'); // Lundi 5 janvier
+      const date = new Date(2026, 0, 5); // Lundi 5 janvier
       expect(getWeekType(date, mockCycleConfig)).toBe('B');
     });
 
     it('retourne A pour la semaine suivante', () => {
-      const date = new Date('2026-01-12'); // Lundi 12 janvier
+      const date = new Date(2026, 0, 12); // Lundi 12 janvier
       expect(getWeekType(date, mockCycleConfig)).toBe('A');
     });
 
     it('alterne correctement les semaines', () => {
-      expect(getWeekType(new Date('2026-01-05'), mockCycleConfig)).toBe('B');
-      expect(getWeekType(new Date('2026-01-12'), mockCycleConfig)).toBe('A');
-      expect(getWeekType(new Date('2026-01-19'), mockCycleConfig)).toBe('B');
-      expect(getWeekType(new Date('2026-01-26'), mockCycleConfig)).toBe('A');
+      expect(getWeekType(new Date(2026, 0, 5), mockCycleConfig)).toBe('B');
+      expect(getWeekType(new Date(2026, 0, 12), mockCycleConfig)).toBe('A');
+      expect(getWeekType(new Date(2026, 0, 19), mockCycleConfig)).toBe('B');
+      expect(getWeekType(new Date(2026, 0, 26), mockCycleConfig)).toBe('A');
     });
   });
 
   describe('isWorkingDay', () => {
     it('retourne true pour un jour travaillé en semaine B', () => {
       // Lundi 5 janvier 2026 = semaine B, lundi travaillé
-      const date = new Date('2026-01-05');
+      const date = new Date(2026, 0, 5);
       expect(isWorkingDay(date, mockCycleConfig)).toBe(true);
     });
 
     it('retourne false pour un jour de repos en semaine B', () => {
       // Mercredi 7 janvier 2026 = semaine B, mercredi non travaillé
-      const date = new Date('2026-01-07');
+      const date = new Date(2026, 0, 7);
       expect(isWorkingDay(date, mockCycleConfig)).toBe(false);
     });
 
     it('retourne true pour un jour travaillé en semaine A', () => {
       // Mercredi 14 janvier 2026 = semaine A, mercredi travaillé
-      const date = new Date('2026-01-14');
+      const date = new Date(2026, 0, 14);
       expect(isWorkingDay(date, mockCycleConfig)).toBe(true);
     });
   });
@@ -106,28 +106,28 @@ describe('Calculs de cycle', () => {
   describe('isSundayWorked', () => {
     it('retourne true pour un dimanche travaillé', () => {
       // Dimanche 11 janvier 2026 = semaine B, dimanche travaillé
-      const date = new Date('2026-01-11');
+      const date = new Date(2026, 0, 11);
       expect(isSundayWorked(date, mockCycleConfig)).toBe(true);
     });
 
     it('retourne false pour un dimanche non travaillé', () => {
       // Dimanche 18 janvier 2026 = semaine A, dimanche non travaillé
-      const date = new Date('2026-01-18');
+      const date = new Date(2026, 0, 18);
       expect(isSundayWorked(date, mockCycleConfig)).toBe(false);
     });
   });
 
   describe('countWorkingDays', () => {
     it('compte correctement les jours travaillés', () => {
-      const start = new Date('2026-01-05');
-      const end = new Date('2026-01-11');
+      const start = new Date(2026, 0, 5);
+      const end = new Date(2026, 0, 11);
       // Semaine B : lun, mar, ven, sam, dim = 5 jours
       expect(countWorkingDays(start, end, mockCycleConfig)).toBe(5);
     });
 
     it('retourne 0 pour une période sans jours travaillés', () => {
-      const start = new Date('2026-01-07'); // Mercredi
-      const end = new Date('2026-01-08');   // Jeudi
+      const start = new Date(2026, 0, 7); // Mercredi
+      const end = new Date(2026, 0, 8);   // Jeudi
       // Semaine B : mer et jeu non travaillés
       expect(countWorkingDays(start, end, mockCycleConfig)).toBe(0);
     });
@@ -197,24 +197,24 @@ describe('Calculs RTC et Journée Solidarité', () => {
 describe('Calculs CA HP', () => {
   describe('isInCAHPPeriod', () => {
     it('retourne true pour janvier-avril', () => {
-      expect(isInCAHPPeriod(new Date('2026-01-15'))).toBe(true);
-      expect(isInCAHPPeriod(new Date('2026-02-15'))).toBe(true);
-      expect(isInCAHPPeriod(new Date('2026-03-15'))).toBe(true);
-      expect(isInCAHPPeriod(new Date('2026-04-15'))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 0, 15))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 1, 15))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 2, 15))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 3, 15))).toBe(true);
     });
 
     it('retourne true pour novembre-décembre', () => {
-      expect(isInCAHPPeriod(new Date('2026-11-15'))).toBe(true);
-      expect(isInCAHPPeriod(new Date('2026-12-15'))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 10, 15))).toBe(true);
+      expect(isInCAHPPeriod(new Date(2026, 11, 15))).toBe(true);
     });
 
     it('retourne false pour mai-octobre (période estivale)', () => {
-      expect(isInCAHPPeriod(new Date('2026-05-15'))).toBe(false);
-      expect(isInCAHPPeriod(new Date('2026-06-15'))).toBe(false);
-      expect(isInCAHPPeriod(new Date('2026-07-15'))).toBe(false);
-      expect(isInCAHPPeriod(new Date('2026-08-15'))).toBe(false);
-      expect(isInCAHPPeriod(new Date('2026-09-15'))).toBe(false);
-      expect(isInCAHPPeriod(new Date('2026-10-15'))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 4, 15))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 5, 15))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 6, 15))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 7, 15))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 8, 15))).toBe(false);
+      expect(isInCAHPPeriod(new Date(2026, 9, 15))).toBe(false);
     });
   });
 
@@ -252,13 +252,13 @@ describe('Calculs CA HP', () => {
 describe('Calculs CF par semestre', () => {
   describe('getCurrentSemester', () => {
     it('retourne 1 pour janvier-juin', () => {
-      expect(getCurrentSemester(new Date('2026-01-15'))).toBe(1);
-      expect(getCurrentSemester(new Date('2026-06-15'))).toBe(1);
+      expect(getCurrentSemester(new Date(2026, 0, 15))).toBe(1);
+      expect(getCurrentSemester(new Date(2026, 5, 15))).toBe(1);
     });
 
     it('retourne 2 pour juillet-décembre', () => {
-      expect(getCurrentSemester(new Date('2026-07-15'))).toBe(2);
-      expect(getCurrentSemester(new Date('2026-12-15'))).toBe(2);
+      expect(getCurrentSemester(new Date(2026, 6, 15))).toBe(2);
+      expect(getCurrentSemester(new Date(2026, 11, 15))).toBe(2);
     });
   });
 
@@ -367,14 +367,14 @@ describe('Utilitaires', () => {
 
   describe('getDaysUntil', () => {
     it('calcule les jours jusqu\'à une date future', () => {
-      const from = new Date('2026-01-01');
-      const target = new Date('2026-01-11');
+      const from = new Date(2026, 0, 1);
+      const target = new Date(2026, 0, 11);
       expect(getDaysUntil(target, from)).toBe(10);
     });
 
     it('retourne un nombre négatif pour une date passée', () => {
-      const from = new Date('2026-01-11');
-      const target = new Date('2026-01-01');
+      const from = new Date(2026, 0, 11);
+      const target = new Date(2026, 0, 1);
       expect(getDaysUntil(target, from)).toBeLessThan(0);
     });
   });

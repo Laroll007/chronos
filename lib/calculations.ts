@@ -53,6 +53,22 @@ export function lundiDeLaSemaine(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Jour local (à minuit) désigné par une chaîne de date.
+ *
+ * - « YYYY-MM-DD » (date seule) : lue dans le fuseau de l'appareil. `new Date()`
+ *   la lirait en UTC, soit la veille au soir aux Antilles-Guyane.
+ * - Horodatage complet (historique : `toISOString()` d'un minuit local) : on
+ *   garde le jour local de l'instant. Couper la chaîne à 10 caractères donnerait
+ *   le jour UTC — la veille en métropole.
+ */
+export function jourLocal(valeur: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valeur);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(valeur);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 /** Date du jour en 'YYYY-MM-DD', heure locale. */
 export function aujourdhuiISO(now: Date = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -549,8 +565,7 @@ export function getDaysUntilSemesterDeadline(date: Date): number {
     ? new Date(date.getFullYear(), 5, 30) // 30 juin
     : new Date(date.getFullYear(), 11, 31); // 31 décembre
 
-  const diffTime = deadline.getTime() - date.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return getDaysUntil(deadline, date);
 }
 
 // ============================================
@@ -927,8 +942,12 @@ export function parseTimeToMinutes(timeStr: string): number {
  * Calcule les jours restants jusqu'à une date
  */
 export function getDaysUntil(targetDate: Date, fromDate: Date = new Date()): number {
-  const diffTime = targetDate.getTime() - fromDate.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Jours de CALENDRIER, pas des tranches de 24 h : la journée de 25 h du
+  // passage à l'heure d'hiver faisait compter un jour de trop.
+  return daysBetween(
+    fromDate.getFullYear(), fromDate.getMonth() + 1, fromDate.getDate(),
+    targetDate.getFullYear(), targetDate.getMonth() + 1, targetDate.getDate()
+  );
 }
 
 /**

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "test:tz": "for tz in Europe/Paris America/Martinique America/Cayenne Indian/Reunion Pacific/Noumea; do echo \"== $tz\"; TZ=$tz vitest run || exit 1; done",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },

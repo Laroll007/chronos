@@ -28,6 +28,8 @@ import {
   isRTCReservesEntames,
   calculateUrgencyPercent,
   getDaysUntilSemesterDeadline,
+  getDaysUntil,
+  jourLocal,
 } from '@/lib/calculations';
 
 interface CountersOverviewProps {
@@ -48,9 +50,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     const year = now.getFullYear();
     const semester = getCurrentSemester(now);
     const daysUntilSemester = getDaysUntilSemesterDeadline(now);
-    const daysUntilYear = Math.ceil(
-      (new Date(year, 11, 31).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysUntilYear = getDaysUntil(new Date(year, 11, 31), now);
 
     const getStatus = (daysRemaining: number, hasValue: boolean): 'ok' | 'warning' | 'critical' => {
       if (!hasValue) return 'ok';
@@ -187,7 +187,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     // CA Antérieurs (report N-1, deadline 30 avril)
     if (counters.caAnterieur > 0) {
       const deadline30Avril = new Date(year, 3, 30);
-      const daysToAvril = Math.ceil((deadline30Avril.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysToAvril = getDaysUntil(deadline30Avril, now);
       result.push({
         id: 'caAnterieur',
         label: 'CA Antérieurs',
@@ -204,7 +204,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     // CA HP Antérieurs (report HP N-1, deadline 30 avril)
     if (counters.caHPAnterieur > 0) {
       const deadline30Avril = new Date(year, 3, 30);
-      const daysToAvril = Math.ceil((deadline30Avril.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysToAvril = getDaysUntil(deadline30Avril, now);
       result.push({
         id: 'caHPAnterieur',
         label: 'CA HP Antérieurs',
@@ -249,13 +249,13 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     if (counters.hasCongesBonifies && counters.congesBonifies !== undefined && counters.congesBonifies > 0) {
       const deadline = counters.congesBonifiesDateOuverture
         ? (() => {
-            const d = new Date(counters.congesBonifiesDateOuverture!);
+            const d = jourLocal(counters.congesBonifiesDateOuverture!);
             d.setMonth(d.getMonth() + 48); // 36 + 12 mois max
             return d;
           })()
         : undefined;
       const daysToDeadline = deadline
-        ? Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        ? getDaysUntil(deadline, now)
         : 999;
       result.push({
         id: 'congesBonifies',

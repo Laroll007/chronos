@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, BarChart3, Clock, X } from 'lucide-react';
+import { jourLocal } from '@/lib/calculations';
 
 interface CountersDrawerProps {
   isOpen: boolean;
@@ -109,7 +110,7 @@ export function CountersDrawer({
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="w-3 h-3" />
                               <span>
-                                {new Date(rec.deadline).toLocaleDateString('fr-FR', {
+                                {jourLocal(rec.deadline).toLocaleDateString('fr-FR', {
                                   day: 'numeric',
                                   month: 'long',
                                 })}
@@ -140,7 +141,7 @@ export function CountersDrawer({
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="w-3 h-3" />
                               <span>
-                                {new Date(rec.deadline).toLocaleDateString('fr-FR', {
+                                {jourLocal(rec.deadline).toLocaleDateString('fr-FR', {
                                   day: 'numeric',
                                   month: 'long',
                                 })}

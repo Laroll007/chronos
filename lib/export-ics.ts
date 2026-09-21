@@ -2,7 +2,7 @@
 // RFC 5545 + RFC 7986 (COLOR property)
 
 import { CycleConfig, HistoryEntry } from './types';
-import { isWorkingDay } from './calculations';
+import { isWorkingDay, jourLocal } from './calculations';
 
 // ─── Labels par type de congé ────────────────────────────────────────────────
 const LEAVE_LABELS: Record<string, string> = {
@@ -173,10 +173,10 @@ export function generateICS(
     );
 
     for (const entry of posed) {
-      const startDate = new Date(entry.date.slice(0, 10) + 'T00:00:00');
-      const endDate   = entry.dateEnd
-        ? new Date(entry.dateEnd.slice(0, 10) + 'T00:00:00')
-        : new Date(startDate);
+      // Jour LOCAL de l'horodatage : couper la chaîne à 10 caractères donnait
+      // le jour UTC, soit la veille en métropole (minuit local = 22h/23h UTC).
+      const startDate = jourLocal(entry.date);
+      const endDate   = entry.dateEnd ? jourLocal(entry.dateEnd) : new Date(startDate);
       const isCMO = entry.action === 'cmo';
 
       events.push({

@@ -289,6 +289,9 @@ export function validateISODate(dateString: string): boolean {
 
 export function parseAndValidateDate(dateString: string): Date | null {
   if (!validateISODate(dateString)) return null;
-  const date = new Date(dateString);
+  // Date seule lue en heure LOCALE : `new Date('2026-01-15')` la lirait en UTC,
+  // soit le 14 au soir aux Antilles-Guyane.
+  const [a, m, j] = dateString.split('-').map(Number);
+  const date = new Date(a, m - 1, j);
   return isNaN(date.getTime()) ? null : date;
 }
