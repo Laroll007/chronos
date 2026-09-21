@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   getWeekType,
+  lundiDeLaSemaine,
+  aujourdhuiISO,
   isWorkingDay,
   isSundayWorked,
   countWorkingDays,
@@ -22,6 +24,7 @@ import {
   calculateUrgencyPercent,
   getUrgencyColor,
 } from '../calculations';
+import { DEFAULT_CYCLE_CONFIG } from '../storage';
 import {
   RTC_RESERVES_CET,
   JOURNEE_SOLIDARITE,
@@ -407,5 +410,36 @@ describe('Utilitaires', () => {
       expect(getUrgencyColor(80)).toBe('error');
       expect(getUrgencyColor(100)).toBe('error');
     });
+  });
+});
+
+describe('lundiDeLaSemaine — date de référence du cycle', () => {
+  it('ramène chaque jour de la semaine au lundi', () => {
+    // Semaine du lundi 21 au dimanche 27 septembre 2026
+    for (let j = 21; j <= 27; j++) {
+      expect(lundiDeLaSemaine(`2026-09-${j}`)).toBe('2026-09-21');
+    }
+  });
+
+  it('traverse les changements de mois et d’année', () => {
+    expect(lundiDeLaSemaine('2026-10-01')).toBe('2026-09-28');
+    expect(lundiDeLaSemaine('2027-01-02')).toBe('2026-12-28');
+  });
+
+  it('laisse une valeur invalide ou vide inchangée', () => {
+    expect(lundiDeLaSemaine('')).toBe('');
+    expect(lundiDeLaSemaine('abc')).toBe('abc');
+  });
+
+  it('la date du jour reste locale, même la nuit (pas de bascule UTC)', () => {
+    // Lundi 21/09 à 00h30 heure locale : en UTC ce serait encore dimanche.
+    expect(lundiDeLaSemaine(aujourdhuiISO(new Date(2026, 8, 21, 0, 30)))).toBe('2026-09-21');
+    expect(aujourdhuiISO(new Date(2026, 8, 22, 1, 15))).toBe('2026-09-22');
+  });
+
+  it('une référence recalée au lundi garde des semaines qui basculent le lundi', () => {
+    const cfg = { ...DEFAULT_CYCLE_CONFIG, dateDebutCycle: lundiDeLaSemaine('2026-09-23'), semaineActuelle: 'A' as const };
+    expect(getWeekType(new Date(2026, 8, 27), cfg)).toBe('A'); // dimanche : encore A
+    expect(getWeekType(new Date(2026, 8, 28), cfg)).toBe('B'); // lundi suivant : B
   });
 });

@@ -36,6 +36,29 @@ import {
 // ============================================
 
 /**
+ * Lundi de la semaine contenant `iso` ('YYYY-MM-DD'), calculé en heure locale.
+ *
+ * Les semaines A/B basculent tous les 7 jours à compter de la date de référence
+ * (cf. getWeekType) : une référence posée un mercredi fait basculer les semaines
+ * le mercredi, et tout le cycle est faux. La référence doit donc être un lundi.
+ * Renvoie `iso` inchangé s'il n'est pas une date valide.
+ */
+export function lundiDeLaSemaine(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (isNaN(d.getTime())) return iso;
+  const jour = d.getDay(); // 0 = dimanche
+  d.setDate(d.getDate() + (jour === 0 ? -6 : 1 - jour));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Date du jour en 'YYYY-MM-DD', heure locale. */
+export function aujourdhuiISO(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/**
  * Calcule le nombre de jours entre deux dates (sans utiliser les millisecondes)
  * Évite les bugs liés au changement d'heure (DST)
  */

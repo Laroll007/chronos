@@ -5,7 +5,13 @@ import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
 import { baremeRPSNuit, baremeRPSParDefaut } from '@/lib/rps';
+import { aujourdhuiISO, lundiDeLaSemaine } from '@/lib/calculations';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
+
+const formatLundi = (iso: string): string => {
+  const [a, m, j] = iso.split('-').map(Number);
+  return new Date(a, m - 1, j).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 interface CycleSetupProps {
   onNext: (config: CycleConfig) => void;
@@ -38,14 +44,9 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [heuresParJour, setHeuresParJour] = useState(initialConfig?.heuresParJour ?? HEURES_PAR_JOUR);
   const [heuresSemaine, setHeuresSemaine] = useState<WeekHours>(buildHebdoHeures(initialConfig));
 
-  const getMondayOfCurrentWeek = (): string => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    return monday.toISOString().split('T')[0];
-  };
+  // Heure locale : l'ancien calcul passait par toISOString() (UTC) et renvoyait
+  // le DIMANCHE pour une inscription faite entre minuit et 2 h du matin.
+  const getMondayOfCurrentWeek = (): string => lundiDeLaSemaine(aujourdhuiISO());
 
   const [dateDebutCycle, setDateDebutCycle] = useState(initialConfig?.dateDebutCycle ?? getMondayOfCurrentWeek());
   const [semaineActuelle, setSemaineActuelle] = useState<WeekType>(initialConfig?.semaineActuelle ?? 'B');
@@ -320,17 +321,19 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       <div className={cardClass}>
         <div className="px-6 mb-4">
           <div className={titleClass}>Date de référence</div>
-          <div className={labelClass}>Date de début de votre cycle actuel</div>
+          <div className={labelClass}>Une semaine dont vous connaissez la lettre (A ou B)</div>
         </div>
         <div className="px-6">
           <div className="grid grid-cols-2 gap-4 items-end">
             <div>
-              <label htmlFor="dateDebut" className="text-sm font-medium text-slate-600">Date de début</label>
+              <label htmlFor="dateDebut" className="text-sm font-medium text-slate-600">Semaine du</label>
               <input
                 id="dateDebut"
                 type="date"
                 value={dateDebutCycle}
-                onChange={(e) => setDateDebutCycle(e.target.value)}
+                // Toute date est ramenée au lundi de sa semaine : les semaines
+                // A/B basculent le jour de la référence (cf. lundiDeLaSemaine).
+                onChange={(e) => setDateDebutCycle(lundiDeLaSemaine(e.target.value))}
                 className={`mt-2 w-full h-9 ${inputClass}`}
               />
             </div>
@@ -349,6 +352,21 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
               </div>
             )}
           </div>
+          {lundiDeLaSemaine(dateDebutCycle) === dateDebutCycle ? (
+            <p className="mt-3 text-xs text-slate-500">
+              Vos semaines commencent le lundi : la date choisie est ramenée au lundi de sa semaine.
+              Indiquez si la semaine du{' '}
+              <strong>{formatLundi(dateDebutCycle)}</strong> est une semaine A ou B.
+            </p>
+          ) : (
+            // Cas d'une référence enregistrée avant le recalage au lundi : les
+            // semaines A/B basculent alors en milieu de semaine.
+            <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              Votre date de référence n&apos;est pas un lundi : vos semaines A/B changent en
+              cours de semaine, ce qui fausse votre cycle. Choisissez à nouveau la date
+              pour la recaler sur le lundi, puis vérifiez la semaine A ou B.
+            </p>
+          )}
         </div>
       </div>
       )}
