@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Politique de confidentialité — My Chronos",
   description:
-    "Politique de confidentialité de My Chronos : données stockées localement, aucun tracker, formulaire de retour via Resend (sous-traitant), droits RGPD complets.",
+    "Politique de confidentialité de My Chronos : données stockées localement, statistiques d'usage anonymes sans identifiant, formulaire de retour via Resend (sous-traitant), droits RGPD complets.",
   alternates: { canonical: "https://mychronos.fr/privacy" },
 };
 
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
             Politique de confidentialité
           </h1>
           <p className="text-slate-500 text-sm">
-            Dernière mise à jour : 24 avril 2026
+            Dernière mise à jour : 24 septembre 2026
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
               2. Données traitées et finalités
             </h2>
             <p>
-              My Chronos minimise la collecte de données. Deux traitements
+              My Chronos minimise la collecte de données. Trois traitements
               distincts coexistent&nbsp;:
             </p>
             <div className="mt-3 space-y-3">
@@ -96,6 +96,42 @@ export default function PrivacyPage() {
                   <em>
                     Base légale : consentement (art. 6.1.a RGPD) — case à cocher
                     obligatoire avant envoi.
+                  </em>
+                </p>
+              </div>
+              <div
+                id="statistiques"
+                className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 scroll-mt-4"
+              >
+                <p className="font-semibold text-emerald-900 mb-1">
+                  C) Statistiques d&apos;utilisation anonymes (désactivables)
+                </p>
+                <p className="text-emerald-900/90">
+                  Pour savoir combien de personnes utilisent l&apos;application
+                  et quelles fonctionnalités servent, l&apos;application envoie
+                  à notre serveur (OVHcloud, France) des{" "}
+                  <strong>compteurs agrégés par jour</strong>&nbsp;: nombre
+                  d&apos;ouvertures, fonctionnalités utilisées (ex.
+                  «&nbsp;congés posés&nbsp;», «&nbsp;vue année&nbsp;»), erreurs
+                  techniques (type d&apos;erreur, sans contenu), plateforme
+                  (iOS, Android, web), version de l&apos;application et type de
+                  cycle (ex. «&nbsp;2/2&nbsp;», «&nbsp;hebdomadaire&nbsp;»).
+                </p>
+                <p className="text-emerald-900/90 mt-2">
+                  <strong>Aucun identifiant</strong> n&apos;est créé ni transmis
+                  (ni cookie, ni identifiant d&apos;appareil, ni empreinte),
+                  l&apos;adresse IP n&apos;est pas enregistrée, et{" "}
+                  <strong>aucune donnée de planning</strong> (dates, soldes,
+                  congés) ne quitte votre appareil. Les envois ne peuvent pas
+                  être reliés entre eux ni à une personne. Vous pouvez les
+                  désactiver à tout moment dans{" "}
+                  <strong>Paramètres → Confidentialité</strong>&nbsp;; les
+                  compteurs non encore envoyés sont alors effacés.{" "}
+                  <em>
+                    Base légale : intérêt légitime (art. 6.1.f RGPD) —
+                    mesure d&apos;audience strictement anonyme, exemptée de
+                    consentement (art. 82 loi Informatique et Libertés,
+                    lignes directrices CNIL n°2020-091).
                   </em>
                 </p>
               </div>
@@ -152,6 +188,11 @@ export default function PrivacyPage() {
                 <strong>Messages de retour</strong> : conservés{" "}
                 <strong>12 mois maximum</strong> dans la boîte mail{" "}
                 <code>contact@lexdigita.fr</code>, puis supprimés.
+              </li>
+              <li>
+                <strong>Statistiques anonymes</strong> : conservées{" "}
+                <strong>25 mois maximum</strong>, puis supprimées
+                automatiquement.
               </li>
               <li>
                 <strong>Logs serveur</strong> : conservés 30 jours (hash SHA-256
@@ -220,10 +261,13 @@ export default function PrivacyPage() {
             </h2>
             <p>
               My Chronos n&apos;utilise <strong>aucun cookie de suivi</strong>,
-              aucun traceur analytique, aucun pixel publicitaire. Seul le
-              <em> stockage local</em> du navigateur est utilisé, au titre du
-              fonctionnement strict du service (exempté du bandeau de
-              consentement, délibération CNIL n°2020-091).
+              aucun outil d&apos;analyse tiers (Google Analytics ou autre),
+              aucun pixel publicitaire. Seul le <em>stockage local</em> du
+              navigateur est utilisé : pour le fonctionnement du service, et
+              pour préparer les statistiques anonymes décrites au 2.C, qui ne
+              contiennent aucun identifiant. Ces deux usages sont exemptés du
+              bandeau de consentement (délibération CNIL n°2020-091) ; les
+              statistiques restent désactivables dans les Paramètres.
             </p>
           </section>
 

@@ -235,8 +235,10 @@ export default function CguPage() {
                 <h3 className="font-semibold text-slate-700 mb-1">Cookies</h3>
                 <p className="text-slate-600">
                   Ce site n&apos;utilise aucun cookie de suivi ou publicitaire.
-                  Seul le stockage local (localStorage) du navigateur est utilisé pour
-                  le fonctionnement de l&apos;application.
+                  Seul le stockage local (localStorage) du navigateur est utilisé, pour
+                  le fonctionnement de l&apos;application et pour des statistiques
+                  d&apos;utilisation anonymes, sans identifiant, désactivables dans les
+                  Paramètres (voir la politique de confidentialité).
                 </p>
               </section>
 

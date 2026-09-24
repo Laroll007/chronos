@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Dialog, DialogContent, DialogClose, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, Bug, Lightbulb, HelpCircle, X } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
+import { track } from '@/lib/analytics';
 
 type FeedbackType = 'bug' | 'amelioration' | 'question';
 
@@ -48,7 +50,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15_000);
-      const res = await fetch('/api/feedback', {
+      const res = await fetch(apiUrl('/api/feedback'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, message, email, consent, website }),
@@ -56,6 +58,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       });
       clearTimeout(timeoutId);
       if (res.ok) {
+        track('feedback_sent');
         setStatus('success');
       } else {
         const data = (await res.json().catch(() => ({}))) as { error?: string };

@@ -1,5 +1,7 @@
 // Gestion centralisée des erreurs pour Chronos
 
+import { trackError } from './analytics';
+
 // ============================================
 // TYPES D'ERREURS
 // ============================================
@@ -148,6 +150,13 @@ export const logger = {
    */
   error(message: string, error?: Error | ChronosError, context?: Record<string, unknown>): void {
     addLogEntry('error', message, context, error);
+
+    // Statistiques anonymes : message de log + message d'origine (nettoyés des
+    // chiffres et chaînes par trackError) et code — jamais le contexte.
+    const detail = error && error.message !== message ? ` — ${error.message}` : '';
+    const tracked = new Error(message + detail);
+    tracked.name = error instanceof ChronosError ? error.code : (error?.name ?? 'Error');
+    trackError('handled', tracked);
 
     // En développement, afficher l'erreur complète
     if (process.env.NODE_ENV === 'development') {

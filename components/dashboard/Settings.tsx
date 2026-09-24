@@ -2,6 +2,7 @@
 
 import { useState, useRef, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
 import { APP_VERSION } from '@/lib/constants';
 import { CycleConfig, Counters, HistoryEntry } from '@/lib/types';
 import { downloadExport, importData, resetAllData } from '@/lib/storage';
+import { isStatsEnabled, setStatsEnabled, track } from '@/lib/analytics';
 import {
   Settings as SettingsIcon,
   Download,
@@ -31,6 +33,7 @@ import {
   Heart,
   Briefcase,
   Hourglass,
+  BarChart3,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -129,10 +132,19 @@ export function Settings({
   const [showCycle, setShowCycle] = useState(false);
   const [showRetraite, setShowRetraite] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [statsEnabled, setStatsEnabledState] = useState(isStatsEnabled);
+
+  const toggleStats = () => {
+    const next = !statsEnabled;
+    setStatsEnabled(next);
+    setStatsEnabledState(next);
+    toast.success(next ? 'Statistiques anonymes activées' : 'Statistiques anonymes désactivées');
+  };
 
   const handleExport = () => {
     try {
       downloadExport();
+      track('backup_export');
       toast.success('Sauvegarde téléchargée');
     } catch {
       toast.error("Erreur lors de l'export");
@@ -149,6 +161,7 @@ export function Settings({
       const text = await file.text();
       const result = importData(text, false);
       if (result.success) {
+        track('backup_import');
         toast.success('Import réussi', { description: 'Données chargées' });
         window.location.reload();
       } else {
@@ -165,6 +178,7 @@ export function Settings({
   const handleReset = () => {
     const success = resetAllData();
     if (success) {
+      track('app_reset');
       toast.success('Données réinitialisées');
       setShowResetDialog(false);
       onReset();
@@ -223,13 +237,13 @@ export function Settings({
               icon={<Briefcase className="w-4 h-4 text-blue-500 shrink-0" />}
               label="Calculer les jours travaillés"
               sublabel="Sur une période, congés et CMO déduits"
-              onClick={() => setShowWorkedDays(true)}
+              onClick={() => { setShowWorkedDays(true); track('tool_worked_days'); }}
             />
             <ClickableRow
               icon={<Hourglass className="w-4 h-4 text-blue-500 shrink-0" />}
               label="Simuler mon départ à la retraite"
               sublabel="Tous compteurs soldés : à partir de quand cesser de travailler"
-              onClick={() => setShowRetraite(true)}
+              onClick={() => { setShowRetraite(true); track('tool_retraite'); }}
             />
           </section>
 
@@ -241,7 +255,7 @@ export function Settings({
                 icon={<MessageSquarePlus className="w-4 h-4 text-blue-500 shrink-0" />}
                 label="Donner mon avis / Signaler un bug"
                 sublabel="Votre retour aide à améliorer l'app"
-                onClick={() => setShowFeedback(true)}
+                onClick={() => { setShowFeedback(true); track('feedback_open'); }}
               />
               {onShowWelcome && (
                 <ClickableRow
@@ -251,7 +265,7 @@ export function Settings({
                 />
               )}
               <button
-                onClick={() => window.open('https://ko-fi.com/mychronos', '_blank', 'noopener,noreferrer')}
+                onClick={() => { track('kofi_click'); window.open('https://ko-fi.com/mychronos', '_blank', 'noopener,noreferrer'); }}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 w-full text-left transition-all duration-150 group"
               >
                 <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
@@ -259,6 +273,37 @@ export function Settings({
                   <div className="text-sm font-semibold text-amber-700">Soutenir le développement ☕</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-amber-300 group-hover:text-amber-500 transition-colors shrink-0" />
+              </button>
+            </div>
+          </section>
+
+          {/* Confidentialité */}
+          <section className="space-y-2.5">
+            <SectionLabel icon={<BarChart3 className="w-3 h-3 text-blue-600" />} label="Confidentialité" />
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50">
+              <BarChart3 className="w-4 h-4 text-blue-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div id="stats-toggle-label" className="text-sm font-medium text-slate-700">
+                  Statistiques anonymes d&apos;utilisation
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  Sans identifiant ni donnée de planning : aide à savoir ce qui sert.{' '}
+                  <Link href="/privacy#statistiques" className="underline hover:text-slate-700">
+                    En savoir plus
+                  </Link>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={statsEnabled}
+                aria-labelledby="stats-toggle-label"
+                onClick={toggleStats}
+                className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${statsEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${statsEnabled ? 'left-[22px]' : 'left-0.5'}`}
+                />
               </button>
             </div>
           </section>

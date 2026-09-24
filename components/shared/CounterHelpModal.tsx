@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpCircle, X } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; warning?: string; tip?: string }> = {
   cet: {
@@ -147,7 +148,7 @@ export function CounterHelpButton({ onClick, className }: { onClick: () => void;
   return (
     <button
       type="button"
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onClick={(e) => { e.stopPropagation(); track('counter_help'); onClick(); }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
       className={`inline-flex items-center justify-center rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0 ${className ?? 'ml-1.5 w-5 h-5'}`}
       aria-label="En savoir plus"

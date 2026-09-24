@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { CycleConfig, Counters } from '@/lib/types';
 import { saveUserData } from '@/lib/storage';
+import { track } from '@/lib/analytics';
 import { getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
 import { Calendar, Calculator, Check } from 'lucide-react';
@@ -61,6 +62,7 @@ export function OnboardingWizard() {
   const handleCycleComplete = (config: CycleConfig) => {
     setCycleConfig(config);
     setStep('counters');
+    track('onboarding_cycle_done');
   };
 
   const handleCountersComplete = (data: Counters) => {
@@ -82,6 +84,7 @@ export function OnboardingWizard() {
     });
 
     if (success) {
+      track('onboarding_done');
       toast.success('Configuration terminée !', { description: 'Bienvenue sur My Chronos' });
       router.push('/dashboard');
     } else {

@@ -14,7 +14,8 @@ const SHELF = join(ROOT, '.capacitor-shelf');
 const TARGETS = [
   'robots.ts',
   'sitemap.ts',
-  'api', // dossier complet (health + feedback)
+  'api', // dossier complet (health, feedback, stats)
+  'stats', // tableau de bord admin, web uniquement
 ];
 
 const moves = [];

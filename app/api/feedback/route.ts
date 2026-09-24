@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createHash } from 'crypto';
+import { corsHeaders } from '@/lib/server/cors';
 
 export const runtime = 'nodejs';
 
@@ -61,13 +62,19 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// App iOS : appel cross-origin depuis capacitor://localhost (pré-vol : JSON).
+export function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req.headers.get('origin')) });
+}
+
 export async function POST(req: NextRequest) {
+  const cors = corsHeaders(req.headers.get('origin'));
   const ipHash = hashIp(getClientIp(req));
 
   if (!checkRateLimit(ipHash)) {
     return NextResponse.json(
       { error: 'Trop de demandes, réessayez plus tard' },
-      { status: 429, headers: { 'Retry-After': '3600' } },
+      { status: 429, headers: { ...cors, 'Retry-After': '3600' } },
     );
   }
 
@@ -75,38 +82,38 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Payload invalide' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload invalide' }, { status: 400, headers: cors });
   }
 
   if (typeof body !== 'object' || body === null) {
-    return NextResponse.json({ error: 'Payload invalide' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload invalide' }, { status: 400, headers: cors });
   }
 
   const { type, message, email, consent, website } = body as Record<string, unknown>;
 
   if (typeof website === 'string' && website.length > 0) {
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: cors });
   }
 
   if (consent !== true) {
     return NextResponse.json(
       { error: 'Consentement requis pour traiter votre retour' },
-      { status: 400 },
+      { status: 400, headers: cors },
     );
   }
 
   if (typeof type !== 'string' || !VALID_TYPES.has(type)) {
-    return NextResponse.json({ error: 'Type invalide' }, { status: 400 });
+    return NextResponse.json({ error: 'Type invalide' }, { status: 400, headers: cors });
   }
 
   if (typeof message !== 'string') {
-    return NextResponse.json({ error: 'Message requis' }, { status: 400 });
+    return NextResponse.json({ error: 'Message requis' }, { status: 400, headers: cors });
   }
   const trimmedMessage = message.trim();
   if (trimmedMessage.length === 0 || trimmedMessage.length > MAX_MESSAGE) {
     return NextResponse.json(
       { error: `Message requis (1-${MAX_MESSAGE} caractères)` },
-      { status: 400 },
+      { status: 400, headers: cors },
     );
   }
 
@@ -114,7 +121,7 @@ export async function POST(req: NextRequest) {
   if (typeof email === 'string' && email.trim().length > 0) {
     const trimmedEmail = email.trim();
     if (trimmedEmail.length > MAX_EMAIL || !EMAIL_REGEX.test(trimmedEmail)) {
-      return NextResponse.json({ error: 'Email invalide' }, { status: 400 });
+      return NextResponse.json({ error: 'Email invalide' }, { status: 400, headers: cors });
     }
     fromEmail = trimmedEmail;
   }
@@ -128,7 +135,7 @@ export async function POST(req: NextRequest) {
     console.error(`[feedback] RESEND_API_KEY missing (ipHash=${ipHash})`);
     return NextResponse.json(
       { error: 'Service temporairement indisponible' },
-      { status: 503 },
+      { status: 503, headers: cors },
     );
   }
 
@@ -167,13 +174,13 @@ export async function POST(req: NextRequest) {
     });
 
     clearTimeout(timeoutId);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: cors });
   } catch (err) {
     const name = err instanceof Error ? err.name : 'Unknown';
     console.error(`[feedback] send failed (ipHash=${ipHash}, err=${name})`);
     return NextResponse.json(
       { error: "Erreur lors de l'envoi" },
-      { status: 500 },
+      { status: 500, headers: cors },
     );
   }
 }

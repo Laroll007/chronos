@@ -145,11 +145,11 @@ export default function Home() {
             </div>
             <div className="p-6 rounded-2xl bg-white border border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                100% local, zéro tracker
+                100% local, aucun pistage
               </h2>
               <p className="text-sm text-slate-600">
                 Vos données restent dans votre navigateur. Aucun compte,
-                aucun cookie de suivi, export/import en un clic.
+                aucun cookie de suivi. Statistiques anonymes désactivables, export/import en un clic.
               </p>
             </div>
           </section>

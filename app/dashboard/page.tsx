@@ -47,6 +47,7 @@ import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization'
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { track, setStatsProfile } from '@/lib/analytics';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
 // Sert à n'afficher l'option « astreinte » que sur des jours non travaillés.
@@ -118,6 +119,42 @@ export default function DashboardPage() {
 
   const totalNotificationCount = urgentCount + warningCount;
 
+  // Statistiques anonymes : profil de cycle en catégories grossières (jamais de
+  // date ni de solde), joint au marqueur « actif » du jour.
+  useEffect(() => {
+    if (!cycleConfig || !counters) return;
+    setStatsProfile(() => {
+      const h = cycleConfig.heuresParJour;
+      const profile = [
+        `type:${cycleConfig.type}`,
+        `duree:${Math.floor(h / 60)}h${String(h % 60).padStart(2, '0')}`,
+      ];
+      if (cycleConfig.type !== 'hebdo' && cycleConfig.pattern) profile.push(`pattern:${cycleConfig.pattern}`);
+      if (cycleConfig.rpsParJour) profile.push('option:rps_perso');
+      if (counters.hasARTT) profile.push('option:artt');
+      if (counters.hasCET2008) profile.push('option:cet2008');
+      if (counters.hasCongesBonifies) profile.push('option:bonifies');
+      return profile;
+    });
+  }, [cycleConfig, counters]);
+
+  const handleRequestPermission = useCallback(async () => {
+    const result = await requestPermission();
+    if (result === 'granted') track('notif_permission');
+    return result;
+  }, [requestPermission]);
+
+  const handleDeleteLeave = useCallback((id: string) => {
+    const ok = deleteHistoryEntry(id);
+    if (ok) track('leave_delete');
+    return ok;
+  }, [deleteHistoryEntry]);
+
+  const handleUpdateCounters = useCallback((updates: Parameters<typeof updateCounters>[0]) => {
+    track('counters_edit');
+    return updateCounters(updates);
+  }, [updateCounters]);
+
   // Redirection si non onboarded
   useEffect(() => {
     if (!isLoading && !isOnboarded) {
@@ -154,6 +191,7 @@ export default function DashboardPage() {
     const hasRestDays = cycleConfig ? rangeHasRestDay(start, end, cycleConfig) : false;
     setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
     setShowOptimization(true);
+    track('range_select');
   }, [cycleConfig]);
 
   // Modifier un congé posé : supprime + rouvre le modal avec la même plage
@@ -163,6 +201,7 @@ export default function DashboardPage() {
       toast.error('Impossible de modifier ce congé');
       return;
     }
+    track('leave_edit');
     const start = new Date(entry.date);
     const end = entry.dateEnd ? new Date(entry.dateEnd) : new Date(entry.date);
     start.setHours(0, 0, 0, 0);
@@ -181,6 +220,7 @@ export default function DashboardPage() {
   const handleUpdateCycle = useCallback((config: Partial<CycleConfig>) => {
     const ok = updateCycle(config);
     if (ok) {
+      track('cycle_change');
       clearCalculationCaches();
       setCalendarResetTrigger((prev) => prev + 1);
     }
@@ -191,6 +231,7 @@ export default function DashboardPage() {
     if (!selectedRange) return;
     const result = poseCMO(selectedRange.start, selectedRange.end);
     if (result.success) {
+      track('cmo_mark');
       toast.success('Arrêt maladie marqué', {
         description: 'La période est marquée en CMO sur le calendrier (sans impact sur vos compteurs).',
       });
@@ -206,6 +247,7 @@ export default function DashboardPage() {
     if (!selectedRange) return;
     const result = poseAstreinte(selectedRange.start, selectedRange.end);
     if (result.success) {
+      track('astreinte_mark');
       toast.success('Astreinte posée', {
         description: 'La période est marquée en astreinte (comptée comme jours travaillés). Pensez à saisir vos HS manuellement.',
       });
@@ -233,6 +275,7 @@ export default function DashboardPage() {
 
     const result = posePartiel(type, minutes, jourCible);
     if (result.success) {
+      track('leave_pose_partiel');
       toast.success('Heures posées', {
         description: `${formatMinutes(minutes)} de ${type.toUpperCase()} posées sur la journée (le reste est travaillé).`,
       });
@@ -247,6 +290,7 @@ export default function DashboardPage() {
   const handleEpargneCET = useCallback((joursCA: number) => {
     const result = epargnerCET(joursCA);
     if (result.success) {
+      track('cet_epargne');
       toast.success(`${joursCA}j épargnés au CET !`, {
         description: `Votre solde CET a été mis à jour. CA restants : ${(counters?.ca ?? 0) - joursCA}j`,
       });
@@ -342,6 +386,7 @@ export default function DashboardPage() {
         return false;
       }
 
+      track('leave_pose');
       toast.success('Congés posés avec succès !', {
         description: `${combination.totalDays} jour${
           combination.totalDays > 1 ? 's' : ''
@@ -387,10 +432,10 @@ export default function DashboardPage() {
         {/* Header */}
         <SimpleHeader
           cycleInfo={cycleInfo}
-          onProfileClick={() => setShowProfile(true)}
-          onSettingsClick={() => setShowSettings(true)}
-          onCountersClick={() => setShowCounters(true)}
-          onNotificationsClick={() => setShowNotifications(true)}
+          onProfileClick={() => { setShowProfile(true); track('open_profile'); }}
+          onSettingsClick={() => { setShowSettings(true); track('open_settings'); }}
+          onCountersClick={() => { setShowCounters(true); track('open_counters'); }}
+          onNotificationsClick={() => { setShowNotifications(true); track('open_notifications'); }}
           notificationCount={totalNotificationCount}
         />
 
@@ -405,7 +450,7 @@ export default function DashboardPage() {
             counters={counters}
             onRangeSelected={handleRangeSelected}
             history={history}
-            onDeleteLeave={deleteHistoryEntry}
+            onDeleteLeave={handleDeleteLeave}
             onEditLeave={handleEditLeave}
             resetTrigger={calendarResetTrigger}
           />
@@ -483,7 +528,7 @@ export default function DashboardPage() {
           onClose={() => setShowCounters(false)}
           counters={counters}
           recommendations={recommendations}
-          onUpdateCounters={updateCounters}
+          onUpdateCounters={handleUpdateCounters}
           caTotal={getCATotalForCycle(cycleConfig)}
           dayMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
           cycleConfig={cycleConfig}
@@ -501,7 +546,7 @@ export default function DashboardPage() {
               counters={counters}
               history={history}
               onReset={reset}
-              onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); }}
+              onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); track('welcome_reopen'); }}
               onUpdateCycle={handleUpdateCycle}
             />
           </Suspense>
@@ -566,7 +611,7 @@ export default function DashboardPage() {
                       counters={counters}
                       projection={cetProjection}
                       onEpargneCET={handleEpargneCET}
-                      onUpdateCounters={updateCounters}
+                      onUpdateCounters={handleUpdateCounters}
                       cycleConfig={cycleConfig}
                       history={history}
                     />
@@ -589,7 +634,7 @@ export default function DashboardPage() {
           onClose={() => setShowNotifications(false)}
           notifications={notifications}
           onDismiss={dismissNotification}
-          onRequestPermission={requestPermission}
+          onRequestPermission={handleRequestPermission}
           permissionGranted={permissionState.permission === 'granted'}
           isSupported={notificationsSupported}
         />

@@ -11,6 +11,7 @@ import { CalendarWeek } from './CalendarWeek';
 import { CalendarYear } from './CalendarYear';
 import { Calendar, CalendarDays, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
+import { track } from '@/lib/analytics';
 import { LeaveList } from './LeaveList';
 import {
   CA_REQUIS_POUR_HP,
@@ -230,7 +231,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
             <span className="hidden sm:inline">Mois</span>
           </button>
           <button
-            onClick={() => setViewMode('week')}
+            onClick={() => { setViewMode('week'); track('view_week'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               viewMode === 'week'
                 ? 'gradient-primary text-white shadow-md shadow-blue-500/20'
@@ -244,7 +245,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
             <span className="hidden sm:inline">Semaine</span>
           </button>
           <button
-            onClick={() => setViewMode('year')}
+            onClick={() => { setViewMode('year'); track('view_year'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               viewMode === 'year'
                 ? 'gradient-primary text-white shadow-md shadow-blue-500/20'

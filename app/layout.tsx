@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ClientErrorBoundary } from "@/components/shared/ClientErrorBoundary";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
+import { StatsTracker } from "@/components/shared/StatsTracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -92,6 +93,7 @@ export default function RootLayout({
           Aller au contenu principal
         </a>
         <ServiceWorkerRegistration />
+        <StatsTracker />
         <ClientErrorBoundary>{children}</ClientErrorBoundary>
         <Toaster
           position="top-center"

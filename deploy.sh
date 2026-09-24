@@ -23,7 +23,7 @@ echo "→ Envoi des fichiers..."
 # une fonction déplacée. Les chemins exclus ci-dessous ne sont pas supprimés
 # (--delete ne touche pas aux exclusions, contrairement à --delete-excluded).
 rsync -avz --delete --exclude 'node_modules' --exclude '.next' --exclude '.git' \
-  --exclude 'ios' --exclude 'out' --exclude 'deploy.sh' \
+  --exclude 'ios' --exclude 'out' --exclude 'deploy.sh' --exclude '.stats-data' \
   -e ssh "$CHRONOS_DIR/" root@51.254.203.30:/var/www/chronos/
 
 # Build + redémarrage sur le VPS

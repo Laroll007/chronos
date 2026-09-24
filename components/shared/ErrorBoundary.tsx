@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Logger l'erreur
     const chronosError = error instanceof ChronosError
       ? error
-      : new ChronosError(error.message, 'UNKNOWN_ERROR', 'critical', {
+      : new ChronosError(`${error.name}: ${error.message}`, 'UNKNOWN_ERROR', 'critical', {
           componentStack: errorInfo.componentStack,
         });
 
