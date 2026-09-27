@@ -8,6 +8,10 @@ export const STATS_EVENTS = {
   // Onboarding (entonnoir)
   onboarding_cycle_done: { label: 'Onboarding : cycle renseigné', group: 'Onboarding' },
   onboarding_done: { label: 'Onboarding : terminé', group: 'Onboarding' },
+  onboarding_resume: { label: 'Onboarding : reprise après fermeture', group: 'Onboarding' },
+  onboarding_skip_counters: { label: 'Onboarding : compteurs remis à plus tard', group: 'Onboarding' },
+  counters_completed_later: { label: 'Compteurs complétés plus tard', group: 'Onboarding' },
+  counters_reminder_dismissed: { label: 'Rappel compteurs masqué', group: 'Onboarding' },
 
   // Calendrier
   view_week: { label: 'Vue Semaine', group: 'Calendrier' },

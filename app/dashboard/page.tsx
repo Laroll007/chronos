@@ -35,6 +35,12 @@ const Projection = lazy(() =>
 );
 import { WelcomeModal, hasSeenWelcome } from '@/components/dashboard/WelcomeModal';
 import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
+import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBanner';
+const CountersSetup = lazy(() =>
+  import('@/components/onboarding/CountersSetup').then((mod) => ({
+    default: mod.CountersSetup,
+  }))
+);
 import { useCounters } from '@/hooks/useCounters';
 // ColleaguesDrawer & useColleagues — désactivé v1, réactiver pour la v2
 import { useRecommendations } from '@/hooks/useRecommendations';
@@ -79,6 +85,7 @@ export default function DashboardPage() {
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showCompleteCounters, setShowCompleteCounters] = useState(false);
 
   const {
     counters,
@@ -96,11 +103,16 @@ export default function DashboardPage() {
     deleteHistoryEntry,
     basculeAnnuelleAConfirmer,
     confirmerBasculeAnnuelle,
+    compteursARenseigner,
+    completerCompteurs,
+    masquerRappelCompteurs,
     reset,
   } = useCounters();
 
+  // Compteurs pas encore saisis : aucune alerte ni recommandation calculée sur
+  // des soldes à zéro (« Poser 8 CA avant le 30 avril » avec 0 CA, etc.).
   const { all: recommendations, cetProjection } = useRecommendations(
-    counters,
+    compteursARenseigner ? null : counters,
     cycleConfig
   );
 
@@ -115,7 +127,7 @@ export default function DashboardPage() {
     requestPermission,
     dismissNotification,
     isSupported: notificationsSupported,
-  } = useNotifications({ counters, cycleConfig });
+  } = useNotifications({ counters, cycleConfig, enabled: !compteursARenseigner });
 
   const totalNotificationCount = urgentCount + warningCount;
 
@@ -441,9 +453,16 @@ export default function DashboardPage() {
 
         {/* Main - Calendrier central */}
         <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 min-h-0 overflow-y-auto overscroll-contain">
-          {/* Rappel de fin d'année (septembre → décembre) */}
+          {/* Compteurs à saisir, sinon rappel de fin d'année (septembre → décembre) */}
           <div className="mb-4">
-            <YearEndBanner counters={counters} cycleConfig={cycleConfig} />
+            {compteursARenseigner ? (
+              <CountersPendingBanner
+                onComplete={() => setShowCompleteCounters(true)}
+                onDismiss={masquerRappelCompteurs}
+              />
+            ) : (
+              <YearEndBanner counters={counters} cycleConfig={cycleConfig} />
+            )}
           </div>
           <CalendarView
             cycleConfig={cycleConfig}
@@ -623,6 +642,52 @@ export default function DashboardPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Saisie des compteurs remise à plus tard pendant l'onboarding */}
+      {showCompleteCounters && (
+        <Dialog open={showCompleteCounters} onOpenChange={setShowCompleteCounters}>
+          <DialogContent
+            className="w-[95vw] max-w-lg p-0 rounded-2xl border-0 shadow-2xl overflow-hidden flex flex-col"
+            style={{ height: '90vh', maxHeight: '90vh' }}
+            showCloseButton={false}
+          >
+            <div className="shrink-0 px-5 pt-5 pb-4 text-white" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0d2347 55%, #0055A4 100%)' }}>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <DialogTitle className="text-base font-bold leading-tight text-white">Mes compteurs</DialogTitle>
+                  <p className="text-blue-200 text-xs mt-0.5">Recopiez vos soldes depuis GesTT</p>
+                </div>
+                <DialogClose className="shrink-0 w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white/80 hover:text-white transition-all">
+                  <X className="w-4 h-4" />
+                </DialogClose>
+              </div>
+              <div className="mt-3 h-[3px] rounded-full" style={{ background: 'linear-gradient(90deg, #0055A4 33%, #ffffff 33%, #ffffff 66%, #EF4135 66%)' }} />
+            </div>
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 bg-[#f8f9fc]">
+              <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>}>
+                <CountersSetup
+                  cycleConfig={cycleConfig}
+                  initialCounters={counters}
+                  onBack={() => setShowCompleteCounters(false)}
+                  onSkip={() => setShowCompleteCounters(false)}
+                  skipLabel="Plus tard"
+                  skipIntro
+                  onNext={(data) => {
+                    if (completerCompteurs(data)) {
+                      toast.success('Compteurs enregistrés', {
+                        description: 'Optimisation, alertes et recommandations sont activées.',
+                      });
+                      setShowCompleteCounters(false);
+                    } else {
+                      toast.error('Impossible d\'enregistrer les compteurs');
+                    }
+                  }}
+                />
+              </Suspense>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Popup Bienvenue */}
       <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />

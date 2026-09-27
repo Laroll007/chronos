@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { CycleConfig, Counters } from '@/lib/types';
-import { saveUserData } from '@/lib/storage';
+import {
+  saveUserData,
+  ONBOARDING_DRAFT_KEY,
+  parseOnboardingDraft,
+  saveOnboardingDraft,
+  clearOnboardingDraft,
+} from '@/lib/storage';
+import type { CountersDraft } from '@/components/onboarding/CountersSetup';
 import { track } from '@/lib/analytics';
 import { getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
@@ -37,6 +44,19 @@ const CountersSetup = lazy(() =>
   import('@/components/onboarding/CountersSetup').then((mod) => ({ default: mod.CountersSetup }))
 );
 
+// Lecture du brouillon d'onboarding. useSyncExternalStore : rendu serveur sans
+// brouillon, puis reprise côté client sans décalage d'hydratation ni setState
+// dans un effet.
+const subscribeNoop = () => () => {};
+const readDraftRaw = () => {
+  try {
+    return localStorage.getItem(ONBOARDING_DRAFT_KEY);
+  } catch {
+    return null;
+  }
+};
+const readDraftServer = () => null;
+
 type Step = 'cycle' | 'counters';
 
 const STEP_CONFIG = [
@@ -46,8 +66,27 @@ const STEP_CONFIG = [
 
 export function OnboardingWizard() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>('cycle');
-  const [cycleConfig, setCycleConfig] = useState<CycleConfig | null>(null);
+  const draftRaw = useSyncExternalStore(subscribeNoop, readDraftRaw, readDraftServer);
+  const resumed = useMemo(() => parseOnboardingDraft(draftRaw), [draftRaw]);
+
+  const [stepState, setStep] = useState<Step | null>(null);
+  const [cycleState, setCycleConfig] = useState<CycleConfig | null>(null);
+  const cycleConfig = cycleState ?? resumed?.cycleConfig ?? null;
+  const step: Step = stepState ?? (resumed ? 'counters' : 'cycle');
+
+  // Mesure : l'agent revient finir une inscription commencée plus tôt. Lu une
+  // seule fois au montage — le brouillon est aussi créé pendant une première
+  // inscription, qui ne doit pas compter comme une reprise.
+  useEffect(() => {
+    if (parseOnboardingDraft(readDraftRaw())) track('onboarding_resume');
+  }, []);
+
+  const handleDraftChange = useCallback(
+    (d: CountersDraft) => {
+      if (cycleConfig) saveOnboardingDraft({ cycleConfig, ...d });
+    },
+    [cycleConfig]
+  );
 
   const steps: Step[] = ['cycle', 'counters'];
   const currentIndex = steps.indexOf(step);
@@ -62,10 +101,11 @@ export function OnboardingWizard() {
   const handleCycleComplete = (config: CycleConfig) => {
     setCycleConfig(config);
     setStep('counters');
+    saveOnboardingDraft({ cycleConfig: config });
     track('onboarding_cycle_done');
   };
 
-  const handleCountersComplete = (data: Counters) => {
+  const finishOnboarding = (data: Counters, compteursARenseigner: boolean) => {
     if (!cycleConfig) return;
 
     const objectifCET = Math.min(CET_PLAFOND, data.cet + getCETApportMaxAnnee(data.cet));
@@ -80,12 +120,21 @@ export function OnboardingWizard() {
       // chargement du dashboard et remet à zéro ce que l'agent vient de saisir
       // (CA posés hors période, CA HP, conso CF du semestre, RTT).
       lastResetYear: new Date().getFullYear(),
+      ...(compteursARenseigner && { compteursARenseigner: true }),
       isOnboarded: true,
     });
 
     if (success) {
-      track('onboarding_done');
-      toast.success('Configuration terminée !', { description: 'Bienvenue sur My Chronos' });
+      clearOnboardingDraft();
+      if (compteursARenseigner) {
+        track('onboarding_skip_counters');
+        toast.success('Votre calendrier est prêt !', {
+          description: 'Renseignez vos compteurs dès que vous avez GesTT sous les yeux.',
+        });
+      } else {
+        track('onboarding_done');
+        toast.success('Configuration terminée !', { description: 'Bienvenue sur My Chronos' });
+      }
       router.push('/dashboard');
     } else {
       toast.error('Erreur lors de la sauvegarde');
@@ -143,8 +192,15 @@ export function OnboardingWizard() {
           <Suspense fallback={null}>
             <CountersSetup
               cycleConfig={cycleConfig}
-              onNext={handleCountersComplete}
+              onNext={(data) => finishOnboarding(data, false)}
+              onSkip={(data) => finishOnboarding(data, true)}
               onBack={() => setStep('cycle')}
+              initialDraft={resumed?.counters ? {
+                counters: resumed.counters,
+                selected: resumed.selected as CountersDraft['selected'],
+                subStep: resumed.subStep,
+              } : undefined}
+              onDraftChange={handleDraftChange}
             />
           </Suspense>
         )}

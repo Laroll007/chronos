@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Counters, CycleConfig } from '@/lib/types';
 import { COUNTER_LABELS, COUNTER_COLORS } from '@/lib/constants';
 import { getCATotalForCycle, checkCAHPCondition, ajusterSoldeCAHP, getCAHPUtilises } from '@/lib/calculations';
@@ -129,17 +129,33 @@ const DEFAULT_SELECTED: CounterKey[] = [];
 // ============================================================
 // Composant principal
 // ============================================================
+export interface CountersDraft {
+  counters: Counters;
+  selected: CounterKey[];
+  subStep: SubStep;
+}
+
 interface CountersSetupProps {
   cycleConfig: CycleConfig;
   onNext: (counters: Counters) => void;
   onBack: () => void;
   initialCounters?: Counters;
+  /** Saisie en cours retrouvée après fermeture de l'app. */
+  initialDraft?: Partial<CountersDraft>;
+  /** Appelé à chaque changement, pour sauvegarder la saisie en cours. */
+  onDraftChange?: (draft: CountersDraft) => void;
+  /** « Je n'ai pas mes compteurs sous la main » : reçoit ce qui a déjà été saisi. */
+  onSkip?: (counters: Counters) => void;
+  /** Libellé du bouton de report (défaut : onboarding). */
+  skipLabel?: string;
+  /** Hors onboarding : démarre à la liste des compteurs, sans l'écran d'intro. */
+  skipIntro?: boolean;
 }
 
 // Compteurs vides pour démarrer l'onboarding sans pré-remplissage.
 // hasCF/hasRTC démarrent désactivés : aucun compteur n'est actif tant que
 // l'utilisateur ne l'a pas explicitement coché (sinon notifications fantômes).
-const EMPTY_COUNTERS: Counters = {
+export const EMPTY_COUNTERS: Counters = {
   ...DEFAULT_COUNTERS,
   ca: 0,
   cf: 0,
@@ -150,9 +166,22 @@ const EMPTY_COUNTERS: Counters = {
 
 type SubStep = 'intro' | 'selection' | 'values';
 
-export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: CountersSetupProps) {
-  const [subStep, setSubStep] = useState<SubStep>('intro');
-  const [counters, setCounters] = useState<Counters>(initialCounters ?? EMPTY_COUNTERS);
+export function CountersSetup({
+  cycleConfig,
+  onNext,
+  onBack,
+  initialCounters,
+  initialDraft,
+  onDraftChange,
+  onSkip,
+  skipLabel = "Je n'ai pas mes compteurs sous la main",
+  skipIntro = false,
+}: CountersSetupProps) {
+  const firstSubStep: SubStep = skipIntro ? 'selection' : 'intro';
+  const [subStep, setSubStep] = useState<SubStep>(initialDraft?.subStep ?? firstSubStep);
+  const [counters, setCounters] = useState<Counters>(
+    initialDraft?.counters ?? initialCounters ?? EMPTY_COUNTERS
+  );
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
   // Nombre de CA annuels selon le cycle (hebdo = 25, sinon 18/23)
@@ -162,7 +191,14 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
   const caHPUtilises = getCAHPUtilises(counters.caPosesHorsPeriode, counters.caHP);
 
   // Aucun pré-cochage : l'utilisateur coche lui-même ce qu'il possède
-  const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(new Set(DEFAULT_SELECTED));
+  const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(
+    new Set(initialDraft?.selected ?? DEFAULT_SELECTED)
+  );
+
+  // Sauvegarde de la saisie en cours (synchronisation vers le stockage, pas d'état).
+  useEffect(() => {
+    onDraftChange?.({ counters, selected: [...selectedKeys], subStep });
+  }, [counters, selectedKeys, subStep, onDraftChange]);
 
   const updateCounter = (key: keyof Counters, value: number) =>
     setCounters((prev) => ({ ...prev, [key]: value }));
@@ -213,29 +249,39 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
   };
 
   const handleBack = () => {
-    if (subStep === 'values') setSubStep('selection');
-    else if (subStep === 'selection') setSubStep('intro');
-    else onBack();
+    if (subStep === firstSubStep) onBack();
+    else if (subStep === 'values') setSubStep('selection');
+    else setSubStep('intro');
   };
 
   // Réconcilie les flags d'activation avec les cases réellement cochées avant
   // de sauvegarder : un compteur non coché ne doit jamais rester actif
   // (sinon ses notifications se déclenchent à tort — cf. CF/RTC à hasX:true par défaut).
-  const handleFinish = () => {
-    const finalCounters: Counters = {
-      ...counters,
-      hasCF: selectedKeys.has('cf'),
-      hasRTC: selectedKeys.has('rtc'),
-      hasRTT: selectedKeys.has('rtt'),
-      hasARTT: selectedKeys.has('artt'),
-      hasCET2008: selectedKeys.has('cet2008'),
-      hasCongesBonifies: selectedKeys.has('congesBonifies'),
-      cf: selectedKeys.has('cf') ? counters.cf : 0,
-      rtc: selectedKeys.has('rtc') ? counters.rtc : 0,
-      rtt: selectedKeys.has('rtt') ? counters.rtt : undefined,
-    };
-    onNext(finalCounters);
-  };
+  const buildFinalCounters = (): Counters => ({
+    ...counters,
+    hasCF: selectedKeys.has('cf'),
+    hasRTC: selectedKeys.has('rtc'),
+    hasRTT: selectedKeys.has('rtt'),
+    hasARTT: selectedKeys.has('artt'),
+    hasCET2008: selectedKeys.has('cet2008'),
+    hasCongesBonifies: selectedKeys.has('congesBonifies'),
+    cf: selectedKeys.has('cf') ? counters.cf : 0,
+    rtc: selectedKeys.has('rtc') ? counters.rtc : 0,
+    rtt: selectedKeys.has('rtt') ? counters.rtt : undefined,
+  });
+
+  const handleFinish = () => onNext(buildFinalCounters());
+
+  // Report de la saisie : lien discret, présent sur les trois sous-étapes.
+  const skipButton = onSkip && (
+    <button
+      type="button"
+      onClick={() => onSkip(buildFinalCounters())}
+      className="w-full py-3 text-sm font-medium text-slate-500 underline underline-offset-4 hover:text-blue-700 transition-colors"
+    >
+      {skipLabel}
+    </button>
+  );
 
   const cardClass = 'rounded-xl border border-slate-200 py-6 shadow-sm bg-white';
   const titleClass = 'font-semibold text-lg text-slate-800 leading-none';
@@ -284,9 +330,9 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
                     Se produit quand le nœud de texte démarre sur la ligne de la
                     balise puis se poursuit sur les lignes suivantes. */}
                 <strong>Pas de panique&nbsp;:</strong>{' '}
-                si vous n&apos;avez pas vos soldes sous la main,
-                vous pouvez aussi les renseigner plus tard depuis le dashboard. Vous pourrez les
-                modifier ou les compléter à tout moment.
+                si vous n&apos;avez pas vos soldes sous la main, passez cette étape avec le
+                lien ci-dessous. Votre calendrier de travail sera déjà prêt, et vous
+                renseignerez vos compteurs plus tard, devant GesTT.
               </p>
             </div>
           </div>
@@ -307,6 +353,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
+        {skipButton}
       </div>
     );
   }
@@ -382,6 +429,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
+          {skipButton}
         </div>
 
         {helpKey && <HelpModal helpKey={helpKey} onClose={() => setHelpKey(null)} />}
@@ -672,6 +720,7 @@ export function CountersSetup({ cycleConfig, onNext, onBack, initialCounters }: 
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
+        {skipButton}
       </div>
 
       {/* Modal d'aide */}

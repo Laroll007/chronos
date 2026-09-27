@@ -361,6 +361,48 @@ export function addHistoryEntry(entry: Omit<HistoryEntry, 'id'>): UserData | nul
   return success ? updated : null;
 }
 
+// ============================================
+// BROUILLON D'ONBOARDING
+// ============================================
+
+// L'onboarding se fait souvent en deux fois : le cycle tout de suite, les
+// soldes GesTT plus tard, devant un poste du service. Sans brouillon, l'agent
+// qui fermait l'app recommençait tout depuis le choix du cycle.
+export const ONBOARDING_DRAFT_KEY = 'chronos_onboarding_draft';
+
+export interface OnboardingDraft {
+  cycleConfig: CycleConfig;
+  counters?: Counters;
+  selected?: string[];
+  subStep?: 'intro' | 'selection' | 'values';
+}
+
+export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null {
+  if (!raw) return null;
+  try {
+    const draft = JSON.parse(raw) as OnboardingDraft;
+    return draft && typeof draft === 'object' && draft.cycleConfig ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOnboardingDraft(draft: OnboardingDraft): void {
+  try {
+    localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* stockage plein ou bloqué : l'agent refera l'étape, rien de plus */
+  }
+}
+
+export function clearOnboardingDraft(): void {
+  try {
+    localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Réinitialise toutes les données
  */
@@ -369,6 +411,7 @@ export function resetAllData(): boolean {
 
   try {
     localStorage.removeItem(STORAGE_KEY);
+    clearOnboardingDraft();
     // Supprime aussi le miroir natif iOS (fire-and-forget, no-op sur le web)
     void clearNative();
     logger.info('Données réinitialisées');

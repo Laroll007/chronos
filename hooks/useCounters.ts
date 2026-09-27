@@ -8,12 +8,13 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
+import { getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
 import { CET_PLAFOND, CA_MAX_VERS_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
 import { canEpargnerCA } from '@/lib/cet';
+import { track } from '@/lib/analytics';
 
 /**
  * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
@@ -116,6 +117,42 @@ export function useCounters() {
     if (!current?.basculeAConfirmer) return;
     const { basculeAConfirmer: _vu, ...reste } = current;
     save(reste as typeof current);
+  }, [save]);
+
+  // Onboarding terminé sans les soldes GesTT : compteurs encore à saisir.
+  const compteursARenseigner = useMemo(
+    () => userData?.compteursARenseigner === true,
+    [userData]
+  );
+
+  // Saisie complète des compteurs depuis le rappel du dashboard.
+  const completerCompteurs = useCallback(
+    (counters: Counters) => {
+      const current = userDataRef.current;
+      if (!current) return false;
+      const { compteursARenseigner: _fait, ...reste } = current;
+      const ok = save({
+        ...reste,
+        // Même objectif CET qu'à la fin d'un onboarding complet.
+        counters: {
+          ...counters,
+          objectifCET: Math.min(CET_PLAFOND, counters.cet + getCETApportMaxAnnee(counters.cet)),
+        },
+        lastUpdated: new Date().toISOString(),
+      });
+      if (ok) track('counters_completed_later');
+      return ok;
+    },
+    [save]
+  );
+
+  // « Masquer » : l'agent a saisi ses soldes autrement (tiroir Compteurs) ou
+  // ne veut plus du rappel. Les alertes et recommandations reprennent.
+  const masquerRappelCompteurs = useCallback(() => {
+    const current = userDataRef.current;
+    if (!current?.compteursARenseigner) return;
+    const { compteursARenseigner: _vu, ...reste } = current;
+    if (save(reste)) track('counters_reminder_dismissed');
   }, [save]);
 
   // Initialiser avec les valeurs par défaut
@@ -536,6 +573,7 @@ export function useCounters() {
     error,
     recommendations,
     basculeAnnuelleAConfirmer,
+    compteursARenseigner,
     // Actions
     initialize,
     updateCounters,
@@ -547,6 +585,8 @@ export function useCounters() {
     epargnerCET,
     deleteHistoryEntry,
     confirmerBasculeAnnuelle,
+    completerCompteurs,
+    masquerRappelCompteurs,
     updateRPS,
     reset,
     save,

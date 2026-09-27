@@ -135,6 +135,11 @@ export interface UserData {
   // message a été vu. Un champ « déjà notifié » ne convenait pas : absent chez
   // les utilisateurs existants, il déclenchait le message pour tout le monde.
   basculeAConfirmer?: number;
+  // L'agent a terminé l'onboarding sans ses soldes GesTT (« Je n'ai pas mes
+  // compteurs sous la main ») : compteurs vides, bandeau de rappel sur le
+  // dashboard, alertes et recommandations coupées. Absent = compteurs saisis
+  // (utilisateurs existants inclus), effacé dès qu'ils sont complétés.
+  compteursARenseigner?: boolean;
   isOnboarded: boolean;
 }
 
