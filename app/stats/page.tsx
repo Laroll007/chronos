@@ -2,7 +2,8 @@
 
 // Tableau de bord des statistiques anonymes — réservé à l'éditeur.
 // Mot de passe : STATS_ADMIN_PASSWORD (.env.local sur le VPS). Gardé en
-// sessionStorage le temps de l'onglet, jamais en localStorage.
+// sessionStorage le temps de l'onglet, ou en localStorage si l'utilisateur
+// coche « Se souvenir de moi » (raccourci sur l'écran d'accueil du téléphone).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -19,6 +20,32 @@ import type { StatsSummary } from '@/lib/server/stats-store';
 import { STATS_EVENTS } from '@/lib/stats-events';
 
 const PASSWORD_KEY = 'chronos_stats_admin';
+
+function readSavedPassword(): string | null {
+  try {
+    return localStorage.getItem(PASSWORD_KEY) ?? sessionStorage.getItem(PASSWORD_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function savePassword(pwd: string, remember: boolean): void {
+  try {
+    sessionStorage.setItem(PASSWORD_KEY, pwd);
+    if (remember) localStorage.setItem(PASSWORD_KEY, pwd);
+  } catch {
+    /* stockage indisponible : le mot de passe sera redemandé */
+  }
+}
+
+function forgetPassword(): void {
+  try {
+    localStorage.removeItem(PASSWORD_KEY);
+    sessionStorage.removeItem(PASSWORD_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 const PERIODS = [7, 30, 90, 365] as const;
 
 // Palette catégorielle validée (validate_palette.js, 4 créneaux, ordre fixe).
@@ -99,6 +126,7 @@ function HBars({
 
 export default function StatsPage() {
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
   const [data, setData] = useState<StatsSummary | null>(null);
@@ -119,23 +147,23 @@ export default function StatsPage() {
         setError(json.error ?? `Erreur ${res.status}`);
         if (res.status === 401) {
           setAuthed(false);
-          sessionStorage.removeItem(PASSWORD_KEY);
+          forgetPassword();
         }
         return;
       }
       setData(json as StatsSummary);
       setAuthed(true);
-      sessionStorage.setItem(PASSWORD_KEY, pwd);
+      savePassword(pwd, remember);
     } catch {
       setError('Erreur réseau');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [remember]);
 
-  // Reprise de session (même onglet)
+  // Reprise de session (même onglet, ou appareil mémorisé)
   useEffect(() => {
-    const saved = sessionStorage.getItem(PASSWORD_KEY);
+    const saved = readSavedPassword();
     if (saved) {
       setPassword(saved);
       void load(saved, days);
@@ -182,6 +210,15 @@ export default function StatsPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
+          <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 accent-[#0055A4]"
+            />
+            Se souvenir de moi sur cet appareil
+          </label>
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           <button
             type="submit"
@@ -217,6 +254,7 @@ export default function StatsPage() {
               Anonymes, sans identifiant · du {shortDay(data.from)} au {shortDay(data.to)}
             </p>
           </div>
+          <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-200 bg-white p-0.5" role="tablist" aria-label="Période">
             {PERIODS.map((p) => (
               <button
@@ -229,6 +267,19 @@ export default function StatsPage() {
                 {p === 365 ? '1 an' : `${p} j`}
               </button>
             ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              forgetPassword();
+              setPassword('');
+              setData(null);
+              setAuthed(false);
+            }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Se déconnecter
+          </button>
           </div>
         </header>
 
