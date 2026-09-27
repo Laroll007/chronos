@@ -28,7 +28,9 @@ rsync -avz --delete --exclude 'node_modules' --exclude '.next' --exclude '.git' 
 
 # Build + redémarrage sur le VPS
 echo "→ Build + redémarrage..."
-if ! ssh chronos-vps "cd /var/www/chronos && npm run build && pm2 restart chronos"; then
+# npm install : sans lui, une dépendance ajoutée côté Mac manque au build du
+# VPS (arrivé avec nodemailer le 2026-09-28 — build KO, prod restée en l'état).
+if ! ssh chronos-vps "cd /var/www/chronos && npm install --no-audit --no-fund && npm run build && pm2 restart chronos"; then
   echo ""
   echo "!!! ÉCHEC : build ou redémarrage KO — la prod tourne encore sur l'ancienne version."
   exit 1
