@@ -19,7 +19,7 @@ export default function CguPage() {
             ← Retour à l&apos;application
           </Link>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Conditions Générales d&apos;Utilisation</h1>
-          <p className="text-slate-500 text-sm">Dernière mise à jour : 24 avril 2026</p>
+          <p className="text-slate-500 text-sm">Dernière mise à jour : 27 septembre 2026</p>
         </div>
 
         <div className="space-y-10 text-slate-700 text-sm leading-relaxed">
@@ -158,8 +158,8 @@ export default function CguPage() {
               . L&apos;Application minimise la collecte : les données métier
               (compteurs, historique) sont stockées localement sur l&apos;appareil.
               Seul le formulaire de retour, optionnel, transmet un message et, le
-              cas échéant, un email à notre sous-traitant Resend, avec
-              consentement explicite préalable.
+              cas échéant, un email à l&apos;éditeur (messagerie hébergée en
+              France), avec consentement explicite préalable.
             </p>
           </section>
 

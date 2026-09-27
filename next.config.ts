@@ -13,7 +13,7 @@ const isCapacitor = process.env.BUILD_TARGET === "capacitor";
 const isProd = process.env.NODE_ENV === "production";
 
 // CSP stricte en prod, relaxée en dev (React HMR utilise eval).
-// connect-src : self (API interne) + api.resend.com (feedback).
+// connect-src : self (API interne ; l'email de feedback part du serveur).
 // upgrade-insecure-requests uniquement en prod : casse le dev local HTTP sinon.
 const csp = [
   "default-src 'self'",
@@ -21,7 +21,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.resend.com",
+  "connect-src 'self'",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",

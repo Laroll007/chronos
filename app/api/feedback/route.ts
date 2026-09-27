@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { createHash } from 'crypto';
 import { corsHeaders } from '@/lib/server/cors';
 
@@ -131,8 +131,13 @@ export async function POST(req: NextRequest) {
   const safeEmail = escapeHtml(fromEmail);
   const safeTypeLabel = escapeHtml(typeLabel!);
 
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') {
-    console.error(`[feedback] RESEND_API_KEY missing (ipHash=${ipHash})`);
+  // Boîte OVH contact@lexdigita.fr, la même que le formulaire de lexdigita.fr.
+  // Identifiants dans .env.local — côté MAC : deploy.sh le recopie sur le VPS
+  // (c'est ainsi qu'une clé posée à la main sur le serveur avait été écrasée).
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpUser || !smtpPass) {
+    console.error(`[feedback] SMTP_USER/SMTP_PASS missing (ipHash=${ipHash})`);
     return NextResponse.json(
       { error: 'Service temporairement indisponible' },
       { status: 503, headers: cors },
@@ -140,13 +145,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'ssl0.ovh.net',
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: true,
+      auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+    });
 
-    await resend.emails.send({
-      from: 'My Chronos Feedback <feedback@mychronos.fr>',
+    await transporter.sendMail({
+      // OVH refuse un expéditeur différent du compte authentifié.
+      from: `"My Chronos" <${smtpUser}>`,
       to: 'contact@lexdigita.fr',
+      // « Répondre » répond directement à l'agent s'il a laissé son email.
+      ...(fromEmail !== 'anonyme' && { replyTo: fromEmail }),
       subject: `[My Chronos] ${typeLabel} — retour utilisateur`,
       text: [
         `Type : ${typeLabel}`,
@@ -173,11 +187,11 @@ export async function POST(req: NextRequest) {
       `,
     });
 
-    clearTimeout(timeoutId);
     return NextResponse.json({ ok: true }, { headers: cors });
   } catch (err) {
     const name = err instanceof Error ? err.name : 'Unknown';
-    console.error(`[feedback] send failed (ipHash=${ipHash}, err=${name})`);
+    const code = (err as { code?: string; responseCode?: number })?.code ?? '';
+    console.error(`[feedback] send failed (ipHash=${ipHash}, err=${name} ${code})`);
     return NextResponse.json(
       { error: "Erreur lors de l'envoi" },
       { status: 500, headers: cors },

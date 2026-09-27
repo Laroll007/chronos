@@ -188,8 +188,8 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   />
                   <span>
                     J&apos;accepte que mon message et, le cas échéant, mon email soient
-                    transmis via <strong>Resend</strong> (sous-traitant, données
-                    hébergées UE) à l&apos;éditeur, pour le traitement de ma demande.
+                    transmis par email à l&apos;éditeur (messagerie OVHcloud, France),
+                    pour le traitement de ma demande.
                     Données conservées 12 mois maximum.{' '}
                     <Link href="/privacy" className="text-blue-600 underline hover:text-blue-700" target="_blank">
                       En savoir plus

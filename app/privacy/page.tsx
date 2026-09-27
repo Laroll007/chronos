@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Politique de confidentialité — My Chronos",
   description:
-    "Politique de confidentialité de My Chronos : données stockées localement, statistiques d'usage anonymes sans identifiant, formulaire de retour via Resend (sous-traitant), droits RGPD complets.",
+    "Politique de confidentialité de My Chronos : données stockées localement, statistiques d'usage anonymes sans identifiant, formulaire de retour hébergé en France, droits RGPD complets.",
   alternates: { canonical: "https://mychronos.fr/privacy" },
 };
 
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
             Politique de confidentialité
           </h1>
           <p className="text-slate-500 text-sm">
-            Dernière mise à jour : 24 septembre 2026
+            Dernière mise à jour : 27 septembre 2026
           </p>
         </div>
 
@@ -88,11 +88,12 @@ export default function PrivacyPage() {
                 </p>
                 <p className="text-amber-900/90">
                   Si vous utilisez le formulaire « Donner mon avis », les
-                  données suivantes sont transmises à notre sous-traitant
-                  Resend : <strong>type de retour, message libre, et
+                  données suivantes sont transmises à notre serveur (OVHcloud,
+                  France)&nbsp;: <strong>type de retour, message libre, et
                   éventuellement votre adresse email</strong> si vous choisissez
                   d&apos;en fournir une. Le message nous est ensuite envoyé par
-                  email à <code>contact@lexdigita.fr</code>.{" "}
+                  email à <code>contact@lexdigita.fr</code> (messagerie
+                  OVHcloud). Il n&apos;est pas conservé sur le serveur.{" "}
                   <em>
                     Base légale : consentement (art. 6.1.a RGPD) — case à cocher
                     obligatoire avant envoi.
@@ -142,6 +143,10 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-slate-800 mb-2">
               3. Sous-traitants et transferts hors UE
             </h2>
+            <p className="mb-2">
+              Aucune donnée n&apos;est transférée hors de l&apos;Union
+              européenne. Notre seul sous-traitant est&nbsp;:
+            </p>
             <ul className="list-disc ml-5 space-y-2">
               <li>
                 <strong>OVHcloud</strong> (hébergeur,{" "}
@@ -153,23 +158,9 @@ export default function PrivacyPage() {
                 >
                   ovhcloud.com
                 </a>
-                ) — serveurs situés en France. Aucun transfert hors UE.
-              </li>
-              <li>
-                <strong>Resend, Inc.</strong> (envoi de l&apos;email de
-                feedback,{" "}
-                <a
-                  href="https://resend.com"
-                  className="text-blue-600 underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  resend.com
-                </a>
-                ) — société États-Unis. Transfert de données hors UE encadré
-                par les <strong>clauses contractuelles types</strong> de la
-                Commission européenne (art. 46 RGPD). Uniquement concerné si
-                vous utilisez le formulaire de retour.
+                ) — hébergement du site et des statistiques anonymes, et
+                messagerie qui reçoit les messages du formulaire de retour.
+                Serveurs situés en France.
               </li>
             </ul>
           </section>
