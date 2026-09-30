@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours } from '@/lib/types';
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
-import { baremeRPSNuit, baremeRPSParDefaut } from '@/lib/rps';
+import { baremeRPSDepuisHoraires, baremeRPSNuit, baremeRPSParDefaut, minutesDeNuit } from '@/lib/rps';
 import { aujourdhuiISO, getWeekType, lundiDeLaSemaine } from '@/lib/calculations';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
 
@@ -28,6 +28,16 @@ const formatSemaine = (iso: string): string => {
   const fin = dimanche.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return `Du ${debut} au ${fin}`;
 };
+
+// Horaires : 'HH:MM' <-> minutes après minuit
+const toHHMM = (min: number): string =>
+  `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+const fromHHMM = (v: string): number | null => {
+  const m = /^(\d{2}):(\d{2})$/.exec(v);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+const DUREE_MIN = 60;
+const DUREE_MAX = 16 * 60;
 
 interface CycleSetupProps {
   onNext: (config: CycleConfig) => void;
@@ -57,7 +67,20 @@ function buildHebdoHeures(cfg?: CycleConfig): WeekHours {
 export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [cycleType, setCycleType] = useState<CycleType>(initialConfig?.type ?? 'alterne');
   const [cyclePattern, setCyclePattern] = useState<CyclePattern>('2/2/3/2/2/3');
-  const [heuresParJour, setHeuresParJour] = useState(initialConfig?.heuresParJour ?? HEURES_PAR_JOUR);
+  // Horaires de vacation (cycle alterné). Défaut 07h00 → 19h08 : un agent de
+  // jour n'a rien à toucher. Agent déjà inscrit sans horaires : on part de son
+  // ancien réglage jour/nuit (19h00 pour la nuit), qu'il peut corriger ici.
+  const [heureDebut, setHeureDebut] = useState<number>(
+    () => initialConfig?.heureDebut ?? ((initialConfig?.rpsParJour?.lundi ?? 0) > 0 ? 19 * 60 : 7 * 60)
+  );
+  const [heureFin, setHeureFin] = useState<number>(
+    () => ((initialConfig?.heureDebut ?? ((initialConfig?.rpsParJour?.lundi ?? 0) > 0 ? 19 * 60 : 7 * 60))
+      + (initialConfig?.heuresParJour ?? HEURES_PAR_JOUR)) % (24 * 60)
+  );
+  // Fin avant le début = fin le lendemain (vacation de nuit ou mixte).
+  const dureeVacation = (heureFin - heureDebut + 24 * 60) % (24 * 60);
+  const horaireInvalide =
+    cycleType === 'alterne' && (dureeVacation < DUREE_MIN || dureeVacation > DUREE_MAX);
   const [heuresSemaine, setHeuresSemaine] = useState<WeekHours>(buildHebdoHeures(initialConfig));
 
   // Heure locale : l'ancien calcul passait par toISOString() (UTC) et renvoyait
@@ -106,7 +129,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const hebdoTotal = HEBDO_DAYS.reduce((sum, d) => sum + (heuresSemaine[d.key] || 0), 0);
 
   const handleSubmit = () => {
-    if (choixManquant) return;
+    if (choixManquant || horaireInvalide) return;
     const isHebdo = cycleType === 'hebdo';
     // En hebdo, un jour est "travaillé" s'il a des heures > 0 (samedi/dimanche = repos)
     const hebdoSchedule: WeekSchedule = {
@@ -121,7 +144,8 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
     onNext({
       type: cycleType,
       pattern: isHebdo ? undefined : cyclePattern,
-      heuresParJour: isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : heuresParJour,
+      heuresParJour: isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : dureeVacation,
+      heureDebut: isHebdo ? undefined : heureDebut,
       heuresJourCourt: undefined,
       heuresSemaine: isHebdo ? { ...heuresSemaine, samedi: 0, dimanche: 0 } : undefined,
       // Hebdo : on force une semaine de référence stable (lundi du jour J),
@@ -130,9 +154,13 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       semaineActuelle: isHebdo ? 'A' : semaineActuelle ?? 'A',
       semaineA: isHebdo ? hebdoSchedule : semaineA,
       semaineB: isHebdo ? undefined : semaineB,
-      rpsParJour: serviceDeNuit
-        ? baremeRPSNuit(isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : heuresParJour)
-        : baremeRPSParDefaut(),
+      // Cycle alterné : barème exact d'après les horaires (nuit 21h–6h, dimanche).
+      // Hebdo : choix jour / nuit, inchangé.
+      rpsParJour: !isHebdo
+        ? baremeRPSDepuisHoraires(heureDebut, dureeVacation)
+        : serviceDeNuit
+          ? baremeRPSNuit(heuresSemaine.lundi || HEURES_PAR_JOUR)
+          : baremeRPSParDefaut(),
     });
   };
 
@@ -240,54 +268,66 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
         <div className="px-6 mb-4">
           <div className="font-semibold text-lg text-slate-800 leading-none flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
-            Durée de journée
+            {cycleType === 'alterne' ? 'Vos horaires de vacation' : 'Durée de journée'}
           </div>
+          {cycleType === 'alterne' && (
+            <div className={`${labelClass} mt-1`}>Jour, nuit ou mixte : ils calculent vos RPS automatiquement</div>
+          )}
           {cycleType === 'hebdo' && (
             <div className={`${labelClass} mt-1`}>Heures travaillées par jour (Lu-Ve) — samedi/dimanche en repos</div>
           )}
         </div>
         {cycleType === 'alterne' ? (
-          <div className="px-6">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label htmlFor="heures" className="text-sm font-medium text-slate-600">
-                  Heures par jour travaillé
-                </label>
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    id="heures"
-                    type="number"
-                    min={1}
-                    max={24}
-                    value={Math.floor(heuresParJour / 60)}
-                    onChange={(e) => {
-                      const h = parseInt(e.target.value) || 0;
-                      setHeuresParJour(h * 60 + (heuresParJour % 60));
-                    }}
-                    aria-label="Heures"
-                    className={`w-20 h-9 ${inputClass}`}
-                  />
-                  <span className="text-slate-400">h</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={heuresParJour % 60}
-                    onChange={(e) => {
-                      const m = parseInt(e.target.value) || 0;
-                      setHeuresParJour(Math.floor(heuresParJour / 60) * 60 + m);
-                    }}
-                    aria-label="Minutes"
-                    className={`w-20 h-9 ${inputClass}`}
-                  />
-                  <span className="text-slate-400">min</span>
-                </div>
+          <div className="px-6 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="heure-debut" className="text-sm font-medium text-slate-600">Prise de service</label>
+                <input
+                  id="heure-debut"
+                  type="time"
+                  value={toHHMM(heureDebut)}
+                  onChange={(e) => {
+                    const v = fromHHMM(e.target.value);
+                    if (v !== null) setHeureDebut(v);
+                  }}
+                  className={`mt-2 w-full h-11 ${inputClass}`}
+                />
               </div>
-              <div className="text-right">
-                <div className="text-sm text-slate-400">Total</div>
-                <div className="text-xl font-bold text-blue-600">{formatHeures(heuresParJour)}</div>
+              <div>
+                <label htmlFor="heure-fin" className="text-sm font-medium text-slate-600">Fin de service</label>
+                <input
+                  id="heure-fin"
+                  type="time"
+                  value={toHHMM(heureFin)}
+                  onChange={(e) => {
+                    const v = fromHHMM(e.target.value);
+                    if (v !== null) setHeureFin(v);
+                  }}
+                  className={`mt-2 w-full h-11 ${inputClass}`}
+                />
               </div>
             </div>
+            {horaireInvalide ? (
+              <p className="text-sm text-rose-600">Vérifiez vos horaires : une vacation dure entre 1 h et 16 h.</p>
+            ) : (
+              <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm text-blue-900 space-y-1">
+                <p>
+                  <strong>Durée : {formatHeures(dureeVacation)}</strong>
+                  {heureFin <= heureDebut && ' (fin le lendemain)'}
+                  {minutesDeNuit(heureDebut, dureeVacation) > 0 &&
+                    ` · dont ${formatHeures(minutesDeNuit(heureDebut, dureeVacation))} de nuit (21h–6h)`}
+                </p>
+                {(() => {
+                  const b = baremeRPSDepuisHoraires(heureDebut, dureeVacation);
+                  return (
+                    <p className="text-blue-800">
+                      RPS par vacation : {b.lundi > 0 ? `${formatHeures(b.lundi)} en semaine · ` : ''}
+                      {formatHeures(b.samedi)} le samedi · {formatHeures(b.dimanche)} le dimanche
+                    </p>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         ) : (
           <div className="px-6 space-y-3">
@@ -455,7 +495,9 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
         </div>
       )}
 
-      {/* Service de jour / de nuit — barème RPS */}
+      {/* Service de jour / de nuit — barème RPS (hebdo ; en cycle alterné,
+          les horaires ci-dessus donnent le barème exact) */}
+      {cycleType === 'hebdo' && (
       <div className={cardClass}>
         <div className="px-6 mb-4">
           <div className={titleClass}>Vos vacations</div>
@@ -499,18 +541,19 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           </p>
         </div>
       </div>
+      )}
 
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={choixManquant}
+        disabled={choixManquant || horaireInvalide}
         className="inline-flex items-center justify-center gap-2 w-full h-14 text-lg font-semibold rounded-xl text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:pointer-events-none"
         style={{
           background: 'linear-gradient(135deg, #0055A4 0%, #1a7de8 45%, #EF4135 100%)',
           boxShadow: '0 8px 24px rgba(0,85,164,0.25)',
         }}
       >
-        {choixManquant ? 'Choisissez la semaine en cours' : 'Continuer'}
+        {choixManquant ? 'Choisissez la semaine en cours' : horaireInvalide ? 'Vérifiez vos horaires' : 'Continuer'}
         <ChevronRight className="w-5 h-5" />
       </button>
     </div>

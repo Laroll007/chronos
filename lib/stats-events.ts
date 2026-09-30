@@ -71,7 +71,7 @@ export function isStatsPlatform(p: unknown): p is StatsPlatform {
  * Profil de cycle, en catégories grossières. Jamais de date ni de solde.
  * Clés « famille:valeur », ex. `type:alterne`, `pattern:2/2`, `duree:12h08`.
  */
-export const PROFILE_KEY_RE = /^(type|pattern|duree|option):[A-Za-z0-9/_\-hé]{1,24}$/;
+export const PROFILE_KEY_RE = /^(type|pattern|duree|option|horaire):[A-Za-z0-9/_\-hé]{1,24}$/;
 
 /** Clé d'erreur : texte court, déjà nettoyé côté client. */
 export const ERROR_KEY_MAX = 120;

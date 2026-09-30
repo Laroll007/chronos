@@ -241,6 +241,7 @@ export default function StatsPage() {
     pattern: 'Rythme',
     duree: 'Durée du jour',
     option: 'Options',
+    horaire: 'Horaires',
   };
 
   return (

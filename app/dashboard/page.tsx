@@ -38,6 +38,7 @@ import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
 import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBanner';
 import { EventModal, type EventDraft } from '@/components/dashboard/EventModal';
 import { eventsInRange, toDayKey } from '@/lib/events';
+import { typeDeVacation } from '@/lib/rps';
 const CountersSetup = lazy(() =>
   import('@/components/onboarding/CountersSetup').then((mod) => ({
     default: mod.CountersSetup,
@@ -151,6 +152,9 @@ export default function DashboardPage() {
       ];
       if (cycleConfig.type !== 'hebdo' && cycleConfig.pattern) profile.push(`pattern:${cycleConfig.pattern}`);
       if (cycleConfig.rpsParJour) profile.push('option:rps_perso');
+      if (cycleConfig.type !== 'hebdo' && cycleConfig.heureDebut !== undefined) {
+        profile.push(`horaire:${typeDeVacation(cycleConfig.heureDebut, h)}`);
+      }
       if (counters.hasARTT) profile.push('option:artt');
       if (counters.hasCET2008) profile.push('option:cet2008');
       if (counters.hasCongesBonifies) profile.push('option:bonifies');
@@ -674,7 +678,9 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {cycleConfig.type === 'hebdo' && cycleConfig.heuresSemaine
                       ? `${formatMinutes(getWeeklyMinutes(cycleConfig))} / semaine`
-                      : `${Math.floor(cycleConfig.heuresParJour / 60)}h${(cycleConfig.heuresParJour % 60).toString().padStart(2, '0')} par jour`}
+                      : cycleConfig.heureDebut !== undefined
+                        ? `${formatMinutes(cycleConfig.heureDebut)} → ${formatMinutes((cycleConfig.heureDebut + cycleConfig.heuresParJour) % 1440)} (${formatMinutes(cycleConfig.heuresParJour)})`
+                        : `${Math.floor(cycleConfig.heuresParJour / 60)}h${(cycleConfig.heuresParJour % 60).toString().padStart(2, '0')} par jour`}
                   </p>
                 </div>
 

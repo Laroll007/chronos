@@ -105,6 +105,8 @@ function checkCycleConfig(v: unknown): string[] {
       }
     }
   }
+  if (v.heureDebut !== undefined && !isNum(v.heureDebut, 0, 1439))
+    errors.push('heureDebut: 0-1439 attendu');
   if (!isStr(v.dateDebutCycle) || !DATE_RE.test(v.dateDebutCycle as string))
     errors.push('dateDebutCycle: YYYY-MM-DD attendu');
   if (!(WEEK_TYPES as readonly unknown[]).includes(v.semaineActuelle))

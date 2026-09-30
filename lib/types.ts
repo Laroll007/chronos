@@ -50,6 +50,11 @@ export interface CycleConfig {
   // agent de nuit récupère donc à chaque vacation, pas seulement le dimanche —
   // d'où le paramétrage jour par jour plutôt qu'une règle figée.
   rpsParJour?: WeekHours;
+  // Prise de service habituelle, en minutes après minuit (cycle alterné).
+  // La fin = heureDebut + heuresParJour, éventuellement le lendemain. Sert à
+  // calculer le barème RPS exact (nuit 21h–6h, dimanche). Absent chez les
+  // agents inscrits avant l'ajout des horaires : leur barème reste inchangé.
+  heureDebut?: number;
 }
 
 export interface Counters {
