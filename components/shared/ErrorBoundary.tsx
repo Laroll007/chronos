@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { logger, ChronosError } from '@/lib/errors';
+import { isChunkLoadError, reloadForNewVersion } from '@/lib/chunkReload';
 
 interface Props {
   children: ReactNode;
@@ -15,6 +16,8 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  /** Nouvelle version en cours de chargement (fichier de l'ancienne introuvable). */
+  reloading?: boolean;
 }
 
 /**
@@ -36,6 +39,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Code de l'ancienne version introuvable après un déploiement : on recharge
+    // sur la nouvelle au lieu d'afficher une erreur (cf. lib/chunkReload).
+    if (isChunkLoadError(error) && reloadForNewVersion()) {
+      this.setState({ reloading: true });
+      return;
+    }
+
     // Logger l'erreur
     const chronosError = error instanceof ChronosError
       ? error
@@ -63,6 +73,14 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   render(): ReactNode {
+    if (this.state.hasError && this.state.reloading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background text-sm text-muted-foreground">
+          Mise à jour de l&apos;application…
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       // Fallback personnalisé si fourni
       if (this.props.fallback) {

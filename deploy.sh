@@ -30,7 +30,16 @@ rsync -avz --delete --exclude 'node_modules' --exclude '.next' --exclude '.git' 
 echo "→ Build + redémarrage..."
 # npm install : sans lui, une dépendance ajoutée côté Mac manque au build du
 # VPS (arrivé avec nodemailer le 2026-09-28 — build KO, prod restée en l'état).
-if ! ssh chronos-vps "cd /var/www/chronos && npm install --no-audit --no-fund && npm run build && pm2 restart chronos"; then
+# Fichiers JS des versions précédentes conservés 14 jours : une app restée
+# ouverte pendant le déploiement demande encore les morceaux de SON build, que
+# `next build` venait d'effacer (ChunkLoadError, 6 plantages le 2026-09-30).
+# cp -p garde la date d'origine, d'où la purge des fichiers de plus de 14 jours.
+if ! ssh chronos-vps "cd /var/www/chronos \
+    && rm -rf /tmp/chronos-static-prev && { [ -d .next/static ] && cp -rp .next/static /tmp/chronos-static-prev || true; } \
+    && npm install --no-audit --no-fund && npm run build \
+    && { [ -d /tmp/chronos-static-prev ] && cp -rnp /tmp/chronos-static-prev/. .next/static/ || true; } \
+    && find .next/static -type f -mtime +14 -delete \
+    && pm2 restart chronos"; then
   echo ""
   echo "!!! ÉCHEC : build ou redémarrage KO — la prod tourne encore sur l'ancienne version."
   exit 1
