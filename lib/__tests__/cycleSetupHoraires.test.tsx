@@ -14,7 +14,7 @@ describe('Étape cycle : horaires de vacation', () => {
   it('par défaut 07h00 → 19h08 : 12h08, RPS uniquement le dimanche', () => {
     const onNext = vi.fn();
     render(<CycleSetup onNext={onNext} />);
-    expect(screen.getByText(/Durée : 12h08/)).toBeInTheDocument();
+    expect(screen.getByText(/Durée : 12h08/)).toBeTruthy();
     const cfg = submit(onNext);
     expect(cfg.heureDebut).toBe(7 * 60);
     expect(cfg.heuresParJour).toBe(728);
@@ -26,8 +26,8 @@ describe('Étape cycle : horaires de vacation', () => {
     render(<CycleSetup onNext={onNext} />);
     fireEvent.change(screen.getByLabelText('Prise de service'), { target: { value: '19:30' } });
     fireEvent.change(screen.getByLabelText('Fin de service'), { target: { value: '07:38' } });
-    expect(screen.getByText(/fin le lendemain/)).toBeInTheDocument();
-    expect(screen.getByText(/54 min|0h54/)).toBeInTheDocument();
+    expect(screen.getByText(/fin le lendemain/)).toBeTruthy();
+    expect(screen.getByText(/54 min|0h54/)).toBeTruthy();
     const cfg = submit(onNext);
     expect(cfg.heureDebut).toBe(19 * 60 + 30);
     expect(cfg.heuresParJour).toBe(728);
@@ -39,7 +39,7 @@ describe('Étape cycle : horaires de vacation', () => {
     render(<CycleSetup onNext={onNext} />);
     fireEvent.click(screen.getAllByRole('radio')[0]!);
     fireEvent.change(screen.getByLabelText('Fin de service'), { target: { value: '07:00' } }); // 0 min
-    expect(screen.getByRole('button', { name: /Vérifiez vos horaires/ })).toBeDisabled();
+    expect((screen.getByRole('button', { name: /Vérifiez vos horaires/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('agent déjà inscrit en service de nuit sans horaires : prérempli 19h00, durée conservée', () => {
