@@ -30,6 +30,8 @@ export const STATS_EVENTS = {
   leave_delete: { label: 'Suppression d’un congé', group: 'Poses' },
   cet_epargne: { label: 'Versement CET enregistré', group: 'Poses' },
   cet_plan_open: { label: 'Ouvre « Mon épargne CET »', group: 'Écrans' },
+  whats_new_seen: { label: 'Voit les nouveautés (pop-up)', group: 'Écrans' },
+  whats_new_action: { label: 'Nouveautés : suit un raccourci', group: 'Écrans' },
 
   // Écrans
   open_counters: { label: 'Ouvre les compteurs', group: 'Écrans' },

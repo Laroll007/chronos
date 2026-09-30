@@ -12,6 +12,7 @@ import {
   clearOnboardingDraft,
 } from '@/lib/storage';
 import type { CountersDraft } from '@/components/onboarding/CountersSetup';
+import { markReleaseNotesSeen } from '@/lib/releaseNotes';
 import { track } from '@/lib/analytics';
 import { getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
@@ -126,6 +127,8 @@ export function OnboardingWizard() {
 
     if (success) {
       clearOnboardingDraft();
+      // Nouvel inscrit : tout est nouveau pour lui, pas de « Quoi de neuf ».
+      markReleaseNotesSeen();
       if (compteursARenseigner) {
         track('onboarding_skip_counters');
         toast.success('Votre calendrier est prêt !', {

@@ -39,6 +39,7 @@ import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBan
 import { EventModal, type EventDraft } from '@/components/dashboard/EventModal';
 import { CETPlanModal } from '@/components/dashboard/CETPlanModal';
 import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
+import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
 import { planEpargneCET } from '@/lib/cet';
 import { eventsInRange, toDayKey } from '@/lib/events';
 import { typeDeVacation } from '@/lib/rps';
@@ -95,6 +96,8 @@ export default function DashboardPage() {
   // Événement en cours de création / modification (null = fenêtre fermée)
   const [eventDraft, setEventDraft] = useState<EventDraft | null>(null);
   const [showCETPlan, setShowCETPlan] = useState(false);
+  // Paramètres ouverts directement sur « Modifier mon cycle » (raccourci des nouveautés)
+  const [settingsOpenCycle, setSettingsOpenCycle] = useState(false);
 
   const {
     userData,
@@ -635,7 +638,13 @@ export default function DashboardPage() {
       </Suspense>
 
       {/* Modal Réglages */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+      <Dialog
+        open={showSettings}
+        onOpenChange={(open) => {
+          setShowSettings(open);
+          if (!open) setSettingsOpenCycle(false);
+        }}
+      >
         <DialogContent className="w-[95vw] max-w-md p-0 bg-background border-0 shadow-2xl rounded-2xl overflow-hidden flex flex-col" style={{ height: '90vh', maxHeight: '90vh' }} showCloseButton={false}>
           <DialogTitle className="sr-only">Paramètres</DialogTitle>
           <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>}>
@@ -646,6 +655,7 @@ export default function DashboardPage() {
               onReset={reset}
               onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); track('welcome_reopen'); }}
               onUpdateCycle={handleUpdateCycle}
+              openCycleOnMount={settingsOpenCycle}
             />
           </Suspense>
         </DialogContent>
@@ -785,6 +795,21 @@ export default function DashboardPage() {
           onClose={() => setEventDraft(null)}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+        />
+      )}
+
+      {/* Quoi de neuf : une fois après une mise à jour importante (jamais pour un
+          nouvel inscrit, qui voit la fenêtre de bienvenue) */}
+      {!showWelcome && hasSeenWelcome() && (
+        <WhatsNewModal
+          onAction={(target) => {
+            if (target === 'cycle') {
+              setSettingsOpenCycle(true);
+              setShowSettings(true);
+            } else {
+              openCETPlan();
+            }
+          }}
         />
       )}
 

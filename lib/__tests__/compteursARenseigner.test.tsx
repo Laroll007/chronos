@@ -59,6 +59,8 @@ describe('onboarding : compteurs remis à plus tard', () => {
     expect(track).toHaveBeenCalledWith('onboarding_resume');
     expect(track).toHaveBeenCalledWith('onboarding_skip_counters');
     expect(track).not.toHaveBeenCalledWith('onboarding_done');
+    // Nouvel inscrit : pas de « Quoi de neuf » par-dessus la bienvenue
+    expect(store.get('chronos_release_seen')).toBeTruthy();
   });
 
   it('sans brouillon, l’onboarding démarre au choix du cycle', () => {

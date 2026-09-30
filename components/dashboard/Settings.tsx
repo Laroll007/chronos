@@ -114,6 +114,8 @@ interface SettingsProps {
   onShowWelcome?: () => void;
   /** Enregistre un nouveau cycle sans toucher aux compteurs ni à l'historique. */
   onUpdateCycle?: (config: CycleConfig) => boolean;
+  /** Ouvre directement « Modifier mon cycle » (raccourci des nouveautés). */
+  openCycleOnMount?: boolean;
 }
 
 export function Settings({
@@ -123,13 +125,14 @@ export function Settings({
   onReset,
   onShowWelcome,
   onUpdateCycle,
+  openCycleOnMount = false,
 }: SettingsProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showWorkedDays, setShowWorkedDays] = useState(false);
-  const [showCycle, setShowCycle] = useState(false);
+  const [showCycle, setShowCycle] = useState(openCycleOnMount);
   const [showRetraite, setShowRetraite] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [statsEnabled, setStatsEnabledState] = useState(isStatsEnabled);
