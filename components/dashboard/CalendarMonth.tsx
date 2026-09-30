@@ -7,17 +7,20 @@ import { useState, useMemo, useRef, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CycleConfig, HistoryEntry } from '@/lib/types';
+import { CycleConfig, HistoryEntry, PersonalEvent } from '@/lib/types';
 import { useMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
+import { eventsOnDate } from '@/lib/events';
 
 interface CalendarMonthProps {
   cycleConfig: CycleConfig;
   dateRange: DateRangeSelection;
   history: HistoryEntry[];
+  events?: PersonalEvent[];
 }
 
 const MOIS = [
@@ -37,7 +40,7 @@ const MOIS = [
 
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history }: CalendarMonthProps) {
+export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events }: CalendarMonthProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -52,6 +55,16 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
     return { working, sundays };
   }, [days, history]);
 
+  const legendFlags = useMemo(
+    () =>
+      legendFlagsForDays(
+        days.filter((d) => d.date.getMonth() === month),
+        history,
+        events,
+        dateRange.selectedStart !== null
+      ),
+    [days, month, history, events, dateRange.selectedStart]
+  );
 
   // Ref pour les boutons des jours (navigation clavier)
   const dayButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -283,6 +296,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const partialMin = !isPosted && !isCMO && !isAstreinte ? getPartialMinutesOnDate(day.date, history) : 0;
             const isPartial = partialMin > 0;
             const isSingleDay = isStart && isEnd;
+            const dayEvents = eventsOnDate(day.date, events);
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -299,6 +313,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
             if (isPartial) statusParts.push('heures posées');
+            if (dayEvents.length > 0) statusParts.push(`événement : ${dayEvents.map((e) => e.title).join(', ')}`);
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -386,39 +401,23 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   )}
                 >
                   {day.date.getDate()}
+                  {dayEvents.length > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full',
+                        isStart || isEnd ? 'bg-white' : 'bg-pink-500'
+                      )}
+                    />
+                  )}
                 </button>
               </div>
             );
           })}
         </div>
 
-        {/* Légende minimaliste */}
-        <div className="flex items-center justify-center gap-4 mt-3 text-xs shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-100 border border-blue-200" />
-            <span className="text-slate-500">Travail</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-200 border border-emerald-400" />
-            <span className="text-slate-500">Congé</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-violet-200 border border-violet-400" />
-            <span className="text-slate-500">CMO</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-400" />
-            <span className="text-slate-500">Astreinte</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-teal-100 border border-teal-400" />
-            <span className="text-slate-500">Heures</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="text-slate-500">Sélection</span>
-          </div>
-        </div>
+        {/* Légende : uniquement ce qui apparaît ce mois-ci */}
+        <CalendarLegend flags={legendFlags} />
       </CardContent>
     </Card>
   );

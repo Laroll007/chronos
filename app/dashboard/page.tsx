@@ -36,6 +36,8 @@ const Projection = lazy(() =>
 import { WelcomeModal, hasSeenWelcome } from '@/components/dashboard/WelcomeModal';
 import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
 import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBanner';
+import { EventModal, type EventDraft } from '@/components/dashboard/EventModal';
+import { eventsInRange, toDayKey } from '@/lib/events';
 const CountersSetup = lazy(() =>
   import('@/components/onboarding/CountersSetup').then((mod) => ({
     default: mod.CountersSetup,
@@ -46,7 +48,7 @@ import { useCounters } from '@/hooks/useCounters';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
-import { Combination, HistoryEntry, CounterType, CycleConfig } from '@/lib/types';
+import { Combination, HistoryEntry, CounterType, CycleConfig, PersonalEvent } from '@/lib/types';
 import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
@@ -86,6 +88,8 @@ export default function DashboardPage() {
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCompleteCounters, setShowCompleteCounters] = useState(false);
+  // Événement en cours de création / modification (null = fenêtre fermée)
+  const [eventDraft, setEventDraft] = useState<EventDraft | null>(null);
 
   const {
     counters,
@@ -106,6 +110,10 @@ export default function DashboardPage() {
     compteursARenseigner,
     completerCompteurs,
     masquerRappelCompteurs,
+    events,
+    addEvent,
+    updateEvent,
+    deleteEvent,
     reset,
   } = useCounters();
 
@@ -238,6 +246,40 @@ export default function DashboardPage() {
     }
     return ok;
   }, [updateCycle]);
+
+  // ─── Événements perso ──────────────────────────────────────────────────────
+  // Depuis la fenêtre de sélection : on la ferme (et la sélection du calendrier)
+  // avant d'ouvrir celle de l'événement.
+  const closeSelection = useCallback(() => {
+    setShowOptimization(false);
+    setSelectedRange(null);
+    setCalendarResetTrigger((prev) => prev + 1);
+  }, []);
+
+  const openNewEvent = useCallback((start?: Date, end?: Date) => {
+    const date = toDayKey(start ?? new Date());
+    const dateEnd = end ? toDayKey(end) : undefined;
+    setEventDraft({ date, ...(dateEnd && dateEnd > date && { dateEnd }) });
+  }, []);
+
+  const handleSaveEvent = useCallback(
+    (event: Omit<PersonalEvent, 'id'> & { id?: string }) => {
+      const ok = event.id ? updateEvent(event as PersonalEvent) : addEvent(event);
+      if (ok) toast.success(event.id ? 'Événement modifié' : 'Événement ajouté');
+      else toast.error("Impossible d'enregistrer l'événement");
+      return ok;
+    },
+    [addEvent, updateEvent]
+  );
+
+  const handleDeleteEvent = useCallback(
+    (id: string) => {
+      const ok = deleteEvent(id);
+      if (ok) toast.success('Événement supprimé');
+      return ok;
+    },
+    [deleteEvent]
+  );
 
   const handleMarkCMO = useCallback(() => {
     if (!selectedRange) return;
@@ -472,6 +514,9 @@ export default function DashboardPage() {
             onDeleteLeave={handleDeleteLeave}
             onEditLeave={handleEditLeave}
             resetTrigger={calendarResetTrigger}
+            events={events}
+            onAddEvent={() => openNewEvent()}
+            onOpenEvent={(event) => setEventDraft(event)}
           />
           {/* Mentions légales — en bas de la zone scrollable, pas en overlay fixe */}
           <footer className="text-center mt-8 pb-safe-plus-2 flex items-center justify-center gap-4">
@@ -528,6 +573,16 @@ export default function DashboardPage() {
             onMarkAstreinte={handleMarkAstreinte}
             onPosePartiel={handlePosePartiel}
             hasRestDays={selectedRange?.hasRestDays}
+            eventsInRange={selectedRange ? eventsInRange(selectedRange.start, selectedRange.end, events) : []}
+            onAddEvent={() => {
+              const range = selectedRange;
+              closeSelection();
+              openNewEvent(range?.start, range?.end);
+            }}
+            onOpenEvent={(event) => {
+              closeSelection();
+              setEventDraft(event);
+            }}
           />
         </Suspense>
       )}
@@ -687,6 +742,17 @@ export default function DashboardPage() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Création / modification d'un événement perso */}
+      {eventDraft && (
+        <EventModal
+          key={eventDraft.id ?? `new-${eventDraft.date}`}
+          draft={eventDraft}
+          onClose={() => setEventDraft(null)}
+          onSave={handleSaveEvent}
+          onDelete={handleDeleteEvent}
+        />
       )}
 
       {/* Popup Bienvenue */}

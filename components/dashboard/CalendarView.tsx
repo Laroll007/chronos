@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { CycleConfig, HistoryEntry, Counters } from '@/lib/types';
+import { CycleConfig, HistoryEntry, Counters, PersonalEvent } from '@/lib/types';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { useDateRangePicker } from './DateRangePicker';
 import { CalendarMonth } from './CalendarMonth';
@@ -13,6 +13,7 @@ import { Calendar, CalendarDays, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { track } from '@/lib/analytics';
 import { LeaveList } from './LeaveList';
+import { EventList } from './EventList';
 import {
   CA_REQUIS_POUR_HP,
   CA_HP_BONUS,
@@ -43,6 +44,9 @@ interface CalendarViewProps {
   onDeleteLeave?: (entryId: string) => void;
   onEditLeave?: (entry: HistoryEntry) => void;
   resetTrigger?: number;
+  events?: PersonalEvent[];
+  onAddEvent?: () => void;
+  onOpenEvent?: (event: PersonalEvent) => void;
 }
 
 
@@ -163,7 +167,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
   );
 }
 
-export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0 }: CalendarViewProps) {
+export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0, events, onAddEvent, onOpenEvent }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const prevResetTrigger = useRef(resetTrigger);
   // Date dont on veut ouvrir le détail (édition/suppression) dans la liste des congés.
@@ -265,12 +269,12 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
       <div>
         {viewMode === 'month' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} />
+            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} />
           </div>
         )}
         {viewMode === 'week' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} />
+            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} />
           </div>
         )}
         {viewMode === 'year' && (
@@ -291,6 +295,11 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
         focusDate={focusDate}
         onFocusHandled={() => setFocusDate(null)}
       />
+
+      {/* Événements perso (RDV, formation…) */}
+      {onAddEvent && onOpenEvent && (
+        <EventList events={events ?? []} onAdd={onAddEvent} onOpen={onOpenEvent} />
+      )}
     </div>
   );
 }

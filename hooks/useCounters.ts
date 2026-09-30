@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { UserData, Counters, CycleConfig, HistoryEntry, CounterType } from '@/lib/types';
+import { UserData, Counters, CycleConfig, HistoryEntry, CounterType, PersonalEvent } from '@/lib/types';
 import {
   loadUserData,
   saveUserData,
@@ -15,6 +15,7 @@ import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/nativ
 import { computeRPSCredit } from '@/lib/rps';
 import { canEpargnerCA } from '@/lib/cet';
 import { track } from '@/lib/analytics';
+import { sanitizeEvents } from '@/lib/events';
 
 /**
  * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
@@ -38,6 +39,9 @@ function creditRPSIfNeeded(data: UserData): UserData {
   saveUserData(updated);
   return updated;
 }
+
+// Référence stable : évite de recalculer les vues du calendrier à chaque rendu.
+const EMPTY_EVENTS: PersonalEvent[] = [];
 
 /**
  * Hook principal pour la gestion des compteurs et données utilisateur
@@ -68,6 +72,9 @@ export function useCounters() {
         // depuis le dernier passage. Incrémental — jamais de recalcul depuis le
         // 1er janvier, qui écraserait la consommation et le stock déclaré.
         const data = loaded ? creditRPSIfNeeded(loaded) : loaded;
+        // Événements : on écarte silencieusement une entrée illisible plutôt
+        // que de faire planter tout le planning.
+        if (data?.events) data.events = sanitizeEvents(data.events);
 
         userDataRef.current = data;
         setUserData(data);
@@ -154,6 +161,48 @@ export function useCounters() {
     const { compteursARenseigner: _vu, ...reste } = current;
     if (save(reste)) track('counters_reminder_dismissed');
   }, [save]);
+
+  // ─── Événements personnels (RDV, formation…) ───────────────────────────────
+
+  const saveEvents = useCallback(
+    (events: PersonalEvent[]) => {
+      const current = userDataRef.current;
+      if (!current) return false;
+      return save({ ...current, events, lastUpdated: new Date().toISOString() });
+    },
+    [save]
+  );
+
+  const addEvent = useCallback(
+    (event: Omit<PersonalEvent, 'id'>) => {
+      const ok = saveEvents([...(userDataRef.current?.events ?? []), { ...event, id: generateId() }]);
+      if (ok) track('event_add');
+      return ok;
+    },
+    [saveEvents]
+  );
+
+  const updateEvent = useCallback(
+    (event: PersonalEvent) => {
+      const events = userDataRef.current?.events ?? [];
+      if (!events.some((e) => e.id === event.id)) return false;
+      const ok = saveEvents(events.map((e) => (e.id === event.id ? event : e)));
+      if (ok) track('event_edit');
+      return ok;
+    },
+    [saveEvents]
+  );
+
+  const deleteEvent = useCallback(
+    (id: string) => {
+      const events = userDataRef.current?.events ?? [];
+      if (!events.some((e) => e.id === id)) return false;
+      const ok = saveEvents(events.filter((e) => e.id !== id));
+      if (ok) track('event_delete');
+      return ok;
+    },
+    [saveEvents]
+  );
 
   // Initialiser avec les valeurs par défaut
   const initialize = useCallback((cycleConfig: CycleConfig, counters: Counters) => {
@@ -568,6 +617,7 @@ export function useCounters() {
     counters: userData?.counters ?? null,
     cycleConfig: userData?.cycleConfig ?? null,
     history: userData?.history ?? [],
+    events: userData?.events ?? EMPTY_EVENTS,
     isLoading,
     isOnboarded,
     error,
@@ -587,6 +637,9 @@ export function useCounters() {
     confirmerBasculeAnnuelle,
     completerCompteurs,
     masquerRappelCompteurs,
+    addEvent,
+    updateEvent,
+    deleteEvent,
     updateRPS,
     reset,
     save,

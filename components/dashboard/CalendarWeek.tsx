@@ -7,16 +7,19 @@ import { useState, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CycleConfig, HistoryEntry } from '@/lib/types';
+import { CycleConfig, HistoryEntry, PersonalEvent } from '@/lib/types';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
+import { eventsOnDate } from '@/lib/events';
 import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 
 interface CalendarWeekProps {
   cycleConfig: CycleConfig;
   dateRange: DateRangeSelection;
   history: HistoryEntry[];
+  events?: PersonalEvent[];
 }
 
 const JOURS_COMPLETS = [
@@ -29,7 +32,7 @@ const JOURS_COMPLETS = [
   'Dimanche',
 ];
 
-export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history }: CalendarWeekProps) {
+export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history, events }: CalendarWeekProps) {
   const today = new Date();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // Calculer le début de la semaine (lundi)
@@ -65,6 +68,11 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
     }
     return days;
   }, [currentWeekStart, cycleConfig, today]);
+
+  const legendFlags = useMemo(
+    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null),
+    [weekDays, history, events, dateRange.selectedStart]
+  );
 
   const goToPrevWeek = () => {
     const newDate = new Date(currentWeekStart);
@@ -233,6 +241,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const isPartial = !isPosted && !isCMO && !isAstreinte && getPartialMinutesOnDate(day.date, history) > 0;
             const isSingleDay = isStart && isEnd;
+            const dayEvents = eventsOnDate(day.date, events);
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -249,6 +258,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
             if (isPartial) statusParts.push('heures posées');
+            if (dayEvents.length > 0) statusParts.push(`événement : ${dayEvents.map((e) => e.title).join(', ')}`);
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -358,39 +368,23 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                       T
                     </Badge>
                   )}
+                  {dayEvents.length > 0 && (
+                    <span className="mt-1 flex items-center justify-center gap-1 max-w-full px-1" aria-hidden="true">
+                      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isStart || isEnd ? 'bg-white' : 'bg-pink-500')} />
+                      <span className={cn('hidden md:inline truncate text-[10px]', isStart || isEnd ? 'text-white' : 'text-pink-700')}>
+                        {dayEvents[0]!.title}
+                        {dayEvents.length > 1 && ` +${dayEvents.length - 1}`}
+                      </span>
+                    </span>
+                  )}
                 </button>
               </div>
             );
           })}
         </div>
 
-        {/* Légende minimaliste */}
-        <div className="flex items-center justify-center gap-4 mt-3 text-xs shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-blue-50 border border-blue-200" />
-            <span className="text-slate-500">Travail</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-300" />
-            <span className="text-slate-500">Congé</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-violet-200 border border-violet-300" />
-            <span className="text-slate-500">CMO</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-amber-200 border border-amber-300" />
-            <span className="text-slate-500">Astreinte</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-teal-100 border border-teal-300" />
-            <span className="text-slate-500">Heures</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded bg-emerald-500" />
-            <span className="text-slate-500">Sélection</span>
-          </div>
-        </div>
+        {/* Légende : uniquement ce qui apparaît cette semaine */}
+        <CalendarLegend flags={legendFlags} shape="square" />
       </CardContent>
     </Card>
   );

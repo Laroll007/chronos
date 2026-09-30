@@ -13,6 +13,7 @@ import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinut
 import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 
 interface CalendarYearProps {
   cycleConfig: CycleConfig;
@@ -193,6 +194,15 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
     return { working: totalWorking, sundays: totalSundays };
   }, [year, cycleConfig]);
 
+  // Les événements ne sont pas dessinés sur la vue annuelle (cases trop petites) :
+  // ils ne figurent donc pas dans sa légende.
+  const legendFlags = useMemo(() => {
+    const days = Array.from({ length: 12 }, (_, m) =>
+      computeMonthCalendar(cycleConfig, year, m).filter((d) => d.date.getMonth() === m)
+    ).flat();
+    return legendFlagsForDays(days, history, undefined, dateRange.selectedStart !== null);
+  }, [year, cycleConfig, history, dateRange.selectedStart]);
+
   const goToPrevYear = () => setYear(year - 1);
   const goToNextYear = () => setYear(year + 1);
   const goToThisYear = () => setYear(today.getFullYear());
@@ -254,29 +264,8 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
           ))}
         </div>
 
-        {/* Légende */}
-        <div className="flex items-center justify-center gap-3 md:gap-4 mt-3 text-xs shrink-0 flex-wrap">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-blue-100 border border-blue-200" />
-            <span className="text-slate-600">Travail</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-emerald-200" />
-            <span className="text-slate-600">Posé</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-violet-200" />
-            <span className="text-slate-600">CMO</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-amber-200" />
-            <span className="text-slate-600">Astreinte</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded ring-1 ring-emerald-500" />
-            <span className="text-slate-600">Sélection</span>
-          </div>
-        </div>
+        {/* Légende : uniquement ce qui apparaît cette année */}
+        <CalendarLegend flags={legendFlags} shape="square" />
       </CardContent>
     </Card>
   );

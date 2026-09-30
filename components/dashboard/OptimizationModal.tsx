@@ -3,7 +3,8 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Counters, Combination, CounterType } from '@/lib/types';
+import { Counters, Combination, CounterType, PersonalEvent } from '@/lib/types';
+import { EVENT_CATEGORIES, formatEventWhen } from '@/lib/events';
 import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Plus, X, Pencil, Thermometer, ShieldAlert, Hourglass } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X, Pencil, Thermometer, ShieldAlert, Hourglass, CalendarPlus, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OptimizationModalProps {
@@ -39,6 +40,10 @@ interface OptimizationModalProps {
   onPosePartiel?: (type: CounterType, minutes: number) => void;
   // true si la période sélectionnée contient au moins un jour de repos (astreinte pertinente).
   hasRestDays?: boolean;
+  // Événements perso déjà présents sur la période (affichés en tête, cliquables).
+  eventsInRange?: PersonalEvent[];
+  onAddEvent?: () => void;
+  onOpenEvent?: (event: PersonalEvent) => void;
 }
 
 export function OptimizationModal({
@@ -55,6 +60,9 @@ export function OptimizationModal({
   onMarkAstreinte,
   onPosePartiel,
   hasRestDays = false,
+  eventsInRange = [],
+  onAddEvent,
+  onOpenEvent,
 }: OptimizationModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
@@ -284,6 +292,35 @@ export function OptimizationModal({
 
         <ScrollArea className="h-[calc(90vh-140px)]">
           <div className="p-6">
+            {/* Événements perso — sans effet sur les compteurs */}
+            {onAddEvent && !isCalculating && (
+              <div className="mb-6 border-b border-border pb-6 space-y-2">
+                {eventsInRange.map((event) => (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => onOpenEvent?.(event)}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-pink-50 border border-pink-200 hover:border-pink-300 text-left transition-colors"
+                  >
+                    <span aria-hidden="true">{EVENT_CATEGORIES[event.category].emoji}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-slate-800 truncate">{event.title}</span>
+                      <span className="block text-xs text-slate-500 truncate">{formatEventWhen(event)}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-pink-400" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={onAddEvent}
+                  className="flex items-center gap-2 text-left text-sm font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                >
+                  <CalendarPlus className="w-4 h-4 shrink-0" />
+                  Ajouter un événement perso (RDV, formation…)
+                </button>
+              </div>
+            )}
+
             {/* Formulaire personnalisé */}
             {!isCalculating && workingDaysCount > 0 && availableTypes.length > 0 && (
               <div className="mb-6 border-b border-border pb-6">

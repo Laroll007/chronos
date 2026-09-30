@@ -17,6 +17,9 @@ export const STATS_EVENTS = {
   view_week: { label: 'Vue Semaine', group: 'Calendrier' },
   view_year: { label: 'Vue Année', group: 'Calendrier' },
   range_select: { label: 'Sélection d’une période', group: 'Calendrier' },
+  event_add: { label: 'Ajoute un événement perso', group: 'Calendrier' },
+  event_edit: { label: 'Modifie un événement perso', group: 'Calendrier' },
+  event_delete: { label: 'Supprime un événement perso', group: 'Calendrier' },
 
   // Poses
   leave_pose: { label: 'Congés posés (combinaison)', group: 'Poses' },

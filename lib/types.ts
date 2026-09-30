@@ -140,7 +140,23 @@ export interface UserData {
   // dashboard, alertes et recommandations coupées. Absent = compteurs saisis
   // (utilisateurs existants inclus), effacé dès qu'ils sont complétés.
   compteursARenseigner?: boolean;
+  // Événements personnels (RDV, formation…) : simple marquage du planning,
+  // sans aucun effet sur les compteurs, les RPS ni les jours travaillés.
+  // Tenus hors de `history` pour ne pas se mêler aux calculs de congés.
+  events?: PersonalEvent[];
   isOnboarded: boolean;
+}
+
+export type EventCategory = 'rdv' | 'formation' | 'audience' | 'perso' | 'autre';
+
+export interface PersonalEvent {
+  id: string;
+  date: string; // 'YYYY-MM-DD', jour LOCAL (pas d'UTC : aucun décalage de fuseau)
+  dateEnd?: string; // 'YYYY-MM-DD' si l'événement dure plusieurs jours
+  title: string;
+  category: EventCategory;
+  time?: string; // 'HH:MM', facultatif
+  note?: string;
 }
 
 export interface HistoryEntry {
