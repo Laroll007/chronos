@@ -59,6 +59,17 @@ describe('Plan d’épargne CET', () => {
     expect(plan.apport).toMatchObject({ rtc: 2, ca: 0, caHP: 0, total: 2 });
   });
 
+  it('CET au-delà du plafond (relèvement JO) : aucun versement, jamais de valeur négative', () => {
+    const plan = planEpargneCET(data({}, { cet: 72, rtc: h(175) }), new Date(2026, 8, 15));
+    expect(plan.capacite).toBe(0);
+    expect(plan.apport).toMatchObject({ rtc: 0, ca: 0, caHP: 0, hs: 0, total: 0 });
+    const janvier = planEpargneCET(
+      data({ reliquatCET: { annee: 2026, rtc: h(40), caReserves: 0 } }, { cet: 72, caAnterieur: 3 }),
+      new Date(2027, 0, 15)
+    );
+    expect(janvier.apport.total).toBe(0);
+  });
+
   it('CET au plafond : plus rien à verser', () => {
     const plan = planEpargneCET(data({}, { cet: 60, rtc: h(175) }), new Date(2026, 8, 15));
     expect(plan.capacite).toBe(0);

@@ -77,7 +77,7 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-bold leading-tight text-white">Mon épargne CET</DialogTitle>
               <p className="text-blue-200 text-xs mt-0.5">
-                CET actuel : {cet} j sur {CET_PLAFOND} j
+                CET actuel : {cet} j{cet <= CET_PLAFOND && ` sur ${CET_PLAFOND} j`}
               </p>
             </div>
             <DialogClose className="shrink-0 w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white/80 hover:text-white transition-all">
@@ -90,7 +90,9 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
         <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
           {capacite === 0 ? (
             <p className="text-sm text-slate-700">
-              Votre CET a atteint le plafond de {CET_PLAFOND} jours : vous ne pouvez plus rien y verser.
+              {cet > CET_PLAFOND
+                ? `Votre CET (${cet} jours) dépasse le plafond habituel de ${CET_PLAFOND} jours, grâce à un relèvement exceptionnel : vos jours sont conservés, mais l’app ne propose pas de nouveau versement. En cas de doute, vérifiez dans GesTT.`
+                : `Votre CET a atteint le plafond de ${CET_PLAFOND} jours : vous ne pouvez plus rien y verser.`}
             </p>
           ) : (
             <>

@@ -296,7 +296,22 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
             </div>
             <Row label="Solde CET actuel" value={`${counters.cet}j`} bold color="text-blue-700" />
             <Row label="Plafond légal" value={`${CET_PLAFOND}j`} />
-            <Row label="Marge disponible" value={manquantPlafond > 0 ? `${manquantPlafond}j` : '✓ Plafond atteint !'} color={manquantPlafond === 0 ? 'text-emerald-600' : 'text-blue-600'} separator />
+            <Row
+              label="Marge disponible"
+              value={
+                counters.cet > CET_PLAFOND
+                  ? `Au-delà du plafond (+${counters.cet - CET_PLAFOND}j)`
+                  : manquantPlafond > 0 ? `${manquantPlafond}j` : '✓ Plafond atteint !'
+              }
+              color={counters.cet > CET_PLAFOND ? 'text-amber-600' : manquantPlafond === 0 ? 'text-emerald-600' : 'text-blue-600'}
+              separator
+            />
+            {counters.cet > CET_PLAFOND && (
+              <p className="text-xs text-slate-500 mt-1">
+                Solde supérieur au plafond (relèvement exceptionnel, JO 2024…) : vos jours sont
+                conservés, mais l&apos;app ne propose plus de nouveau versement.
+              </p>
+            )}
             <div className="mt-3 space-y-1.5">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sources d'alimentation</p>
               <div className="flex items-center gap-2 text-xs text-slate-600">

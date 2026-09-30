@@ -49,7 +49,7 @@ function TimeInput({
 function DaysInput({
   label, value, onChange, max, hint, colorKey,
 }: {
-  label: string; value: number; onChange: (days: number) => void; max: number; hint?: string; colorKey: string;
+  label: string; value: number; onChange: (days: number) => void; max?: number; hint?: string; colorKey: string;
 }) {
   const colors = COUNTER_COLORS[colorKey] || COUNTER_COLORS.ca;
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
@@ -67,7 +67,7 @@ function DaysInput({
           className="w-24 h-9 rounded-md border border-slate-200 bg-white px-3 text-slate-800 text-base text-center outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
         />
         <span className="text-slate-500">jours</span>
-        <span className="text-xs text-slate-500 ml-auto">max {max}</span>
+        {max !== undefined && <span className="text-xs text-slate-500 ml-auto">max {max}</span>}
       </div>
     </div>
   );
@@ -459,7 +459,7 @@ export function CountersSetup({
               </div>
             </div>
             <div className="px-6">
-              <DaysInput label="Stock CET actuel" value={counters.cet} onChange={(v) => updateCounter('cet', v)} max={60} hint="Plafond : 60 jours" colorKey="cet" />
+              <DaysInput label="Stock CET actuel" value={counters.cet} onChange={(v) => updateCounter('cet', v)} hint="Plafond habituel : 60 jours. Indiquez votre solde réel, même au-delà (relèvement exceptionnel)" colorKey="cet" />
             </div>
           </div>
         )}

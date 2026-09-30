@@ -56,3 +56,18 @@ describe('Étape cycle : horaires de vacation', () => {
     expect((screen.getByLabelText('Fin de service') as HTMLInputElement).value).toBe('06:08');
   });
 });
+
+describe('Étape compteurs : CET au-delà de 60 jours', () => {
+  it('accepte un solde de 72 jours (plafond relevé exceptionnellement)', async () => {
+    const { CountersSetup } = await import('@/components/onboarding/CountersSetup');
+    const { DEFAULT_CYCLE_CONFIG } = await import('@/lib/storage');
+    const onNext = vi.fn();
+    const { container } = render(<CountersSetup cycleConfig={DEFAULT_CYCLE_CONFIG} onNext={onNext} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByText('Suivant'));
+    fireEvent.click(container.querySelector('#counter-cet')!);
+    fireEvent.click(screen.getByText('Continuer'));
+    fireEvent.change(screen.getByLabelText('Stock CET actuel'), { target: { value: '72' } });
+    fireEvent.click(screen.getByText('Terminer'));
+    expect(onNext.mock.calls[0]![0].cet).toBe(72);
+  });
+});

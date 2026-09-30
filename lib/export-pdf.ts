@@ -427,7 +427,7 @@ export function generateCETReportHTML(data: PDFReportData): string {
     </div>
     <div class="row">
       <span class="label">Marge jusqu'au plafond</span>
-      <span class="value">${CET_PLAFOND - cetProjection.cetFinal} jours</span>
+      <span class="value">${Math.max(0, CET_PLAFOND - cetProjection.cetFinal)} jours</span>
     </div>
   </div>
 
