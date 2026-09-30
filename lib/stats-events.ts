@@ -28,7 +28,8 @@ export const STATS_EVENTS = {
   astreinte_mark: { label: 'Astreinte', group: 'Poses' },
   leave_edit: { label: 'Modification d’un congé', group: 'Poses' },
   leave_delete: { label: 'Suppression d’un congé', group: 'Poses' },
-  cet_epargne: { label: 'Épargne CET', group: 'Poses' },
+  cet_epargne: { label: 'Versement CET enregistré', group: 'Poses' },
+  cet_plan_open: { label: 'Ouvre « Mon épargne CET »', group: 'Écrans' },
 
   // Écrans
   open_counters: { label: 'Ouvre les compteurs', group: 'Écrans' },

@@ -11,7 +11,7 @@
 //    congés de l'année précédente. » Le reste de l'année, l'épargne se PRÉPARE
 //    (cf. `counters.caReservesCET`) mais ne se fait pas.
 
-import { Counters, CycleConfig, HistoryEntry, CounterType, CETProjection } from './types';
+import { Counters, CycleConfig, HistoryEntry, CounterType, CETProjection, UserData } from './types';
 import { getCATotalForCycle, getRTCLibres } from './calculations';
 import {
   CET_PLAFOND,
@@ -205,5 +205,81 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
     joursEconomises: Math.floor(gainNetRTC / HEURES_PAR_JOUR),
     joursPerdus: caExcedentaires + rtcJoursPerdus,
     isOptimal: apport.total >= capacite,
+  };
+}
+
+
+// ============================================
+// PLAN D'ÉPARGNE : « combien, et quels congés ? »
+// ============================================
+
+export interface PlanEpargneCET {
+  /**
+   * 'janvier' : fenêtre ouverte, plan réel sur les reliquats de l'année écoulée
+   * (RTC mémorisés à la bascule, CA/CA HP antérieurs, HS).
+   * 'estimation' : le reste de l'année, projection sur les soldes actuels.
+   */
+  mode: 'janvier' | 'estimation';
+  /** Année des congés versés. */
+  anneeConges: number;
+  /** Année du versement (janvier). */
+  anneeVersement: number;
+  capacite: number;
+  apport: ApportCET;
+  /** Coût en minutes des jours de RTC / HS versés (8h21 le jour). */
+  rtcMinutes: number;
+  hsMinutes: number;
+  /** Seuil de congés pris requis pour verser des CA (et CA HP). */
+  conditionCA: { ok: boolean; poses: number; seuil: number };
+  /** Janvier sans relevé des RTC de l'an dernier (inscription récente…). */
+  reliquatRTCInconnu: boolean;
+}
+
+export function planEpargneCET(data: UserData, date: Date = new Date()): PlanEpargneCET {
+  const { counters, cycleConfig, history } = data;
+  const seuil = getSeuilCAPourEpargne(cycleConfig);
+
+  if (isPeriodeAlimentationCET(date)) {
+    const anneeConges = date.getFullYear() - 1;
+    const reliquat = data.reliquatCET?.annee === anneeConges ? data.reliquatCET : null;
+    const poses = countCAPosesAnnee(history, anneeConges);
+    const caOk = poses >= seuil;
+    // Ce qui peut encore partir : les reports de l'année écoulée, jamais la
+    // nouvelle dotation (bug de l'ancien bouton « Épargner », qui prélevait
+    // sur les CA de l'année qui commence).
+    const sources: Counters = {
+      ...counters,
+      rtc: reliquat?.rtc ?? 0,
+      ca: caOk ? counters.caAnterieur : 0,
+      caHP: caOk ? counters.caHPAnterieur : 0,
+      caReservesCET: caOk ? reliquat?.caReserves ?? 0 : 0,
+    };
+    const { capacite, apport } = repartirApportCET(sources);
+    return {
+      mode: 'janvier',
+      anneeConges,
+      anneeVersement: date.getFullYear(),
+      capacite,
+      apport,
+      rtcMinutes: apport.rtc * RTC_COUT_PAR_JOUR_CET,
+      hsMinutes: apport.hs * HS_COUT_PAR_JOUR_CET,
+      conditionCA: { ok: caOk, poses, seuil },
+      reliquatRTCInconnu: !reliquat && counters.hasRTC !== false,
+    };
+  }
+
+  const anneeConges = date.getFullYear();
+  const poses = countCAPosesAnnee(history, anneeConges);
+  const { capacite, apport } = repartirApportCET(counters);
+  return {
+    mode: 'estimation',
+    anneeConges,
+    anneeVersement: anneeConges + 1,
+    capacite,
+    apport,
+    rtcMinutes: apport.rtc * RTC_COUT_PAR_JOUR_CET,
+    hsMinutes: apport.hs * HS_COUT_PAR_JOUR_CET,
+    conditionCA: { ok: poses >= seuil, poses, seuil },
+    reliquatRTCInconnu: false,
   };
 }

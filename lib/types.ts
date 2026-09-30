@@ -149,7 +149,26 @@ export interface UserData {
   // sans aucun effet sur les compteurs, les RPS ni les jours travaillés.
   // Tenus hors de `history` pour ne pas se mêler aux calculs de congés.
   events?: PersonalEvent[];
+  // Reliquats de l'année écoulée destinés au CET, mémorisés à la bascule de
+  // janvier : les RTC y sont remplacés par la nouvelle dotation, et les CA
+  // « sécurisés » remis à zéro. Sans ce relevé, le versement de janvier (au
+  // titre de l'année précédente) n'avait plus rien sur quoi s'appuyer.
+  reliquatCET?: ReliquatCET;
   isOnboarded: boolean;
+}
+
+export interface ReliquatCET {
+  annee: number; // année des congés concernés (N-1 en janvier N)
+  rtc: number; // minutes de RTC restantes au 31/12
+  caReserves: number; // CA que l'agent avait sécurisés pour le CET
+}
+
+/** Répartition d'un versement au CET, en jours. */
+export interface DetailEpargneCET {
+  rtc: number;
+  caHP: number;
+  ca: number;
+  hs: number;
 }
 
 export type EventCategory = 'rdv' | 'formation' | 'audience' | 'perso' | 'autre';
@@ -182,6 +201,9 @@ export interface HistoryEntry {
   // Minutes de cette pose imputées au 1er semestre (plage à cheval sur le 30 juin).
   // Mémorisé pour restituer la même répartition à l'annulation.
   cfS1Minutes?: number;
+  // Versement au CET multi-sources (action 'transfer_cet'). Absent sur les
+  // épargnes plus anciennes, qui ne portaient que sur des CA de l'année en cours.
+  cetDetail?: DetailEpargneCET;
 }
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte';

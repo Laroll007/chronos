@@ -9,11 +9,11 @@ import {
   generateId,
 } from '@/lib/storage';
 import { getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
-import { CET_PLAFOND, CA_MAX_VERS_CET } from '@/lib/constants';
+import { CET_PLAFOND, HS_COUT_PAR_JOUR_CET, RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
-import { canEpargnerCA } from '@/lib/cet';
+import { planEpargneCET } from '@/lib/cet';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents } from '@/lib/events';
 
@@ -419,60 +419,55 @@ export function useCounters() {
   );
 
   // Épargner des CA vers le CET
-  const epargnerCET = useCallback(
-    (joursCA: number) => {
-      if (!userData) return { success: false, error: 'Données non chargées' };
-      if (joursCA <= 0) return { success: false, error: 'Nombre de jours invalide' };
-      if (joursCA > CA_MAX_VERS_CET) {
-        return { success: false, error: `Max ${CA_MAX_VERS_CET}j de CA classiques vers le CET par an (règle APORTT)` };
-      }
-      // Conditions du guide APORTT : fenêtre du 1er au 31 janvier, et seuil de
-      // congés déjà pris. Vérifiées ici pour que le blocage vaille quel que soit
-      // le chemin d'appel, l'UI se contentant de l'expliquer en amont.
-      const verdict = canEpargnerCA(userData.cycleConfig, userData.history);
-      if (!verdict.ok) {
-        return { success: false, error: verdict.raison };
-      }
-      if (joursCA > userData.counters.ca) {
-        return { success: false, error: `Seulement ${userData.counters.ca} CA disponibles` };
-      }
-      if (userData.counters.cet + joursCA > CET_PLAFOND) {
-        return {
-          success: false,
-          error: `Dépasse le plafond CET (${CET_PLAFOND}j). Vous pouvez épargner max ${CET_PLAFOND - userData.counters.cet}j`,
-        };
-      }
+  // Versement au CET en janvier, tel que demandé dans GesTT : applique le plan
+  // calculé sur les reliquats de l'année écoulée (RTC relevés à la bascule,
+  // CA / CA HP antérieurs, HS). Remplace l'ancien bouton, qui ne gérait que les
+  // CA et les prélevait sur la dotation de l'année qui commence.
+  const enregistrerEpargneCET = useCallback(() => {
+    const current = userDataRef.current;
+    if (!current) return { success: false, error: 'Données non chargées' };
+    const plan = planEpargneCET(current);
+    if (plan.mode !== 'janvier') {
+      return { success: false, error: "Le versement au CET se fait en janvier, au titre de l'année écoulée." };
+    }
+    const { apport } = plan;
+    if (apport.total <= 0) return { success: false, error: 'Rien à verser au CET' };
 
-      const historyEntry: HistoryEntry = {
-        id: generateId(),
-        date: new Date().toISOString(),
-        action: 'transfer_cet',
-        type: 'cet',
-        amount: joursCA,
-        description: `Épargne CET : ${joursCA}j de CA`,
-        countersSnapshot: {
-          ca: userData.counters.ca - joursCA,
-          cet: userData.counters.cet + joursCA,
-        },
-      };
-
-      const newData: UserData = {
-        ...userData,
-        counters: {
-          ...userData.counters,
-          ca: userData.counters.ca - joursCA,
-          caConsommes: userData.counters.caConsommes, // CA épargnés ne comptent pas comme consommés
-          cet: userData.counters.cet + joursCA,
-        },
-        history: [...userData.history, historyEntry],
-        lastUpdated: new Date().toISOString(),
-      };
-
-      const success = save(newData);
-      return { success };
-    },
-    [userData, save]
-  );
+    const c = current.counters;
+    const counters: Counters = {
+      ...c,
+      cet: c.cet + apport.total,
+      caAnterieur: Math.max(0, c.caAnterieur - apport.ca),
+      caHPAnterieur: Math.max(0, c.caHPAnterieur - apport.caHP),
+      hs: Math.max(0, c.hs - plan.hsMinutes),
+    };
+    const detail = { rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs };
+    const parts = [
+      apport.rtc && `${apport.rtc}j de RTC`,
+      apport.caHP && `${apport.caHP}j de CA HP`,
+      apport.ca && `${apport.ca}j de CA`,
+      apport.hs && `${apport.hs}j de HS`,
+    ].filter(Boolean);
+    const entry: HistoryEntry = {
+      id: generateId(),
+      date: new Date().toISOString(),
+      action: 'transfer_cet',
+      type: 'cet',
+      amount: apport.total,
+      description: `Épargne CET ${plan.anneeConges} : ${parts.join(', ')}`,
+      countersSnapshot: { cet: counters.cet },
+      cetDetail: detail,
+    };
+    const { reliquatCET: _verse, ...reste } = current;
+    const ok = save({
+      ...reste,
+      counters,
+      history: [...current.history, entry],
+      lastUpdated: new Date().toISOString(),
+    });
+    if (ok) track('cet_epargne');
+    return ok ? { success: true, apport } : { success: false, error: 'Erreur de sauvegarde' };
+  }, [save]);
 
   // Supprimer une entrée d'historique (congé posé ou épargne CET)
   const deleteHistoryEntry = useCallback(
@@ -497,10 +492,31 @@ export function useCounters() {
 
       // Annuler une épargne CET (transfer_cet)
       if (entry.action === 'transfer_cet') {
-        updatedCounters.ca += entry.amount;
         updatedCounters.cet = Math.max(0, updatedCounters.cet - entry.amount);
+        let reliquatCET = current.reliquatCET;
+        if (entry.cetDetail) {
+          // Versement multi-sources : chaque jour retourne d'où il vient.
+          const d = entry.cetDetail;
+          updatedCounters.caAnterieur += d.ca;
+          updatedCounters.caHPAnterieur += d.caHP;
+          updatedCounters.hs += d.hs * HS_COUT_PAR_JOUR_CET;
+          // Les RTC n'existent plus au compteur (remplacés à la bascule) : on
+          // les rend au reliquat, pour pouvoir refaire le versement.
+          if (d.rtc > 0) {
+            const annee = new Date(entry.date).getFullYear() - 1;
+            reliquatCET = {
+              annee,
+              rtc: (reliquatCET?.annee === annee ? reliquatCET.rtc : 0) + d.rtc * RTC_COUT_PAR_JOUR_CET,
+              caReserves: reliquatCET?.annee === annee ? reliquatCET.caReserves : 0,
+            };
+          }
+        } else {
+          // Ancienne épargne : des CA de l'année en cours.
+          updatedCounters.ca += entry.amount;
+        }
         const newData: UserData = {
           ...current,
+          ...(reliquatCET && { reliquatCET }),
           counters: updatedCounters,
           history: current.history.filter((h) => h.id !== entryId),
           lastUpdated: new Date().toISOString(),
@@ -632,7 +648,7 @@ export function useCounters() {
     posePartiel,
     poseCMO,
     poseAstreinte,
-    epargnerCET,
+    enregistrerEpargneCET,
     deleteHistoryEntry,
     confirmerBasculeAnnuelle,
     completerCompteurs,

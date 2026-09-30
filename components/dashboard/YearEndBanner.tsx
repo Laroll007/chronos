@@ -11,6 +11,8 @@ const DISMISS_KEY = 'chronos_yearend_dismissed';
 interface YearEndBannerProps {
   counters: Counters;
   cycleConfig: CycleConfig;
+  /** Ouvre « Mon épargne CET ». */
+  onOpenCETPlan?: () => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface YearEndBannerProps {
  * bougent, le bandeau réapparaît — l'agent n'est pas prévenu une seule fois en
  * septembre puis plus jamais.
  */
-export function YearEndBanner({ counters, cycleConfig }: YearEndBannerProps) {
+export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndBannerProps) {
   const bilan = useMemo(
     () => calculateYearEndBalance(counters, cycleConfig),
     [counters, cycleConfig]
@@ -88,6 +90,15 @@ export function YearEndBanner({ counters, cycleConfig }: YearEndBannerProps) {
             {expanded ? 'Masquer le détail' : 'Voir le détail'}
             <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
+          {onOpenCETPlan && bilan.capaciteCET > 0 && (
+            <button
+              onClick={onOpenCETPlan}
+              className="mt-1.5 ml-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
+            >
+              <PiggyBank className="w-3 h-3" aria-hidden="true" />
+              Mon épargne CET
+            </button>
+          )}
 
           {expanded && (
             <div className="mt-2 space-y-1.5">

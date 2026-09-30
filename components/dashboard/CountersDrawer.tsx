@@ -12,7 +12,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, BarChart3, Clock, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, ChevronRight, Clock, PiggyBank, X } from 'lucide-react';
 import { jourLocal } from '@/lib/calculations';
 
 interface CountersDrawerProps {
@@ -25,6 +25,8 @@ interface CountersDrawerProps {
   dayMinutes?: number;
   cycleConfig?: CycleConfig;
   onUpdateCycle?: (updates: Partial<CycleConfig>) => boolean;
+  /** Ouvre « Mon épargne CET ». */
+  onOpenCETPlan?: () => void;
 }
 
 export function CountersDrawer({
@@ -37,6 +39,7 @@ export function CountersDrawer({
   dayMinutes,
   cycleConfig,
   onUpdateCycle,
+  onOpenCETPlan,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -84,6 +87,20 @@ export function CountersDrawer({
             <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes}
             cycleConfig={cycleConfig}
             onUpdateCycle={onUpdateCycle} />
+            {onOpenCETPlan && (
+              <button
+                type="button"
+                onClick={onOpenCETPlan}
+                className="mt-3 w-full flex items-center gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-left transition-colors"
+              >
+                <PiggyBank className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-slate-800">Combien puis-je verser au CET ?</span>
+                  <span className="block text-xs text-slate-500">Le maximum, et quels congés choisir</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+              </button>
+            )}
           </div>
 
           {(highPriority.length > 0 || mediumPriority.length > 0) && (

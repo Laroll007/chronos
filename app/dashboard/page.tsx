@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,9 @@ import { WelcomeModal, hasSeenWelcome } from '@/components/dashboard/WelcomeModa
 import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
 import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBanner';
 import { EventModal, type EventDraft } from '@/components/dashboard/EventModal';
+import { CETPlanModal } from '@/components/dashboard/CETPlanModal';
+import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
+import { planEpargneCET } from '@/lib/cet';
 import { eventsInRange, toDayKey } from '@/lib/events';
 import { typeDeVacation } from '@/lib/rps';
 const CountersSetup = lazy(() =>
@@ -91,8 +94,10 @@ export default function DashboardPage() {
   const [showCompleteCounters, setShowCompleteCounters] = useState(false);
   // Événement en cours de création / modification (null = fenêtre fermée)
   const [eventDraft, setEventDraft] = useState<EventDraft | null>(null);
+  const [showCETPlan, setShowCETPlan] = useState(false);
 
   const {
+    userData,
     counters,
     cycleConfig,
     history,
@@ -104,7 +109,7 @@ export default function DashboardPage() {
     posePartiel,
     poseCMO,
     poseAstreinte,
-    epargnerCET,
+    enregistrerEpargneCET,
     deleteHistoryEntry,
     basculeAnnuelleAConfirmer,
     confirmerBasculeAnnuelle,
@@ -251,6 +256,25 @@ export default function DashboardPage() {
     return ok;
   }, [updateCycle]);
 
+  // ─── Épargne CET ───────────────────────────────────────────────────────────
+  // Recalculé avec les données : en janvier, alimente le bandeau de rappel.
+  const planCET = useMemo(() => (userData ? planEpargneCET(userData) : null), [userData]);
+
+  const openCETPlan = useCallback(() => {
+    setShowCETPlan(true);
+    track('cet_plan_open');
+  }, []);
+
+  const handleRecordCET = useCallback(() => {
+    const res = enregistrerEpargneCET();
+    if (res.success && 'apport' in res && res.apport) {
+      toast.success(`${res.apport.total}j versés au CET`, {
+        description: 'Vos compteurs sont à jour. Annulable depuis « Congés posés ».',
+      });
+    }
+    return res;
+  }, [enregistrerEpargneCET]);
+
   // ─── Événements perso ──────────────────────────────────────────────────────
   // Depuis la fenêtre de sélection : on la ferme (et la sélection du calendrier)
   // avant d'ouvrir celle de l'événement.
@@ -345,17 +369,6 @@ export default function DashboardPage() {
     }
   }, [posePartiel, selectedRange, cycleConfig]);
 
-  const handleEpargneCET = useCallback((joursCA: number) => {
-    const result = epargnerCET(joursCA);
-    if (result.success) {
-      track('cet_epargne');
-      toast.success(`${joursCA}j épargnés au CET !`, {
-        description: `Votre solde CET a été mis à jour. CA restants : ${(counters?.ca ?? 0) - joursCA}j`,
-      });
-    } else {
-      toast.error('Erreur épargne CET', { description: result.error });
-    }
-  }, [epargnerCET, counters]);
 
   // PERF-001: useCallback sur handleApplyCombination
   // Retourne false si rien n'a été posé — la modale reste alors ouverte.
@@ -506,8 +519,14 @@ export default function DashboardPage() {
                 onComplete={() => setShowCompleteCounters(true)}
                 onDismiss={masquerRappelCompteurs}
               />
+            ) : planCET?.mode === 'janvier' && planCET.apport.total > 0 ? (
+              <CETJanvierBanner
+                jours={planCET.apport.total}
+                anneeConges={planCET.anneeConges}
+                onOpen={openCETPlan}
+              />
             ) : (
-              <YearEndBanner counters={counters} cycleConfig={cycleConfig} />
+              <YearEndBanner counters={counters} cycleConfig={cycleConfig} onOpenCETPlan={openCETPlan} />
             )}
           </div>
           <CalendarView
@@ -611,6 +630,7 @@ export default function DashboardPage() {
           dayMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
           cycleConfig={cycleConfig}
           onUpdateCycle={handleUpdateCycle}
+          onOpenCETPlan={() => { setShowCounters(false); openCETPlan(); }}
         />
       </Suspense>
 
@@ -690,10 +710,8 @@ export default function DashboardPage() {
                       currentCET={counters.cet}
                       counters={counters}
                       projection={cetProjection}
-                      onEpargneCET={handleEpargneCET}
+                      onOpenPlan={() => { setShowProfile(false); openCETPlan(); }}
                       onUpdateCounters={handleUpdateCounters}
-                      cycleConfig={cycleConfig}
-                      history={history}
                     />
                   </Suspense>
                 )}
@@ -748,6 +766,15 @@ export default function DashboardPage() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Mon épargne CET */}
+      {showCETPlan && userData && (
+        <CETPlanModal
+          userData={userData}
+          onClose={() => setShowCETPlan(false)}
+          onRecord={handleRecordCET}
+        />
       )}
 
       {/* Création / modification d'un événement perso */}

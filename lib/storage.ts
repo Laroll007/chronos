@@ -185,6 +185,20 @@ export function migrateUserData(data: UserData): UserData {
   if ((data.lastResetYear ?? 0) < currentYear) {
     const c = data.counters;
 
+    // 0. Relevé pour le versement au CET de janvier (au titre de l'année qui
+    //    s'achève) : les RTC restants et les CA sécurisés disparaissent juste
+    //    après. Seulement si l'on bascule d'UNE année — après plusieurs années
+    //    d'inactivité, ces soldes ne veulent plus rien dire.
+    if (data.lastResetYear === currentYear - 1) {
+      data.reliquatCET = {
+        annee: currentYear - 1,
+        rtc: c.hasRTC !== false ? Math.max(0, c.rtc) : 0,
+        caReserves: Math.max(0, c.caReservesCET ?? 0),
+      };
+    } else {
+      delete data.reliquatCET;
+    }
+
     // 1. Report du reliquat (règle APORTT : consommable jusqu'au 30 avril).
     //    Remplace et n'additionne pas : le report de l'année précédente a expiré.
     c.caAnterieur = c.ca;
