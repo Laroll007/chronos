@@ -312,7 +312,6 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const partialMin = !isPosted && !isCMO && !isAstreinte ? getPartialMinutesOnDate(day.date, history) : 0;
             const isPartial = partialMin > 0;
-            const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
             const layout = eventLayout.get(toDayKey(day.date));
@@ -353,7 +352,24 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                 className={cn(
                   'relative flex flex-col min-h-11 pb-1 border-r border-b border-slate-200 cursor-pointer transition-colors',
                   !isCurrentMonth && 'opacity-30',
-                  (isInRange || isInPreview) ? (isInPreview ? 'bg-emerald-50' : 'bg-emerald-100/70') : 'hover:bg-slate-50'
+                  // L'état du jour teinte toute la case (plus de pastille ronde,
+                  // qui jurait avec les cases et les barres rectangulaires).
+                  // La sélection passe devant l'état.
+                  isStart || isEnd
+                    ? 'bg-emerald-200 ring-2 ring-inset ring-emerald-500'
+                    : isInRange || isInPreview
+                      ? isInPreview ? 'bg-emerald-50' : 'bg-emerald-100'
+                      : isPosted
+                        ? 'bg-emerald-100'
+                        : isCMO
+                          ? 'bg-violet-100'
+                          : isAstreinte
+                            ? 'bg-amber-100'
+                            : isPartial
+                              ? 'bg-teal-50'
+                              : day.isWorking
+                                ? 'bg-blue-100/70 hover:bg-blue-100'
+                                : 'bg-white hover:bg-slate-50'
                 )}
               >
                 <button
@@ -365,24 +381,25 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'relative mx-auto mt-1 h-7 w-7 md:h-8 md:w-8 shrink-0 flex items-center justify-center text-xs md:text-sm font-medium rounded-full',
-                    'transition-all duration-150 ease-out',
+                    'relative mx-auto mt-1 h-6 min-w-6 px-1 md:h-7 md:min-w-7 shrink-0 flex items-center justify-center text-xs md:text-sm rounded-md',
+                    'transition-colors duration-150',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
-                    // État par défaut (non sélectionné)
-                    !isStart && !isEnd && !isPosted && !isCMO && !isAstreinte && !isPartial && {
-                      'bg-blue-100 text-blue-700': day.isWorking,
-                      'text-slate-400': !day.isWorking,
-                    },
-                    // Aujourd'hui
-                    day.isToday && !isStart && !isEnd && 'ring-2 ring-blue-500 ring-offset-1',
-                    // États posés
-                    isPosted && !isStart && !isEnd && 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-400',
-                    isCMO && !isStart && !isEnd && 'bg-violet-200 text-violet-800 ring-1 ring-violet-400',
-                    isAstreinte && !isStart && !isEnd && 'bg-amber-200 text-amber-800 ring-1 ring-amber-400',
-                    isPartial && !isStart && !isEnd && 'bg-teal-100 text-teal-800 ring-1 ring-teal-400',
-                    // Bornes de la sélection
-                    (isStart || isEnd || isSingleDay) && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
-                    isInPreview && (isStart || isEnd) && !dateRange.selectedEnd && 'bg-emerald-400 text-white shadow-md',
+                    // Aujourd'hui : numéro dans un carré bleu plein
+                    day.isToday
+                      ? 'bg-blue-600 text-white font-bold'
+                      : isStart || isEnd
+                        ? 'text-emerald-900 font-bold'
+                        : isPosted
+                          ? 'text-emerald-800 font-semibold'
+                          : isCMO
+                            ? 'text-violet-800 font-semibold'
+                            : isAstreinte
+                              ? 'text-amber-800 font-semibold'
+                              : isPartial
+                                ? 'text-teal-800 font-semibold'
+                                : day.isWorking
+                                  ? 'text-blue-700 font-semibold'
+                                  : 'text-slate-400 font-medium',
                   )}
                 >
                   {day.date.getDate()}
@@ -428,8 +445,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           ))}
         </div>
 
-        {/* Légende : uniquement ce qui apparaît ce mois-ci */}
-        <CalendarLegend flags={legendFlags} />
+        {/* Légende : uniquement ce qui apparaît ce mois-ci (pastilles carrées,
+            comme les cases) */}
+        <CalendarLegend flags={legendFlags} shape="square" />
       </CardContent>
     </Card>
   );
