@@ -125,3 +125,99 @@ export function formatEventWhen(event: PersonalEvent): string {
     : start;
   return event.time ? `${range} · ${event.time.replace(':', 'h')}` : range;
 }
+
+// ─── Placement « Google Agenda » dans la vue Mois ───────────────────────────
+//
+// Un événement sur plusieurs jours forme UNE barre continue : il garde la même
+// ligne (« lane ») sur toute la semaine, pour rester aligné d'une case à
+// l'autre. Le titre s'affiche au début de la barre (ou au lundi, si elle
+// déborde de la semaine précédente).
+
+export interface EventSlot {
+  event: PersonalEvent;
+  /** L'événement commence ce jour-là (bord gauche arrondi). */
+  debut: boolean;
+  /** L'événement finit ce jour-là (bord droit arrondi). */
+  fin: boolean;
+  /** Premier segment visible dans la rangée : on y écrit le titre. */
+  titre: boolean;
+  /** Longueur (en jours) de la barre à partir de ce segment, dans la rangée. */
+  span: number;
+}
+
+export interface DayEventsLayout {
+  /** Lignes affichées ; null = ligne vide gardée pour l'alignement. */
+  lanes: (EventSlot | null)[];
+  /** Événements de ce jour au-delà des lignes affichées (« +N »). */
+  overflow: number;
+}
+
+/** Lundi (00:00) de la semaine du jour. */
+function lundi(d: Date): Date {
+  const decalage = (d.getDay() + 6) % 7;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - decalage);
+}
+
+export function layoutMonthEvents(
+  days: Date[],
+  events: PersonalEvent[] | undefined,
+  maxLanes: number = 2
+): Map<string, DayEventsLayout> {
+  const out = new Map<string, DayEventsLayout>();
+  if (!events?.length) return out;
+
+  // Jours affichés, regroupés par semaine
+  const semaines = new Map<string, string[]>();
+  for (const d of days) {
+    const k = toDayKey(lundi(d));
+    if (!semaines.has(k)) semaines.set(k, []);
+    semaines.get(k)!.push(toDayKey(d));
+  }
+
+  for (const jours of semaines.values()) {
+    const premier = jours[0]!;
+    const dernier = jours[jours.length - 1]!;
+    // Plus longs d'abord (ils réservent les lignes du haut), puis par début et heure
+    const presents = events
+      .filter((e) => e.date <= dernier && (e.dateEnd ?? e.date) >= premier)
+      .sort((a, b) => {
+        const la = (a.dateEnd ?? a.date) > a.date ? 1 : 0;
+        const lb = (b.dateEnd ?? b.date) > b.date ? 1 : 0;
+        return lb - la || a.date.localeCompare(b.date) || compareEvents(a, b);
+      });
+
+    const occupation: Set<string>[] = []; // par ligne : jours occupés
+    const ligneDe = new Map<string, number>();
+    for (const e of presents) {
+      const couverts = jours.filter((j) => eventCoversDay(e, j));
+      let ligne = 0;
+      while (occupation[ligne] && couverts.some((j) => occupation[ligne]!.has(j))) ligne++;
+      occupation[ligne] ??= new Set();
+      couverts.forEach((j) => occupation[ligne]!.add(j));
+      ligneDe.set(e.id, ligne);
+    }
+
+    for (const j of jours) {
+      const duJour = presents.filter((e) => eventCoversDay(e, j));
+      if (duJour.length === 0) continue;
+      const visibles = duJour.filter((e) => ligneDe.get(e.id)! < maxLanes);
+      const hauteur = visibles.reduce((m, e) => Math.max(m, ligneDe.get(e.id)! + 1), 0);
+      const lanes: (EventSlot | null)[] = Array.from({ length: hauteur }, () => null);
+      for (const e of visibles) {
+        const debut = e.date === j;
+        // Jours consécutifs couverts à partir d'ici dans la rangée
+        let span = 0;
+        for (let i = jours.indexOf(j); i < jours.length && eventCoversDay(e, jours[i]!); i++) span++;
+        lanes[ligneDe.get(e.id)!] = {
+          event: e,
+          debut,
+          fin: (e.dateEnd ?? e.date) === j,
+          titre: debut || j === premier,
+          span,
+        };
+      }
+      out.set(j, { lanes, overflow: duJour.length - visibles.length });
+    }
+  }
+  return out;
+}

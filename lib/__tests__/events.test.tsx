@@ -134,3 +134,35 @@ describe('couleur des événements', () => {
     expect(inconnue!.color).toBeUndefined();
   });
 });
+
+describe('vue Mois façon Google Agenda : placement des barres', () => {
+  it('une barre sur plusieurs jours garde sa ligne et coupe au changement de semaine', async () => {
+    const { layoutMonthEvents } = await import('../events');
+    const octobre = Array.from({ length: 31 }, (_, i) => new Date(2026, 9, i + 1));
+    const stage: PersonalEvent = { id: 's', date: '2026-10-08', dateEnd: '2026-10-13', title: 'Stage', category: 'formation' };
+    const rdv: PersonalEvent = { id: 'r', date: '2026-10-09', title: 'RDV', category: 'rdv', time: '10:00' };
+    const l = layoutMonthEvents(octobre, [rdv, stage]);
+    // Jeudi 8 : début de la barre, titre, 4 jours jusqu'au dimanche
+    expect(l.get('2026-10-08')!.lanes[0]).toMatchObject({ debut: true, fin: false, titre: true, span: 4 });
+    // Vendredi 9 : la barre continue sur la même ligne, le RDV passe dessous
+    expect(l.get('2026-10-09')!.lanes[0]).toMatchObject({ debut: false, titre: false });
+    expect(l.get('2026-10-09')!.lanes[1]!.event.id).toBe('r');
+    // Lundi 12 : nouvelle semaine → le titre est réécrit ; mardi 13 : fin
+    expect(l.get('2026-10-12')!.lanes[0]).toMatchObject({ titre: true, span: 2, debut: false });
+    expect(l.get('2026-10-13')!.lanes[0]).toMatchObject({ fin: true });
+  });
+
+  it('au-delà de 2 lignes : « +N », et ligne vide gardée pour l’alignement', async () => {
+    const { layoutMonthEvents } = await import('../events');
+    const jours = [new Date(2026, 9, 5), new Date(2026, 9, 6)];
+    const evs: PersonalEvent[] = [
+      { id: 'a', date: '2026-10-05', dateEnd: '2026-10-06', title: 'A', category: 'autre' },
+      { id: 'b', date: '2026-10-05', title: 'B', category: 'autre' },
+      { id: 'c', date: '2026-10-06', title: 'C', category: 'autre' },
+      { id: 'd', date: '2026-10-06', title: 'D', category: 'autre' },
+    ];
+    const l = layoutMonthEvents(jours, evs);
+    expect(l.get('2026-10-06')!.lanes.map((s) => s?.event.id)).toEqual(['a', 'c']);
+    expect(l.get('2026-10-06')!.overflow).toBe(1);
+  });
+});

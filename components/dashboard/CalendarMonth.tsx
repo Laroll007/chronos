@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
-import { eventsOnDate } from '@/lib/events';
+import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
 
 interface CalendarMonthProps {
   cycleConfig: CycleConfig;
@@ -58,6 +58,12 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
     const sundays = days.filter((d) => d.isWorking && d.isSunday).length;
     return { working, sundays };
   }, [days, history]);
+
+  // Placement des événements (barres continues, lignes alignées par semaine)
+  const eventLayout = useMemo(
+    () => layoutMonthEvents(days.filter((d) => d.date.getMonth() === month).map((d) => d.date), events),
+    [days, month, events]
+  );
 
   const legendFlags = useMemo(
     () =>
@@ -283,10 +289,16 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           ))}
         </div>
 
-        {/* Grille des jours - Style Booking avec plage continue */}
-        <div className="grid grid-cols-7 gap-y-1 flex-1" role="grid" aria-label="Calendrier mensuel">
+        {/* Grille des jours — cases délimitées façon Google Agenda : le numéro
+            (pastille d'état : travail, congé, CMO…) puis les événements, qui
+            restent dans leur case ; une barre continue pour plusieurs jours. */}
+        <div
+          className="grid grid-cols-7 flex-1 border-t border-l border-slate-200 rounded-lg overflow-hidden"
+          role="grid"
+          aria-label="Calendrier mensuel"
+        >
           {emptyDays.map((_, index) => (
-            <div key={`empty-${index}`} className="min-h-10 md:min-h-11" role="gridcell" />
+            <div key={`empty-${index}`} className="min-h-11 border-r border-b border-slate-200 bg-slate-50/60" role="gridcell" />
           ))}
           {days.map((day, index) => {
             const isCurrentMonth = day.date.getMonth() === month;
@@ -303,6 +315,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
+            const layout = eventLayout.get(toDayKey(day.date));
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -325,87 +338,50 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
 
-            // Calculer la position dans la semaine (0-6, lundi=0)
-            const dayOfWeek = day.date.getDay();
-            const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            const isFirstOfWeek = adjustedDayOfWeek === 0;
-            const isLastOfWeek = adjustedDayOfWeek === 6;
-
             return (
               <div
                 key={index}
+                // Toute la case est cliquable (le bouton du numéro garde le
+                // clavier et le lecteur d'écran ; son clic remonte ici).
+                onClick={() => dateRange.handleDateClick(day.date)}
+                onMouseEnter={() => {
+                  if (dateRange.isSelecting) dateRange.setHoveredDate(day.date);
+                }}
+                onMouseLeave={() => {
+                  if (dateRange.hoveredDate) dateRange.setHoveredDate(null);
+                }}
                 className={cn(
-                  // Hauteur minimale : une semaine sans événement reste compacte,
-                  // celles qui en ont s'agrandissent pour leurs barres.
-                  'relative flex flex-col min-h-10 md:min-h-11',
-                  // Fond de la plage - style continu
-                  (isInRange || isInPreview) && !isSingleDay && {
-                    'bg-emerald-100': !isInPreview,
-                    'bg-emerald-50': isInPreview,
-                  },
-                  // Coins arrondis pour le fond de plage
-                  (isInRange || isInPreview) && !isSingleDay && {
-                    'rounded-l-full': isStart || isFirstOfWeek,
-                    'rounded-r-full': isEnd || isLastOfWeek,
-                  }
+                  'relative flex flex-col min-h-11 pb-1 border-r border-b border-slate-200 cursor-pointer transition-colors',
+                  !isCurrentMonth && 'opacity-30',
+                  (isInRange || isInPreview) ? (isInPreview ? 'bg-emerald-50' : 'bg-emerald-100/70') : 'hover:bg-slate-50'
                 )}
               >
                 <button
                   ref={(el) => { dayButtonsRef.current[index] = el; }}
-                  onClick={() => dateRange.handleDateClick(day.date)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
-                  onMouseEnter={() => {
-                    if (dateRange.isSelecting) {
-                      dateRange.setHoveredDate(day.date);
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    if (dateRange.hoveredDate) {
-                      dateRange.setHoveredDate(null);
-                    }
-                  }}
                   role="gridcell"
                   tabIndex={day.isToday ? 0 : -1}
                   aria-label={ariaLabel}
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'relative mx-auto mt-0.5 h-9 w-9 md:h-10 md:w-10 shrink-0 flex items-center justify-center text-sm font-medium',
-                    'transition-all duration-150 ease-out cursor-pointer',
+                    'relative mx-auto mt-1 h-7 w-7 md:h-8 md:w-8 shrink-0 flex items-center justify-center text-xs md:text-sm font-medium rounded-full',
+                    'transition-all duration-150 ease-out',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
-                    'hover:scale-110 hover:z-10',
-                    // Forme de base
-                    'rounded-full',
                     // État par défaut (non sélectionné)
-                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && {
-                      // Jour travaillé
-                      'bg-blue-50 text-blue-700 hover:bg-blue-100': day.isWorking && isCurrentMonth,
-                      // Jour de repos
-                      'text-slate-400 hover:bg-slate-100': !day.isWorking && isCurrentMonth,
-                      // Hors mois
-                      'opacity-30': !isCurrentMonth,
+                    !isStart && !isEnd && !isPosted && !isCMO && !isAstreinte && !isPartial && {
+                      'bg-blue-100 text-blue-700': day.isWorking,
+                      'text-slate-400': !day.isWorking,
                     },
-                    // Aujourd'hui (non sélectionné)
-                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
-                    // Congé déjà posé
-                    isPosted && !isInRange && !isInPreview && 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-400',
-                    // Arrêt maladie (CMO)
-                    isCMO && !isInRange && !isInPreview && 'bg-violet-200 text-violet-800 ring-1 ring-violet-400',
-                    // Astreinte / permanence
-                    isAstreinte && !isInRange && !isInPreview && 'bg-amber-200 text-amber-800 ring-1 ring-amber-400',
-                    // Pose fractionnée (sortie anticipée) — jour partiellement travaillé
-                    isPartial && !isInRange && !isInPreview && 'bg-teal-100 text-teal-800 ring-1 ring-teal-400',
-                    // Dans la plage (preview)
-                    isInPreview && !isStart && !isEnd && 'bg-transparent text-emerald-700',
-                    // Dans la plage (confirmée)
-                    isInRange && !isInPreview && !isStart && !isEnd && 'bg-transparent text-emerald-800',
-                    // Début de la plage
-                    isStart && !isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
-                    // Fin de la plage
-                    isEnd && !isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
-                    // Jour unique (début = fin)
-                    isSingleDay && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
-                    // Preview start/end
+                    // Aujourd'hui
+                    day.isToday && !isStart && !isEnd && 'ring-2 ring-blue-500 ring-offset-1',
+                    // États posés
+                    isPosted && !isStart && !isEnd && 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-400',
+                    isCMO && !isStart && !isEnd && 'bg-violet-200 text-violet-800 ring-1 ring-violet-400',
+                    isAstreinte && !isStart && !isEnd && 'bg-amber-200 text-amber-800 ring-1 ring-amber-400',
+                    isPartial && !isStart && !isEnd && 'bg-teal-100 text-teal-800 ring-1 ring-teal-400',
+                    // Bornes de la sélection
+                    (isStart || isEnd || isSingleDay) && 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30',
                     isInPreview && (isStart || isEnd) && !dateRange.selectedEnd && 'bg-emerald-400 text-white shadow-md',
                   )}
                 >
@@ -414,21 +390,31 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                     <span
                       aria-hidden="true"
                       className={cn(
-                        'absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full',
-                        isStart || isEnd ? 'bg-white' : jourModifie.type === 'stage' ? 'bg-indigo-600' : 'bg-sky-500'
+                        'absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ring-1 ring-white',
+                        jourModifie.type === 'stage' ? 'bg-indigo-600' : 'bg-sky-500'
                       )}
                     />
                   )}
                 </button>
-                {/* Événements façon Google Agenda : 2 barres au plus, puis « +N » */}
-                {dayEvents.length > 0 && isCurrentMonth && (
-                  <div className="w-full px-0.5 pb-0.5 mt-0.5 space-y-0.5">
-                    {dayEvents.slice(0, 2).map((e) => (
-                      <EventChip key={e.id} event={e} onOpen={onOpenEvent} />
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <span className="block text-center text-[9px] leading-3 font-medium text-slate-500">
-                        +{dayEvents.length - 2}
+
+                {/* Événements : lignes alignées sur la semaine, 2 au plus puis « +N » */}
+                {layout && isCurrentMonth && (
+                  <div className="mt-1 space-y-0.5">
+                    {layout.lanes.map((slot, i) =>
+                      slot ? (
+                        <EventChip
+                          key={slot.event.id}
+                          event={slot.event}
+                          segment={slot}
+                          onOpen={onOpenEvent}
+                        />
+                      ) : (
+                        <div key={`vide-${i}`} className="h-[14px] md:h-4" aria-hidden="true" />
+                      )
+                    )}
+                    {layout.overflow > 0 && (
+                      <span className="block px-1 text-[9px] md:text-[10px] leading-3 font-semibold text-slate-500">
+                        +{layout.overflow}
                       </span>
                     )}
                   </div>
@@ -436,6 +422,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
               </div>
             );
           })}
+          {/* Cases vides pour terminer la dernière semaine (grille fermée) */}
+          {Array.from({ length: (7 - ((emptyDays.length + days.length) % 7)) % 7 }, (_, i) => (
+            <div key={`fin-${i}`} className="min-h-11 border-r border-b border-slate-200 bg-slate-50/60" aria-hidden="true" />
+          ))}
         </div>
 
         {/* Légende : uniquement ce qui apparaît ce mois-ci */}
