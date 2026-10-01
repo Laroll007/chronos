@@ -186,6 +186,7 @@ export interface DetailEpargneCET {
 }
 
 export type EventCategory = 'rdv' | 'formation' | 'audience' | 'perso' | 'autre';
+export type EventColor = 'rose' | 'orange' | 'fuchsia' | 'cyan' | 'lime' | 'slate';
 
 export interface PersonalEvent {
   id: string;
@@ -195,6 +196,7 @@ export interface PersonalEvent {
   category: EventCategory;
   time?: string; // 'HH:MM', facultatif
   note?: string;
+  color?: EventColor; // absente = couleur du type
 }
 
 export interface HistoryEntry {

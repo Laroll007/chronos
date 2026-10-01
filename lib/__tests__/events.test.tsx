@@ -120,3 +120,17 @@ describe('useCounters : événements', () => {
     expect(result.current.events).toEqual([rdv]);
   });
 });
+
+describe('couleur des événements', () => {
+  it('couleur du type par défaut, couleur choisie conservée, couleur inconnue ignorée', async () => {
+    const { eventColor } = await import('../events');
+    expect(eventColor({ category: 'formation' })).toBe('orange');
+    expect(eventColor({ category: 'formation', color: 'slate' })).toBe('slate');
+    const [ok, inconnue] = sanitizeEvents([
+      { ...rdv, color: 'cyan' },
+      { ...rdv, id: 'z', color: 'arc-en-ciel' },
+    ]);
+    expect(ok!.color).toBe('cyan');
+    expect(inconnue!.color).toBeUndefined();
+  });
+});

@@ -270,12 +270,12 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
       <div>
         {viewMode === 'month' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} />
+            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} onOpenEvent={onOpenEvent} />
           </div>
         )}
         {viewMode === 'week' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} />
+            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} onOpenEvent={onOpenEvent} />
           </div>
         )}
         {viewMode === 'year' && (

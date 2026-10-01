@@ -55,7 +55,7 @@ const ITEMS: { key: keyof LegendFlags; label: string; swatch: string }[] = [
   { key: 'cmo', label: 'CMO', swatch: 'bg-violet-200 border border-violet-400' },
   { key: 'astreinte', label: 'Astreinte', swatch: 'bg-amber-200 border border-amber-400' },
   { key: 'heures', label: 'Heures', swatch: 'bg-teal-100 border border-teal-400' },
-  { key: 'evenement', label: 'Événement', swatch: 'bg-pink-500' },
+  // Pas d'entrée « Événement » : chaque barre porte son titre et sa couleur.
   { key: 'stage', label: 'Stage', swatch: 'bg-indigo-600' },
   { key: 'horaires', label: 'Horaires modifiés', swatch: 'bg-sky-500' },
   { key: 'selection', label: 'Sélection', swatch: 'bg-emerald-500' },

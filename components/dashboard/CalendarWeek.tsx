@@ -12,6 +12,7 @@ import { jourModifieDu } from '@/lib/journees';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
 import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
@@ -22,6 +23,7 @@ interface CalendarWeekProps {
   history: HistoryEntry[];
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];
+  onOpenEvent?: (event: PersonalEvent) => void;
 }
 
 const JOURS_COMPLETS = [
@@ -34,7 +36,7 @@ const JOURS_COMPLETS = [
   'Dimanche',
 ];
 
-export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history, events, joursModifies }: CalendarWeekProps) {
+export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history, events, joursModifies, onOpenEvent }: CalendarWeekProps) {
   const today = new Date();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // Calculer le début de la semaine (lundi)
@@ -275,7 +277,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
               <div
                 key={index}
                 className={cn(
-                  'relative min-h-[70px] md:min-h-[90px]',
+                  'relative flex flex-col',
                   // Fond de la plage - style continu
                   (isInRange || isInPreview) && !isSingleDay && {
                     'bg-emerald-100': !isInPreview,
@@ -305,7 +307,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'absolute inset-1 flex flex-col items-center justify-center rounded-xl',
+                    'relative m-1 min-h-[62px] md:min-h-[82px] flex flex-col items-center justify-center rounded-xl',
                     'transition-all duration-150 ease-out cursor-pointer',
                     'hover:scale-105 hover:z-10',
                     // État par défaut (non sélectionné)
@@ -377,16 +379,19 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                       {jourModifie.type === 'stage' ? 'Stage' : 'Modifié'}
                     </span>
                   )}
-                  {dayEvents.length > 0 && (
-                    <span className="mt-1 flex items-center justify-center gap-1 max-w-full px-1" aria-hidden="true">
-                      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isStart || isEnd ? 'bg-white' : 'bg-pink-500')} />
-                      <span className={cn('hidden md:inline truncate text-[10px]', isStart || isEnd ? 'text-white' : 'text-pink-700')}>
-                        {dayEvents[0]!.title}
-                        {dayEvents.length > 1 && ` +${dayEvents.length - 1}`}
-                      </span>
-                    </span>
-                  )}
                 </button>
+                {dayEvents.length > 0 && (
+                  <div className="px-0.5 pb-1 space-y-0.5">
+                    {dayEvents.slice(0, 3).map((e) => (
+                      <EventChip key={e.id} event={e} large onOpen={onOpenEvent} />
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <span className="block text-center text-[10px] font-medium text-slate-500">
+                        +{dayEvents.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

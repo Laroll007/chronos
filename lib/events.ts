@@ -4,7 +4,7 @@
 // travaillés). Les dates sont des jours LOCAUX 'YYYY-MM-DD', comparables en
 // chaînes, ce qui évite les décalages de fuseau rencontrés avec toISOString().
 
-import type { EventCategory, PersonalEvent } from './types';
+import type { EventCategory, EventColor, PersonalEvent } from './types';
 
 export const EVENT_CATEGORIES: Record<EventCategory, { label: string; emoji: string }> = {
   rdv: { label: 'Rendez-vous', emoji: '📅' },
@@ -13,6 +13,31 @@ export const EVENT_CATEGORIES: Record<EventCategory, { label: string; emoji: str
   perso: { label: 'Personnel', emoji: '🏠' },
   autre: { label: 'Autre', emoji: '📌' },
 };
+
+// Palette « à la Google Agenda » : lisible avec du texte blanc, et distincte des
+// couleurs d'état du planning (bleu travail, vert congé, violet CMO, ambre
+// astreinte, teal heures, ciel/indigo journées modifiées). Classes écrites en
+// entier pour que Tailwind les génère.
+export const EVENT_COLORS: Record<EventColor, { label: string; bg: string; border: string }> = {
+  rose: { label: 'Rose', bg: 'bg-rose-600', border: 'border-rose-600' },
+  orange: { label: 'Orange', bg: 'bg-orange-600', border: 'border-orange-600' },
+  fuchsia: { label: 'Fuchsia', bg: 'bg-fuchsia-600', border: 'border-fuchsia-600' },
+  cyan: { label: 'Cyan', bg: 'bg-cyan-700', border: 'border-cyan-700' },
+  lime: { label: 'Vert', bg: 'bg-lime-700', border: 'border-lime-700' },
+  slate: { label: 'Gris', bg: 'bg-slate-600', border: 'border-slate-600' },
+};
+
+export const CATEGORY_COLOR: Record<EventCategory, EventColor> = {
+  rdv: 'rose',
+  formation: 'orange',
+  audience: 'fuchsia',
+  perso: 'lime',
+  autre: 'cyan',
+};
+
+export function eventColor(event: Pick<PersonalEvent, 'category' | 'color'>): EventColor {
+  return event.color ?? CATEGORY_COLOR[event.category];
+}
 
 export const EVENT_TITLE_MAX = 60;
 export const EVENT_NOTE_MAX = 300;
@@ -58,6 +83,7 @@ export function sanitizeEvent(raw: unknown): PersonalEvent | null {
   if (isValidDay(e.dateEnd) && e.dateEnd > e.date) event.dateEnd = e.dateEnd;
   if (typeof e.time === 'string' && TIME_RE.test(e.time)) event.time = e.time;
   if (typeof e.note === 'string' && e.note.trim()) event.note = e.note.trim().slice(0, EVENT_NOTE_MAX);
+  if (typeof e.color === 'string' && e.color in EVENT_COLORS) event.color = e.color as EventColor;
   return event;
 }
 

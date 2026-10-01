@@ -14,6 +14,7 @@ import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinut
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
 
@@ -23,6 +24,7 @@ interface CalendarMonthProps {
   history: HistoryEntry[];
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];
+  onOpenEvent?: (event: PersonalEvent) => void;
 }
 
 const MOIS = [
@@ -42,7 +44,7 @@ const MOIS = [
 
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events, joursModifies }: CalendarMonthProps) {
+export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events, joursModifies, onOpenEvent }: CalendarMonthProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -284,7 +286,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         {/* Grille des jours - Style Booking avec plage continue */}
         <div className="grid grid-cols-7 gap-y-1 flex-1" role="grid" aria-label="Calendrier mensuel">
           {emptyDays.map((_, index) => (
-            <div key={`empty-${index}`} className="h-10 md:h-11" role="gridcell" />
+            <div key={`empty-${index}`} className="min-h-10 md:min-h-11" role="gridcell" />
           ))}
           {days.map((day, index) => {
             const isCurrentMonth = day.date.getMonth() === month;
@@ -333,7 +335,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
               <div
                 key={index}
                 className={cn(
-                  'relative h-10 md:h-11',
+                  // Hauteur minimale : une semaine sans événement reste compacte,
+                  // celles qui en ont s'agrandissent pour leurs barres.
+                  'relative flex flex-col min-h-10 md:min-h-11',
                   // Fond de la plage - style continu
                   (isInRange || isInPreview) && !isSingleDay && {
                     'bg-emerald-100': !isInPreview,
@@ -366,7 +370,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'absolute inset-0.5 flex items-center justify-center text-sm font-medium',
+                    'relative mx-auto mt-0.5 h-9 w-9 md:h-10 md:w-10 shrink-0 flex items-center justify-center text-sm font-medium',
                     'transition-all duration-150 ease-out cursor-pointer',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
                     'hover:scale-110 hover:z-10',
@@ -406,22 +410,29 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   )}
                 >
                   {day.date.getDate()}
-                  {(dayEvents.length > 0 || jourModifie) && (
-                    <span aria-hidden="true" className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                      {dayEvents.length > 0 && (
-                        <span className={cn('w-1.5 h-1.5 rounded-full', isStart || isEnd ? 'bg-white' : 'bg-pink-500')} />
+                  {jourModifie && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full',
+                        isStart || isEnd ? 'bg-white' : jourModifie.type === 'stage' ? 'bg-indigo-600' : 'bg-sky-500'
                       )}
-                      {jourModifie && (
-                        <span
-                          className={cn(
-                            'w-1.5 h-1.5 rounded-full',
-                            isStart || isEnd ? 'bg-white' : jourModifie.type === 'stage' ? 'bg-indigo-600' : 'bg-sky-500'
-                          )}
-                        />
-                      )}
-                    </span>
+                    />
                   )}
                 </button>
+                {/* Événements façon Google Agenda : 2 barres au plus, puis « +N » */}
+                {dayEvents.length > 0 && isCurrentMonth && (
+                  <div className="w-full px-0.5 pb-0.5 mt-0.5 space-y-0.5">
+                    {dayEvents.slice(0, 2).map((e) => (
+                      <EventChip key={e.id} event={e} onOpen={onOpenEvent} />
+                    ))}
+                    {dayEvents.length > 2 && (
+                      <span className="block text-center text-[9px] leading-3 font-medium text-slate-500">
+                        +{dayEvents.length - 2}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

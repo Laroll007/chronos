@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CalendarHeart, ChevronRight, Plus } from 'lucide-react';
 import type { PersonalEvent } from '@/lib/types';
-import { EVENT_CATEGORIES, formatEventWhen, toDayKey } from '@/lib/events';
+import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, formatEventWhen, toDayKey } from '@/lib/events';
 
 interface EventListProps {
   events: PersonalEvent[];
@@ -65,7 +65,7 @@ export function EventList({ events, onAdd, onOpen }: EventListProps) {
                   <button
                     type="button"
                     onClick={() => onOpen(event)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/50 border border-slate-200 hover:bg-white/80 hover:border-pink-300 active:bg-white transition-colors text-left"
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg bg-white/50 border border-slate-200 border-l-4 ${EVENT_COLORS[eventColor(event)].border} hover:bg-white/80 active:bg-white transition-colors text-left`}
                   >
                     <span className="text-lg shrink-0" aria-hidden="true">
                       {EVENT_CATEGORIES[event.category].emoji}

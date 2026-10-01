@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Counters, Combination, CounterType, PersonalEvent } from '@/lib/types';
-import { EVENT_CATEGORIES, formatEventWhen } from '@/lib/events';
+import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, formatEventWhen } from '@/lib/events';
 import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
@@ -305,14 +305,14 @@ export function OptimizationModal({
                     key={event.id}
                     type="button"
                     onClick={() => onOpenEvent?.(event)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-pink-50 border border-pink-200 hover:border-pink-300 text-left transition-colors"
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200 border-l-4 ${EVENT_COLORS[eventColor(event)].border} hover:bg-slate-50 text-left transition-colors`}
                   >
                     <span aria-hidden="true">{EVENT_CATEGORIES[event.category].emoji}</span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-medium text-slate-800 truncate">{event.title}</span>
                       <span className="block text-xs text-slate-500 truncate">{formatEventWhen(event)}</span>
                     </span>
-                    <ChevronRight className="w-4 h-4 shrink-0 text-pink-400" />
+                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-400" />
                   </button>
                 ))}
                 <button

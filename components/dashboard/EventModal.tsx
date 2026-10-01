@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { CalendarPlus, Trash2, X } from 'lucide-react';
-import type { EventCategory, PersonalEvent } from '@/lib/types';
-import { EVENT_CATEGORIES, EVENT_NOTE_MAX, EVENT_TITLE_MAX } from '@/lib/events';
+import type { EventCategory, EventColor, PersonalEvent } from '@/lib/types';
+import { CATEGORY_COLOR, EVENT_CATEGORIES, EVENT_COLORS, EVENT_NOTE_MAX, EVENT_TITLE_MAX } from '@/lib/events';
 
 export interface EventDraft {
   id?: string;
@@ -14,6 +14,7 @@ export interface EventDraft {
   category?: EventCategory;
   time?: string;
   note?: string;
+  color?: EventColor;
 }
 
 interface EventModalProps {
@@ -41,6 +42,9 @@ export function EventModal({ draft, onClose, onSave, onDelete }: EventModalProps
   const [time, setTime] = useState(draft.time ?? '');
   const [note, setNote] = useState(draft.note ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Couleur choisie à la main ; sinon, celle du type (et elle suit le type).
+  const [color, setColor] = useState<EventColor | undefined>(draft.color);
+  const couleur = color ?? CATEGORY_COLOR[category];
 
   const endInvalid = multiDay && dateEnd < date;
   const canSave = title.trim().length > 0 && Boolean(date) && !endInvalid;
@@ -55,6 +59,7 @@ export function EventModal({ draft, onClose, onSave, onDelete }: EventModalProps
       ...(multiDay && dateEnd > date && { dateEnd }),
       ...(time && { time }),
       ...(note.trim() && { note: note.trim() }),
+      ...(color && { color }),
     });
     if (ok) onClose();
   };
@@ -116,6 +121,24 @@ export function EventModal({ draft, onClose, onSave, onDelete }: EventModalProps
                 >
                   <span aria-hidden="true">{EVENT_CATEGORIES[c].emoji}</span> {EVENT_CATEGORIES[c].label}
                 </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="block text-sm font-medium text-slate-700 mb-1.5">Couleur</legend>
+            <div className="flex gap-2.5">
+              {(Object.keys(EVENT_COLORS) as EventColor[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={EVENT_COLORS[c].label}
+                  aria-pressed={couleur === c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-full ${EVENT_COLORS[c].bg} transition-transform ${
+                    couleur === c ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'hover:scale-110'
+                  }`}
+                />
               ))}
             </div>
           </fieldset>
