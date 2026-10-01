@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { GraduationCap, PencilLine, Undo2 } from 'lucide-react';
 import type { CycleConfig, JourModifie } from '@/lib/types';
-import { effetJournee, joursModifiesEntre, vacationPrevue, type EffetJournee } from '@/lib/journees';
+import { effetJournee, heureDebutHabituelle, joursModifiesEntre, vacationPrevue, type EffetJournee } from '@/lib/journees';
 import { formatMinutes, isWorkingDay } from '@/lib/calculations';
 import { fromDayKey, toDayKey } from '@/lib/events';
 
@@ -16,6 +16,8 @@ interface DayEditSectionProps {
   joursModifies: JourModifie[];
   onSave: (saisies: Saisie[]) => boolean;
   onDelete: (date: string) => boolean;
+  /** Ouvre « Modifier mon cycle » (horaires habituels non renseignés). */
+  onSetHoraires?: () => void;
 }
 
 const toHHMM = (min: number) =>
@@ -87,7 +89,7 @@ function Apercu({ e, fin, debut }: { e: EffetJournee; debut: number; fin: number
  * « Modifier cette journée » (horaires réels, stage) dans la fenêtre du jour.
  * Un seul jour : horaires ou stage. Plusieurs jours : stage.
  */
-export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave, onDelete }: DayEditSectionProps) {
+export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave, onDelete, onSetHoraires }: DayEditSectionProps) {
   const jours = useMemo(() => joursDe(start, end), [start, end]);
   const unJour = jours.length === 1;
   const existants = joursModifiesEntre(start, end, joursModifies);
@@ -97,10 +99,16 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
 
   const [ouvert, setOuvert] = useState(false);
   const [mode, setMode] = useState<JourModifie['type']>(existant?.type ?? (unJour ? 'horaires' : 'stage'));
-  const [debut, setDebut] = useState(existant?.debut ?? prevue?.debut ?? 8 * 60);
+  // Pré-remplissage : la journée déjà saisie, sinon les horaires habituels de
+  // l'agent (y compris sur un repos, s'il les a renseignés), sinon 08h–17h.
+  const habituelle = cycleConfig.heureDebut !== undefined || prevue
+    ? { debut: heureDebutHabituelle(cycleConfig), duree: cycleConfig.heuresParJour }
+    : null;
+  const [debut, setDebut] = useState(existant?.debut ?? habituelle?.debut ?? 8 * 60);
   const [fin, setFin] = useState(
-    existant?.fin ?? (prevue ? (prevue.debut + prevue.duree) % (24 * 60) : 17 * 60)
+    existant?.fin ?? (habituelle ? (habituelle.debut + habituelle.duree) % (24 * 60) : 17 * 60)
   );
+  const horairesInconnus = cycleConfig.type !== 'hebdo' && cycleConfig.heureDebut === undefined;
 
   // Stage sur plusieurs jours : seuls les repos ont besoin d'horaires (rappel).
   const repos = jours.filter((d) => !isWorkingDay(d, cycleConfig));
@@ -190,6 +198,18 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
                   : 'Stage sur un jour de repos : c’est un rappel, la durée du stage est créditée en HS.'
                 : `${jours.length - repos.length} jour(s) travaillé(s) remplacé(s) par le stage, sans effet.`
                   + (repos.length > 0 ? ` ${repos.length} jour(s) de repos : rappel, horaires du stage crédités en HS.` : '')}
+            </p>
+          )}
+
+          {besoinHoraires && horairesInconnus && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              Vos horaires habituels ne sont pas renseignés : le calcul suppose une prise de
+              service à {toHHMM(heureDebutHabituelle(cycleConfig)).replace(':', 'h')}.{' '}
+              {onSetHoraires && (
+                <button type="button" onClick={onSetHoraires} className="font-semibold underline underline-offset-2">
+                  Renseigner mes horaires
+                </button>
+              )}
             </p>
           )}
 

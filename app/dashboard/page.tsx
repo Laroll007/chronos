@@ -613,6 +613,11 @@ export default function DashboardPage() {
                   end={selectedRange.end}
                   cycleConfig={cycleConfig}
                   joursModifies={joursModifies}
+                  onSetHoraires={() => {
+                    closeSelection();
+                    setSettingsOpenCycle(true);
+                    setShowSettings(true);
+                  }}
                   onSave={(saisies) => {
                     const res = enregistrerJoursModifies(saisies);
                     if (!res) {

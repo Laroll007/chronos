@@ -141,3 +141,14 @@ describe('Journées modifiées : crédit et annulation', () => {
     expect(stored().joursModifies).toEqual([]);
   });
 });
+
+describe('Agent inscrit avant l’ajout des horaires', () => {
+  it('ancien « service de nuit » : vacation supposée à 19h00, ses heures de nuit restent « dans la vacation »', () => {
+    const { heureDebut: _h, ...sansHoraires } = JOUR;
+    const ancienNuit = { ...sansHoraires, heuresParJour: h(11, 8), rpsParJour: { lundi: 67, mardi: 67, mercredi: 67, jeudi: 67, vendredi: 67, samedi: 67, dimanche: 267 } };
+    // Vendredi 19h00 → samedi 06h08 (samedi = RC) : pas de bonus RC sur les heures d'après minuit
+    const e = effetJournee(new Date(2026, 9, 2), 'horaires', h(19), h(6, 8), ancienNuit);
+    expect(e.hs).toBe(0);
+    expect(e.rps).toBe(54); // 9h de nuit × 0,1, comme GesTT
+  });
+});

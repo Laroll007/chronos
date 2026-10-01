@@ -86,10 +86,20 @@ function coefRepos(date: Date, cfg: CycleConfig): number {
 
 // ─── Calcul d'une journée réelle ─────────────────────────────────────────────
 
+/**
+ * Prise de service habituelle. Agent inscrit avant l'ajout des horaires : même
+ * estimation que l'écran du cycle — 19h00 s'il était en « service de nuit »
+ * (barème RPS en semaine), 07h00 sinon. Sans ça, les heures de nuit d'un agent
+ * de nuit tombaient « hors vacation » et prenaient à tort le bonus RC/RL.
+ */
+export function heureDebutHabituelle(cfg: CycleConfig): number {
+  return cfg.heureDebut ?? ((cfg.rpsParJour?.lundi ?? 0) > 0 ? 19 * 60 : 7 * 60);
+}
+
 /** Vacation prévue ce jour-là (null si repos). Minutes depuis minuit du jour. */
 export function vacationPrevue(date: Date, cfg: CycleConfig): { debut: number; duree: number } | null {
   if (!isWorkingDay(date, cfg)) return null;
-  return { debut: cfg.heureDebut ?? 7 * 60, duree: cfg.heuresParJour || HEURES_PAR_JOUR };
+  return { debut: heureDebutHabituelle(cfg), duree: cfg.heuresParJour || HEURES_PAR_JOUR };
 }
 
 /** Durée d'une plage début → fin (fin ≤ début = le lendemain). */
