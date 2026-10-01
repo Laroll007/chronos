@@ -383,7 +383,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'relative mx-auto mt-1 h-6 min-w-6 px-1 md:h-7 md:min-w-7 shrink-0 flex items-center justify-center text-xs md:text-sm rounded-md',
+                    'relative mx-auto mt-0.5 h-6 min-w-6 px-1 md:h-7 md:min-w-7 shrink-0 flex items-center justify-center text-xs md:text-sm rounded-md',
                     'transition-colors duration-150',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
                     // Aujourd'hui : numéro dans un carré bleu plein
