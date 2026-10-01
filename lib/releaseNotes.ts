@@ -22,6 +22,21 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.13.0',
+    items: [
+      {
+        emoji: '✏️',
+        title: 'Modifiez une journée',
+        text: 'Touchez deux fois un jour : horaires réels (heures en plus, prise décalée, travail sur un repos) ou stage. Vos HS et RPS sont crédités automatiquement, nuit, dimanche, RC, RL et jours fériés compris.',
+      },
+      {
+        emoji: '🗓️',
+        title: 'Un planning façon agenda',
+        text: 'Chaque jour dans sa case, vos événements en couleur avec leur titre, et une barre continue pour ceux qui durent plusieurs jours. Choisissez la couleur de chaque événement.',
+      },
+    ],
+  },
+  {
     version: '1.12.0',
     items: [
       {

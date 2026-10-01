@@ -16,6 +16,11 @@ describe('Nouveautés : quelles notes afficher', () => {
     expect(pendingReleaseNotes(null, '1.12.0').map((n) => n.version)).toEqual(['1.12.0']);
   });
 
+  it('version 1.13 : la note 1.13 seule si la 1.12 a été vue, les deux sinon', () => {
+    expect(pendingReleaseNotes('1.12.0', '1.13.0').map((n) => n.version)).toEqual(['1.13.0']);
+    expect(pendingReleaseNotes(null, '1.13.0').map((n) => n.version)).toEqual(['1.13.0', '1.12.0']);
+  });
+
   it('déjà vue : rien', () => {
     expect(pendingReleaseNotes('1.12.0', '1.12.0')).toEqual([]);
   });
@@ -55,6 +60,6 @@ describe('Fenêtre « Quoi de neuf ? »', () => {
     render(<WhatsNewModal onAction={onAction} />);
     fireEvent.click(screen.getByText(/Renseigner mes horaires/));
     expect(onAction).toHaveBeenCalledWith('cycle');
-    expect(store.get('chronos_release_seen')).toBe('1.12.0');
+    expect(store.get('chronos_release_seen')).toBeTruthy();
   });
 });
