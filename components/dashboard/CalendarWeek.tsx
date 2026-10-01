@@ -12,6 +12,7 @@ import { jourModifieDu } from '@/lib/journees';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
@@ -145,6 +146,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
         </div>
 
         {/* Barre de sélection style Booking */}
+        {dateRange.selectedStart ? (
         <div className="mt-3">
           {dateRange.isSelecting ? (
             // Mode sélection en cours
@@ -203,15 +205,11 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                 </Button>
               </div>
             </div>
-          ) : (
-            // Aucune sélection
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-              <span className="text-sm text-slate-500">
-                Cliquez sur un jour pour commencer
-              </span>
-            </div>
-          )}
+          ) : null}
         </div>
+        ) : (
+          <HintPoser texte="Cliquez sur un jour pour commencer" />
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col">

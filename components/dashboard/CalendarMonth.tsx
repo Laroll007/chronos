@@ -14,6 +14,7 @@ import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinut
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
+import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
@@ -178,6 +179,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         </div>
 
         {/* Barre de sélection style Booking */}
+        {dateRange.selectedStart ? (
         <div className="mt-3">
           {dateRange.isSelecting ? (
             // Mode sélection en cours
@@ -236,15 +238,11 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                 </Button>
               </div>
             </div>
-          ) : (
-            // Aucune sélection
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-              <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">
-                Cliquez sur un jour pour commencer à poser
-              </span>
-            </div>
-          )}
+          ) : null}
         </div>
+        ) : (
+          <HintPoser texte="Cliquez sur un jour pour commencer à poser" />
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col">
