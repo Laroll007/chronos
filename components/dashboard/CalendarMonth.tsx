@@ -293,7 +293,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             (pastille d'état : travail, congé, CMO…) puis les événements, qui
             restent dans leur case ; une barre continue pour plusieurs jours. */}
         <div
-          className="grid grid-cols-7 flex-1 border-t border-l border-slate-200 rounded-lg overflow-hidden"
+          // auto-rows-fr : toutes les semaines prennent la hauteur de la plus
+          // chargée → cases identiques (un mois sans événement reste compact).
+          className="grid grid-cols-7 auto-rows-fr flex-1 border-t border-l border-slate-200 rounded-lg overflow-hidden"
           role="grid"
           aria-label="Calendrier mensuel"
         >
