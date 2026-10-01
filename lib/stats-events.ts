@@ -35,6 +35,8 @@ export const STATS_EVENTS = {
   cet_plan_open: { label: 'Ouvre « Mon épargne CET »', group: 'Écrans' },
   whats_new_seen: { label: 'Voit les nouveautés (pop-up)', group: 'Écrans' },
   whats_new_action: { label: 'Nouveautés : suit un raccourci', group: 'Écrans' },
+  horaires_prompt_seen: { label: 'Rappel « renseignez vos horaires » affiché', group: 'Écrans' },
+  horaires_prompt_action: { label: 'Rappel horaires : ouvre l’écran', group: 'Écrans' },
 
   // Écrans
   open_counters: { label: 'Ouvre les compteurs', group: 'Écrans' },

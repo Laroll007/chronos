@@ -41,6 +41,8 @@ import { CETPlanModal } from '@/components/dashboard/CETPlanModal';
 import { DayEditSection } from '@/components/dashboard/DayEditSection';
 import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
 import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
+import { HorairesPrompt } from '@/components/dashboard/HorairesPrompt';
+import { pendingReleaseNotes } from '@/lib/releaseNotes';
 import { planEpargneCET } from '@/lib/cet';
 import { eventsInRange, toDayKey } from '@/lib/events';
 import { typeDeVacation } from '@/lib/rps';
@@ -99,6 +101,9 @@ export default function DashboardPage() {
   const [showCETPlan, setShowCETPlan] = useState(false);
   // Paramètres ouverts directement sur « Modifier mon cycle » (raccourci des nouveautés)
   const [settingsOpenCycle, setSettingsOpenCycle] = useState(false);
+  // Figé à l'ouverture : si « Quoi de neuf ? » s'affiche, le rappel des horaires
+  // attend l'ouverture suivante (pas deux fenêtres d'affilée).
+  const [nouveautesAuDemarrage] = useState(() => pendingReleaseNotes().length > 0);
 
   const {
     userData,
@@ -854,6 +859,22 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {/* Rappel des horaires de vacation aux agents inscrits avant leur ajout.
+          Jamais en même temps que la bienvenue ni que « Quoi de neuf ? » (qui
+          propose déjà ce raccourci) : il attend l'ouverture suivante. */}
+      {!showWelcome &&
+        hasSeenWelcome() &&
+        !nouveautesAuDemarrage &&
+        cycleConfig.type !== 'hebdo' &&
+        cycleConfig.heureDebut === undefined && (
+          <HorairesPrompt
+            onRenseigner={() => {
+              setSettingsOpenCycle(true);
+              setShowSettings(true);
+            }}
+          />
+        )}
 
       {/* Popup Bienvenue */}
       <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />
