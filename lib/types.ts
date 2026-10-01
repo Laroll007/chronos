@@ -154,7 +154,21 @@ export interface UserData {
   // « sécurisés » remis à zéro. Sans ce relevé, le versement de janvier (au
   // titre de l'année précédente) n'avait plus rien sur quoi s'appuyer.
   reliquatCET?: ReliquatCET;
+  // Journées modifiées (horaires réels, stage) : HS et écart de RPS crédités à
+  // l'enregistrement, mémorisés pour être retirés à l'identique si l'agent
+  // annule ou corrige la journée.
+  joursModifies?: JourModifie[];
   isOnboarded: boolean;
+}
+
+export interface JourModifie {
+  id: string;
+  date: string; // 'YYYY-MM-DD', jour local de la vacation (début)
+  type: 'horaires' | 'stage';
+  debut?: number; // minutes après minuit
+  fin?: number; // minutes après minuit ; ≤ début = le lendemain
+  hsCredite: number; // minutes d'HS créditées
+  rpsCredite: number; // écart de RPS crédité (peut être négatif)
 }
 
 export interface ReliquatCET {

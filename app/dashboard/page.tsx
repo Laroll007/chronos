@@ -38,6 +38,7 @@ import { YearEndBanner } from '@/components/dashboard/YearEndBanner';
 import { CountersPendingBanner } from '@/components/dashboard/CountersPendingBanner';
 import { EventModal, type EventDraft } from '@/components/dashboard/EventModal';
 import { CETPlanModal } from '@/components/dashboard/CETPlanModal';
+import { DayEditSection } from '@/components/dashboard/DayEditSection';
 import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
 import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
 import { planEpargneCET } from '@/lib/cet';
@@ -120,6 +121,9 @@ export default function DashboardPage() {
     completerCompteurs,
     masquerRappelCompteurs,
     events,
+    joursModifies,
+    enregistrerJoursModifies,
+    supprimerJourModifie,
     addEvent,
     updateEvent,
     deleteEvent,
@@ -541,6 +545,7 @@ export default function DashboardPage() {
             onEditLeave={handleEditLeave}
             resetTrigger={calendarResetTrigger}
             events={events}
+            joursModifies={joursModifies}
             onAddEvent={() => openNewEvent()}
             onOpenEvent={(event) => setEventDraft(event)}
           />
@@ -600,6 +605,38 @@ export default function DashboardPage() {
             onPosePartiel={handlePosePartiel}
             hasRestDays={selectedRange?.hasRestDays}
             eventsInRange={selectedRange ? eventsInRange(selectedRange.start, selectedRange.end, events) : []}
+            daySection={
+              selectedRange && (
+                <DayEditSection
+                  key={`${selectedRange.start.getTime()}-${selectedRange.end.getTime()}`}
+                  start={selectedRange.start}
+                  end={selectedRange.end}
+                  cycleConfig={cycleConfig}
+                  joursModifies={joursModifies}
+                  onSave={(saisies) => {
+                    const res = enregistrerJoursModifies(saisies);
+                    if (!res) {
+                      toast.error("Impossible d'enregistrer la journée");
+                      return false;
+                    }
+                    const parts = [
+                      res.hs > 0 && `${formatMinutes(res.hs)} d'HS créditées`,
+                      res.rps !== 0 && `RPS ${res.rps > 0 ? '+' : '−'}${formatMinutes(Math.abs(res.rps))}`,
+                    ].filter(Boolean);
+                    toast.success(parts.length ? parts.join(' · ') : 'Journée enregistrée', {
+                      description: 'Annulable depuis cette même journée.',
+                    });
+                    closeSelection();
+                    return true;
+                  }}
+                  onDelete={(date) => {
+                    const ok = supprimerJourModifie(date);
+                    if (ok) toast.success('Modification annulée', { description: 'HS et RPS retirés.' });
+                    return ok;
+                  }}
+                />
+              )
+            }
             onAddEvent={() => {
               const range = selectedRange;
               closeSelection();

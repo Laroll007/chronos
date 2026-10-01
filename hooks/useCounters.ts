@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { UserData, Counters, CycleConfig, HistoryEntry, CounterType, PersonalEvent } from '@/lib/types';
+import { UserData, Counters, CycleConfig, HistoryEntry, CounterType, PersonalEvent, JourModifie } from '@/lib/types';
 import {
   loadUserData,
   saveUserData,
@@ -15,7 +15,8 @@ import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/nativ
 import { computeRPSCredit } from '@/lib/rps';
 import { planEpargneCET } from '@/lib/cet';
 import { track } from '@/lib/analytics';
-import { sanitizeEvents } from '@/lib/events';
+import { sanitizeEvents, fromDayKey } from '@/lib/events';
+import { effetJournee, sanitizeJoursModifies } from '@/lib/journees';
 
 /**
  * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
@@ -42,6 +43,7 @@ function creditRPSIfNeeded(data: UserData): UserData {
 
 // Référence stable : évite de recalculer les vues du calendrier à chaque rendu.
 const EMPTY_EVENTS: PersonalEvent[] = [];
+const EMPTY_JOURS: JourModifie[] = [];
 
 /**
  * Hook principal pour la gestion des compteurs et données utilisateur
@@ -75,6 +77,7 @@ export function useCounters() {
         // Événements : on écarte silencieusement une entrée illisible plutôt
         // que de faire planter tout le planning.
         if (data?.events) data.events = sanitizeEvents(data.events);
+        if (data?.joursModifies) data.joursModifies = sanitizeJoursModifies(data.joursModifies);
 
         userDataRef.current = data;
         setUserData(data);
@@ -161,6 +164,74 @@ export function useCounters() {
     const { compteursARenseigner: _vu, ...reste } = current;
     if (save(reste)) track('counters_reminder_dismissed');
   }, [save]);
+
+  // ─── Journées modifiées (horaires réels, stage) ─────────────────────────────
+  // HS et écart de RPS crédités dès l'enregistrement (choix du 2026-10-01), et
+  // mémorisés pour être retirés à l'identique. Le crédit RPS habituel du jour
+  // continue de passer par computeRPSCredit : seul l'ÉCART est ajouté ici.
+
+  const enregistrerJoursModifies = useCallback(
+    (saisies: { date: string; type: JourModifie['type']; debut?: number; fin?: number }[]) => {
+      const current = userDataRef.current;
+      if (!current || saisies.length === 0) return null;
+      const dates = new Set(saisies.map((s) => s.date));
+      const anciens = (current.joursModifies ?? []).filter((j) => dates.has(j.date));
+      let hs = current.counters.hs - anciens.reduce((t, j) => t + j.hsCredite, 0);
+      let rps = current.counters.rps - anciens.reduce((t, j) => t + j.rpsCredite, 0);
+      let hsAjoutees = 0;
+      let rpsAjoutes = 0;
+      const nouveaux: JourModifie[] = saisies.map((s) => {
+        const e = effetJournee(fromDayKey(s.date), s.type, s.debut, s.fin, current.cycleConfig);
+        hsAjoutees += e.hs;
+        rpsAjoutes += e.rpsDelta;
+        return {
+          id: generateId(),
+          date: s.date,
+          type: s.type,
+          ...(s.debut !== undefined && { debut: s.debut }),
+          ...(s.fin !== undefined && { fin: s.fin }),
+          hsCredite: e.hs,
+          rpsCredite: e.rpsDelta,
+        };
+      });
+      hs += hsAjoutees;
+      rps += rpsAjoutes;
+      const ok = save({
+        ...current,
+        counters: { ...current.counters, hs: Math.max(0, hs), rps },
+        joursModifies: [
+          ...(current.joursModifies ?? []).filter((j) => !dates.has(j.date)),
+          ...nouveaux,
+        ].sort((a, b) => a.date.localeCompare(b.date)),
+        lastUpdated: new Date().toISOString(),
+      });
+      if (!ok) return null;
+      track(saisies.some((s) => s.type === 'stage') ? 'day_stage' : 'day_hours_edit');
+      return { hs: hsAjoutees, rps: rpsAjoutes };
+    },
+    [save]
+  );
+
+  const supprimerJourModifie = useCallback(
+    (date: string) => {
+      const current = userDataRef.current;
+      const jour = current?.joursModifies?.find((j) => j.date === date);
+      if (!current || !jour) return false;
+      const ok = save({
+        ...current,
+        counters: {
+          ...current.counters,
+          hs: Math.max(0, current.counters.hs - jour.hsCredite),
+          rps: current.counters.rps - jour.rpsCredite,
+        },
+        joursModifies: current.joursModifies!.filter((j) => j.date !== date),
+        lastUpdated: new Date().toISOString(),
+      });
+      if (ok) track('day_edit_delete');
+      return ok;
+    },
+    [save]
+  );
 
   // ─── Événements personnels (RDV, formation…) ───────────────────────────────
 
@@ -634,6 +705,7 @@ export function useCounters() {
     cycleConfig: userData?.cycleConfig ?? null,
     history: userData?.history ?? [],
     events: userData?.events ?? EMPTY_EVENTS,
+    joursModifies: userData?.joursModifies ?? EMPTY_JOURS,
     isLoading,
     isOnboarded,
     error,
@@ -653,6 +725,8 @@ export function useCounters() {
     confirmerBasculeAnnuelle,
     completerCompteurs,
     masquerRappelCompteurs,
+    enregistrerJoursModifies,
+    supprimerJourModifie,
     addEvent,
     updateEvent,
     deleteEvent,

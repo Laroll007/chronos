@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { CycleConfig, HistoryEntry, Counters, PersonalEvent } from '@/lib/types';
+import { CycleConfig, HistoryEntry, Counters, PersonalEvent, JourModifie } from '@/lib/types';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { useDateRangePicker } from './DateRangePicker';
 import { CalendarMonth } from './CalendarMonth';
@@ -45,6 +45,7 @@ interface CalendarViewProps {
   onEditLeave?: (entry: HistoryEntry) => void;
   resetTrigger?: number;
   events?: PersonalEvent[];
+  joursModifies?: JourModifie[];
   onAddEvent?: () => void;
   onOpenEvent?: (event: PersonalEvent) => void;
 }
@@ -167,7 +168,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
   );
 }
 
-export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0, events, onAddEvent, onOpenEvent }: CalendarViewProps) {
+export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0, events, joursModifies, onAddEvent, onOpenEvent }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const prevResetTrigger = useRef(resetTrigger);
   // Date dont on veut ouvrir le détail (édition/suppression) dans la liste des congés.
@@ -269,12 +270,12 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
       <div>
         {viewMode === 'month' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} />
+            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} />
           </div>
         )}
         {viewMode === 'week' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} />
+            <CalendarWeek cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} />
           </div>
         )}
         {viewMode === 'year' && (

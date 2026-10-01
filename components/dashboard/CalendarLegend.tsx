@@ -1,6 +1,7 @@
 'use client';
 
-import type { HistoryEntry, PersonalEvent } from '@/lib/types';
+import type { HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
+import { jourModifieDu } from '@/lib/journees';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { eventsOnDate } from '@/lib/events';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,8 @@ export interface LegendFlags {
   astreinte: boolean;
   heures: boolean;
   evenement: boolean;
+  stage: boolean;
+  horaires: boolean;
   selection: boolean;
 }
 
@@ -25,11 +28,12 @@ export function legendFlagsForDays(
   days: { date: Date; isWorking: boolean }[],
   history: HistoryEntry[],
   events: PersonalEvent[] | undefined,
-  hasSelection: boolean
+  hasSelection: boolean,
+  joursModifies?: JourModifie[]
 ): LegendFlags {
   const flags: LegendFlags = {
     travail: false, conge: false, cmo: false, astreinte: false, heures: false,
-    evenement: false, selection: hasSelection,
+    evenement: false, stage: false, horaires: false, selection: hasSelection,
   };
   for (const { date, isWorking } of days) {
     if (isWorking) flags.travail = true;
@@ -38,6 +42,9 @@ export function legendFlagsForDays(
     else if (hasAstreinteOnDate(date, history)) flags.astreinte = true;
     else if (getPartialMinutesOnDate(date, history) > 0) flags.heures = true;
     if (!flags.evenement && eventsOnDate(date, events).length > 0) flags.evenement = true;
+    const jm = jourModifieDu(date, joursModifies);
+    if (jm?.type === 'stage') flags.stage = true;
+    else if (jm) flags.horaires = true;
   }
   return flags;
 }
@@ -49,6 +56,8 @@ const ITEMS: { key: keyof LegendFlags; label: string; swatch: string }[] = [
   { key: 'astreinte', label: 'Astreinte', swatch: 'bg-amber-200 border border-amber-400' },
   { key: 'heures', label: 'Heures', swatch: 'bg-teal-100 border border-teal-400' },
   { key: 'evenement', label: 'Événement', swatch: 'bg-pink-500' },
+  { key: 'stage', label: 'Stage', swatch: 'bg-indigo-600' },
+  { key: 'horaires', label: 'Horaires modifiés', swatch: 'bg-sky-500' },
   { key: 'selection', label: 'Sélection', swatch: 'bg-emerald-500' },
 ];
 
@@ -62,7 +71,7 @@ export function CalendarLegend({ flags, shape = 'round' }: { flags: LegendFlags;
           <div
             className={cn(
               'w-2.5 h-2.5',
-              item.key === 'evenement' ? 'rounded-full w-2 h-2' : shape === 'round' ? 'rounded-full' : 'rounded',
+              ['evenement', 'stage', 'horaires'].includes(item.key) ? 'rounded-full w-2 h-2' : shape === 'round' ? 'rounded-full' : 'rounded',
               item.swatch
             )}
           />

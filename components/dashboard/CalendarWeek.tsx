@@ -7,7 +7,8 @@ import { useState, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CycleConfig, HistoryEntry, PersonalEvent } from '@/lib/types';
+import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
+import { jourModifieDu } from '@/lib/journees';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -20,6 +21,7 @@ interface CalendarWeekProps {
   dateRange: DateRangeSelection;
   history: HistoryEntry[];
   events?: PersonalEvent[];
+  joursModifies?: JourModifie[];
 }
 
 const JOURS_COMPLETS = [
@@ -32,7 +34,7 @@ const JOURS_COMPLETS = [
   'Dimanche',
 ];
 
-export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history, events }: CalendarWeekProps) {
+export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange, history, events, joursModifies }: CalendarWeekProps) {
   const today = new Date();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // Calculer le début de la semaine (lundi)
@@ -70,8 +72,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
   }, [currentWeekStart, cycleConfig, today]);
 
   const legendFlags = useMemo(
-    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null),
-    [weekDays, history, events, dateRange.selectedStart]
+    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies),
+    [weekDays, history, events, dateRange.selectedStart, joursModifies]
   );
 
   const goToPrevWeek = () => {
@@ -242,6 +244,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isPartial = !isPosted && !isCMO && !isAstreinte && getPartialMinutesOnDate(day.date, history) > 0;
             const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
+            const jourModifie = jourModifieDu(day.date, joursModifies);
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -259,6 +262,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             if (isAstreinte) statusParts.push('astreinte');
             if (isPartial) statusParts.push('heures posées');
             if (dayEvents.length > 0) statusParts.push(`événement : ${dayEvents.map((e) => e.title).join(', ')}`);
+            if (jourModifie) statusParts.push(jourModifie.type === 'stage' ? 'stage' : 'horaires modifiés');
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -367,6 +371,11 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     >
                       T
                     </Badge>
+                  )}
+                  {jourModifie && (
+                    <span className={cn('mt-1 text-[10px] font-semibold', isStart || isEnd ? 'text-white' : jourModifie.type === 'stage' ? 'text-indigo-700' : 'text-sky-700')} aria-hidden="true">
+                      {jourModifie.type === 'stage' ? 'Stage' : 'Modifié'}
+                    </span>
                   )}
                   {dayEvents.length > 0 && (
                     <span className="mt-1 flex items-center justify-center gap-1 max-w-full px-1" aria-hidden="true">

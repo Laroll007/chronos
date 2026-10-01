@@ -7,7 +7,8 @@ import { useState, useMemo, useRef, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CycleConfig, HistoryEntry, PersonalEvent } from '@/lib/types';
+import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
+import { jourModifieDu } from '@/lib/journees';
 import { useMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
@@ -21,6 +22,7 @@ interface CalendarMonthProps {
   dateRange: DateRangeSelection;
   history: HistoryEntry[];
   events?: PersonalEvent[];
+  joursModifies?: JourModifie[];
 }
 
 const MOIS = [
@@ -40,7 +42,7 @@ const MOIS = [
 
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events }: CalendarMonthProps) {
+export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events, joursModifies }: CalendarMonthProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -61,9 +63,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         days.filter((d) => d.date.getMonth() === month),
         history,
         events,
-        dateRange.selectedStart !== null
+        dateRange.selectedStart !== null,
+        joursModifies
       ),
-    [days, month, history, events, dateRange.selectedStart]
+    [days, month, history, events, dateRange.selectedStart, joursModifies]
   );
 
   // Ref pour les boutons des jours (navigation clavier)
@@ -297,6 +300,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isPartial = partialMin > 0;
             const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
+            const jourModifie = jourModifieDu(day.date, joursModifies);
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -314,6 +318,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isAstreinte) statusParts.push('astreinte');
             if (isPartial) statusParts.push('heures posées');
             if (dayEvents.length > 0) statusParts.push(`événement : ${dayEvents.map((e) => e.title).join(', ')}`);
+            if (jourModifie) statusParts.push(jourModifie.type === 'stage' ? 'stage' : 'horaires modifiés');
             if (isSelected) statusParts.push('sélectionné');
             if (isInRange && !isSelected) statusParts.push('dans la sélection');
             const ariaLabel = `${dateLabel}, ${statusParts.join(', ')}`;
@@ -401,14 +406,20 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   )}
                 >
                   {day.date.getDate()}
-                  {dayEvents.length > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full',
-                        isStart || isEnd ? 'bg-white' : 'bg-pink-500'
+                  {(dayEvents.length > 0 || jourModifie) && (
+                    <span aria-hidden="true" className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                      {dayEvents.length > 0 && (
+                        <span className={cn('w-1.5 h-1.5 rounded-full', isStart || isEnd ? 'bg-white' : 'bg-pink-500')} />
                       )}
-                    />
+                      {jourModifie && (
+                        <span
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            isStart || isEnd ? 'bg-white' : jourModifie.type === 'stage' ? 'bg-indigo-600' : 'bg-sky-500'
+                          )}
+                        />
+                      )}
+                    </span>
                   )}
                 </button>
               </div>

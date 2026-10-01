@@ -44,6 +44,8 @@ interface OptimizationModalProps {
   eventsInRange?: PersonalEvent[];
   onAddEvent?: () => void;
   onOpenEvent?: (event: PersonalEvent) => void;
+  /** « Modifier cette journée » (horaires réels, stage), affiché en tête. */
+  daySection?: React.ReactNode;
 }
 
 export function OptimizationModal({
@@ -63,6 +65,7 @@ export function OptimizationModal({
   eventsInRange = [],
   onAddEvent,
   onOpenEvent,
+  daySection,
 }: OptimizationModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
@@ -292,6 +295,8 @@ export function OptimizationModal({
 
         <ScrollArea className="h-[calc(90vh-140px)]">
           <div className="p-6">
+            {!isCalculating && daySection}
+
             {/* Événements perso — sans effet sur les compteurs */}
             {onAddEvent && !isCalculating && (
               <div className="mb-6 border-b border-border pb-6 space-y-2">
