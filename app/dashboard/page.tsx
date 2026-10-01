@@ -523,9 +523,11 @@ export default function DashboardPage() {
         />
 
         {/* Main - Calendrier central */}
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 min-h-0 overflow-y-auto overscroll-contain">
+        <main className="flex-1 container max-w-7xl mx-auto px-4 pt-3 pb-6 min-h-0 overflow-y-auto overscroll-contain">
           {/* Compteurs à saisir, sinon rappel de fin d'année (septembre → décembre) */}
-          <div className="mb-4">
+          {/* empty:hidden : sans bandeau à afficher, aucun espace réservé
+              (il creusait un vide au-dessus du sélecteur Mois/Semaine/Année) */}
+          <div className="mb-3 empty:hidden">
             {compteursARenseigner ? (
               <CountersPendingBanner
                 onComplete={() => setShowCompleteCounters(true)}

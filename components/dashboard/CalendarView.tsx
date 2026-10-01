@@ -217,7 +217,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
   }, [resetTrigger, dateRange]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* Switcher de vue */}
       <div className="flex items-center justify-center" role="tablist" aria-label="Mode d'affichage du calendrier">
         <div className="inline-flex items-center gap-1 bg-muted/50 rounded-xl p-1">
