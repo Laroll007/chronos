@@ -46,7 +46,7 @@ interface CalendarViewProps {
   resetTrigger?: number;
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];
-  onAddEvent?: () => void;
+  onAddEvent?: (date?: Date) => void;
   onOpenEvent?: (event: PersonalEvent) => void;
 }
 
@@ -295,11 +295,14 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
         onEdit={onEditLeave}
         focusDate={focusDate}
         onFocusHandled={() => setFocusDate(null)}
+        events={events}
+        onAddEvent={onAddEvent}
+        onOpenEvent={onOpenEvent}
       />
 
       {/* Événements perso (RDV, formation…) */}
       {onAddEvent && onOpenEvent && (
-        <EventList events={events ?? []} onAdd={onAddEvent} onOpen={onOpenEvent} />
+        <EventList events={events ?? []} onAdd={() => onAddEvent()} onOpen={onOpenEvent} />
       )}
     </div>
   );

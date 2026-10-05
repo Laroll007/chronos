@@ -602,10 +602,15 @@ export function getCFS1Share(
 export function getCFRemainingForSemester(
   semester: 1 | 2,
   cfConsoS1: number,
-  cfConsoS2: number
+  cfConsoS2: number,
+  // Solde CF réel : on ne peut pas réclamer plus que ce qui reste au compteur.
+  // Sans ce plafond, un agent ayant posé ses 9 CF (dont une partie avant
+  // d'utiliser l'app, donc absente de cfConsoS1/S2) se voyait encore demander
+  // « Poser 2 jours de CF ».
+  solde: number = Infinity
 ): number {
   const consumed = semester === 1 ? cfConsoS1 : cfConsoS2;
-  return Math.max(0, CF_PAR_SEMESTRE - consumed);
+  return Math.max(0, Math.min(solde, CF_PAR_SEMESTRE - consumed));
 }
 
 /**

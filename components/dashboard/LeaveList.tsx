@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { HistoryEntry, CounterType } from '@/lib/types';
+import { HistoryEntry, CounterType, PersonalEvent } from '@/lib/types';
+import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, eventsInRange, formatEventWhen } from '@/lib/events';
 import { formatMinutes } from '@/lib/calculations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Calendar, Trash2, ListChecks, Pencil, ChevronRight, X } from 'lucide-react';
+import { Calendar, Trash2, ListChecks, Pencil, ChevronRight, X, CalendarPlus } from 'lucide-react';
 
 interface LeaveListProps {
   history: HistoryEntry[];
@@ -25,6 +26,12 @@ interface LeaveListProps {
   // détail du congé couvrant cette date. `onFocusHandled` est appelé après traitement.
   focusDate?: Date | null;
   onFocusHandled?: () => void;
+  // Événements perso : un RDV le soir d'un jour de congé doit rester visible,
+  // modifiable, et pouvoir être ajouté depuis le détail du congé (toucher un
+  // jour posé n'ouvre que ce détail).
+  events?: PersonalEvent[];
+  onAddEvent?: (date: Date) => void;
+  onOpenEvent?: (event: PersonalEvent) => void;
 }
 
 const TYPE_LABELS: Record<CounterType, { label: string; color: string }> = {
@@ -128,7 +135,7 @@ function buildGroups(entries: HistoryEntry[]): LeaveGroup[] {
   return groups;
 }
 
-export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled }: LeaveListProps) {
+export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled, events, onAddEvent, onOpenEvent }: LeaveListProps) {
   const [deleteTarget, setDeleteTarget] = useState<LeaveGroup | null>(null);
   const [detailTarget, setDetailTarget] = useState<LeaveGroup | null>(null);
 
@@ -407,6 +414,48 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                       })}
                     </div>
                   </div>
+
+                  {/* Événements perso de ces jours-là */}
+                  {onAddEvent && onOpenEvent && (() => {
+                    const evts = eventsInRange(new Date(activeDetail.start), new Date(activeDetail.end), events);
+                    return (
+                      <div className="pt-2 border-t border-slate-100">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-2">Événements</p>
+                        {evts.length > 0 && (
+                          <ul className="space-y-1.5 mb-2">
+                            {evts.map((ev) => (
+                              <li key={ev.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => { closeDetail(); onOpenEvent(ev); }}
+                                  className={`w-full flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 border-l-4 ${EVENT_COLORS[eventColor(ev)].border} text-left hover:bg-slate-50`}
+                                >
+                                  <span aria-hidden="true">{EVENT_CATEGORIES[ev.category].emoji}</span>
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block text-sm font-medium text-slate-800 truncate">{ev.title}</span>
+                                    <span className="block text-xs text-slate-500 truncate">{formatEventWhen(ev)}</span>
+                                  </span>
+                                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const jour = focusDate ?? new Date(activeDetail.start);
+                            closeDetail();
+                            onAddEvent(jour);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-pink-700 hover:text-pink-800"
+                        >
+                          <CalendarPlus className="w-4 h-4" />
+                          Ajouter un événement (RDV, formation…)
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">

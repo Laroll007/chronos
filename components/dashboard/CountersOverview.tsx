@@ -24,6 +24,7 @@ import {
 import {
   getCurrentSemester,
   getCFRemainingForSemester,
+  formatMinutes,
   getRTCLibres,
   getRTCAnnuel,
   isRTCReservesEntames,
@@ -118,7 +119,8 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       const cfRestant = getCFRemainingForSemester(
         semester,
         counters.cfConsoS1,
-        counters.cfConsoS2
+        counters.cfConsoS2,
+        counters.cf
       );
       result.push({
         id: 'cf',
@@ -128,7 +130,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         unit: 'heures',
         deadline: semester === 1 ? new Date(year, 5, 30) : new Date(year, 11, 31),
         status: getStatus(daysUntilSemester, cfRestant > 0),
-        description: `~54h36 à consommer ce semestre`,
+        description: cfRestant > 0 ? `${formatMinutes(cfRestant)} à consommer ce semestre` : 'Rien à poser ce semestre',
       });
     }
 

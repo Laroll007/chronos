@@ -126,7 +126,7 @@ function checkCFSemester(
 
   const semester = getCurrentSemester(currentDate);
   const daysRemaining = getDaysUntilSemesterDeadline(currentDate);
-  const cfRestant = getCFRemainingForSemester(semester, counters.cfConsoS1, counters.cfConsoS2);
+  const cfRestant = getCFRemainingForSemester(semester, counters.cfConsoS1, counters.cfConsoS2, counters.cf);
   if (cfRestant <= 0) return [];
 
   // 1 CF = 1 journée travaillée du régime (12h08 en cycle APORTT). Objectif : étaler

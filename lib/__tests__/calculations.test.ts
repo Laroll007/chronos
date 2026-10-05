@@ -273,6 +273,11 @@ describe('Calculs CF par semestre', () => {
     it('ne retourne jamais un nombre négatif', () => {
       expect(getCFRemainingForSemester(1, 10000, 0)).toBe(0);
     });
+
+    it('plafonné par le solde réel : CF déjà tous posés → rien à réclamer', () => {
+      expect(getCFRemainingForSemester(2, 0, 0, 0)).toBe(0);
+      expect(getCFRemainingForSemester(2, 0, 0, 728)).toBe(728);
+    });
   });
 });
 

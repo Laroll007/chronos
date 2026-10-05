@@ -576,7 +576,7 @@ export default function DashboardPage() {
             resetTrigger={calendarResetTrigger}
             events={events}
             joursModifies={joursModifies}
-            onAddEvent={() => openNewEvent()}
+            onAddEvent={(date) => openNewEvent(date)}
             onOpenEvent={(event) => setEventDraft(event)}
           />
           {/* Mentions légales — en bas de la zone scrollable, pas en overlay fixe */}

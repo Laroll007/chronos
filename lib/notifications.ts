@@ -208,7 +208,7 @@ export function calculateDeadlineNotifications(
   const semester = currentDate.getMonth() < 6 ? 1 : 2;
 
   if (counters.hasCF !== false && semester === 1 && daysUntilS1 > 0 && daysUntilS1 <= NOTIFICATION_THRESHOLDS.info) {
-    const cfRestantS1 = Math.max(0, CF_PAR_SEMESTRE - counters.cfConsoS1);
+    const cfRestantS1 = Math.max(0, Math.min(counters.cf, CF_PAR_SEMESTRE - counters.cfConsoS1));
 
     if (cfRestantS1 > CF_PAR_SEMESTRE * 0.3) { // Plus de 30% non utilisés
       notifications.push({
@@ -225,7 +225,7 @@ export function calculateDeadlineNotifications(
 
   // 5. Deadline CF S2 - 31 décembre
   if (counters.hasCF !== false && semester === 2 && daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info) {
-    const cfRestantS2 = Math.max(0, CF_PAR_SEMESTRE - counters.cfConsoS2);
+    const cfRestantS2 = Math.max(0, Math.min(counters.cf, CF_PAR_SEMESTRE - counters.cfConsoS2));
 
     if (cfRestantS2 > CF_PAR_SEMESTRE * 0.3) {
       notifications.push({
