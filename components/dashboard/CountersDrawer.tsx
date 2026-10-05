@@ -99,7 +99,7 @@ export function CountersDrawer({
                 <PiggyBank className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold text-slate-800">Combien puis-je verser au CET ?</span>
-                  <span className="block text-xs text-slate-500">Le maximum, et quels congés choisir</span>
+                  <span className="block text-xs text-slate-500">Le versement conseillé, et quels congés choisir</span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
               </button>

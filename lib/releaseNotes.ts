@@ -22,6 +22,28 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.14.0',
+    items: [
+      {
+        emoji: '🔁',
+        title: 'Le cycle 3/3 est disponible',
+        text: '3 jours travaillés, 3 jours de repos : choisissez-le dans votre cycle et indiquez où vous en êtes aujourd’hui. RC, RL et RPS sont calculés comme pour les autres cycles.',
+        action: { label: 'Modifier mon cycle', target: 'cycle' },
+      },
+      {
+        emoji: '💰',
+        title: 'Épargne CET : les vraies règles',
+        text: 'Tous vos RTC restants peuvent aller au CET. Au-delà de 15 jours, le CET ne garde que 10 jours de plus par an : l’app vous conseille le bon versement et estime l’indemnisation du surplus.',
+        action: { label: 'Voir mon épargne CET', target: 'cet' },
+      },
+      {
+        emoji: '🧮',
+        title: 'Gérer mes compteurs',
+        text: 'Un compteur oublié à l’inscription (RTC, ARTT…) ? Ajoutez-le depuis Compteurs → « Gérer mes compteurs ».',
+      },
+    ],
+  },
+  {
     version: '1.13.0',
     items: [
       {
