@@ -344,46 +344,99 @@ export function OptimizationModal({
 
         <ScrollArea className="h-[calc(90vh-140px)]">
           <div className="p-6">
-            {!isCalculating && daySection}
+            {/* 1. Les meilleures options d'abord */}
+            <div className="mb-6 border-b border-border pb-6">
+            {minutesDejaPosees > 0 ? (
+              <div className="rounded-lg bg-teal-50 border border-teal-200 p-4 text-sm text-teal-800">
+                <p className="font-semibold">{formatMinutes(minutesDejaPosees)} déjà posées sur ce jour</p>
+                <p className="mt-1 text-teal-700">
+                  Le reste de la journée ({formatMinutes(workingMinutesCount ?? 0)}) est travaillé. Pour le poser
+                  aussi, utilisez « Choix libre » (en heures) ou « Poser quelques heures ». Pour annuler les
+                  heures déjà posées, passez par « Congés posés ».
+                </p>
+              </div>
+            ) : isCalculating ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+                <p className="text-sm text-muted-foreground">
+                  Calcul des meilleures options...
+                </p>
+              </div>
+            ) : workingDaysCount <= 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 rounded-full bg-amber-100 mb-4">
+                  <ShieldAlert className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Aucun jour travaillé sur cette période
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Cette période ne contient que des jours de repos. Utilisez
+                  «&nbsp;Poser une astreinte / permanence&nbsp;» ci-dessous pour la
+                  compter comme travaillée (week-end, jour de repos), ou
+                  «&nbsp;Marquer un arrêt maladie&nbsp;».
+                </p>
+              </div>
+            ) : combinations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 rounded-full bg-rose-100 mb-4">
+                  <Sparkles className="w-8 h-8 text-rose-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Aucune combinaison valide trouvée
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Vos compteurs sont insuffisants pour cette période ({workingDaysCount}{' '}
+                  jours). Essayez de réduire la durée ou vérifiez vos compteurs disponibles.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Top 3 des meilleures options
+                  </p>
+                </div>
 
-            {/* Événements perso — sans effet sur les compteurs */}
-            {onAddEvent && !isCalculating && (
-              <div className="mb-6 border-b border-border pb-6 space-y-2">
-                {eventsInRange.map((event) => (
-                  <button
-                    key={event.id}
-                    type="button"
-                    onClick={() => onOpenEvent?.(event)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200 border-l-4 ${EVENT_COLORS[eventColor(event)].border} hover:bg-slate-50 text-left transition-colors`}
-                  >
-                    <span aria-hidden="true">{EVENT_CATEGORIES[event.category].emoji}</span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-medium text-slate-800 truncate">{event.title}</span>
-                      <span className="block text-xs text-slate-500 truncate">{formatEventWhen(event)}</span>
-                    </span>
-                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-400" />
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={onAddEvent}
-                  className="flex items-center gap-2 text-left text-sm font-medium text-pink-600 hover:text-pink-700 transition-colors"
-                >
-                  <CalendarPlus className="w-4 h-4 shrink-0" />
-                  Ajouter un événement perso (RDV, formation…)
-                </button>
+                <div className="space-y-2">
+                  {combinations.slice(0, 3).map((combination, index) => (
+                    <div
+                      key={combination.id}
+                      className="animate-in fade-in-0 slide-in-from-bottom-2"
+                      style={{
+                        animationDelay: `${index * 30}ms`,
+                        animationDuration: '300ms',
+                      }}
+                    >
+                      <CombinationCard
+                        combination={combination}
+                        onSelect={handleSelect}
+                        rank={index + 1}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+            </div>
 
+            {/* 2. Pose libre */}
             {/* Formulaire personnalisé */}
             {!isCalculating && workingDaysCount > 0 && availableTypes.length > 0 && (
               <div className="mb-6 border-b border-border pb-6">
                 <button
                   onClick={toggleCustom}
-                  className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                  aria-expanded={showCustom}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-left transition-colors"
                 >
-                  <Pencil className="w-4 h-4" />
-                  {showCustom ? 'Masquer le choix libre' : 'Choix libre'}
+                  <Pencil className="w-5 h-5 text-blue-600 shrink-0" />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-slate-800">Poser librement mes congés</span>
+                    <span className="block text-xs text-slate-500">
+                      Choisissez vous-même les compteurs et les quantités (jours ou heures)
+                    </span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-blue-500 shrink-0 transition-transform ${showCustom ? 'rotate-90' : ''}`} />
                 </button>
 
                 {showCustom && (
@@ -520,6 +573,41 @@ export function OptimizationModal({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {!isCalculating && (
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-4">Autres actions sur cette période</p>
+            )}
+
+            {!isCalculating && daySection}
+
+            {/* Événements perso — sans effet sur les compteurs */}
+            {onAddEvent && !isCalculating && (
+              <div className="mb-6 border-b border-border pb-6 space-y-2">
+                {eventsInRange.map((event) => (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => onOpenEvent?.(event)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200 border-l-4 ${EVENT_COLORS[eventColor(event)].border} hover:bg-slate-50 text-left transition-colors`}
+                  >
+                    <span aria-hidden="true">{EVENT_CATEGORIES[event.category].emoji}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-slate-800 truncate">{event.title}</span>
+                      <span className="block text-xs text-slate-500 truncate">{formatEventWhen(event)}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-slate-400" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={onAddEvent}
+                  className="flex items-center gap-2 text-left text-sm font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                >
+                  <CalendarPlus className="w-4 h-4 shrink-0" />
+                  Ajouter un événement perso (RDV, formation…)
+                </button>
               </div>
             )}
 
@@ -673,80 +761,6 @@ export function OptimizationModal({
                 )}
               </div>
             )}
-
-            {minutesDejaPosees > 0 ? (
-              <div className="rounded-lg bg-teal-50 border border-teal-200 p-4 text-sm text-teal-800">
-                <p className="font-semibold">{formatMinutes(minutesDejaPosees)} déjà posées sur ce jour</p>
-                <p className="mt-1 text-teal-700">
-                  Le reste de la journée ({formatMinutes(workingMinutesCount ?? 0)}) est travaillé. Pour le poser
-                  aussi, utilisez « Choix libre » (en heures) ou « Poser quelques heures ». Pour annuler les
-                  heures déjà posées, passez par « Congés posés ».
-                </p>
-              </div>
-            ) : isCalculating ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-                <p className="text-sm text-muted-foreground">
-                  Calcul des meilleures options...
-                </p>
-              </div>
-            ) : workingDaysCount <= 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="p-4 rounded-full bg-amber-100 mb-4">
-                  <ShieldAlert className="w-8 h-8 text-amber-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Aucun jour travaillé sur cette période
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Cette période ne contient que des jours de repos. Utilisez
-                  «&nbsp;Poser une astreinte / permanence&nbsp;» ci-dessus pour la
-                  compter comme travaillée (week-end, jour de repos), ou
-                  «&nbsp;Marquer un arrêt maladie&nbsp;».
-                </p>
-              </div>
-            ) : combinations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="p-4 rounded-full bg-rose-100 mb-4">
-                  <Sparkles className="w-8 h-8 text-rose-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Aucune combinaison valide trouvée
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Vos compteurs sont insuffisants pour cette période ({workingDaysCount}{' '}
-                  jours). Essayez de réduire la durée ou vérifiez vos compteurs disponibles.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    Top 3 des meilleures options
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  {combinations.slice(0, 3).map((combination, index) => (
-                    <div
-                      key={combination.id}
-                      className="animate-in fade-in-0 slide-in-from-bottom-2"
-                      style={{
-                        animationDelay: `${index * 30}ms`,
-                        animationDuration: '300ms',
-                      }}
-                    >
-                      <CombinationCard
-                        combination={combination}
-                        onSelect={handleSelect}
-                        rank={index + 1}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
           </div>
         </ScrollArea>
       </DialogContent>

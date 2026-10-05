@@ -25,7 +25,7 @@ async function ouvrir(counters = {}) {
       onApply={onApply}
     />
   );
-  fireEvent.click(await screen.findByText('Choix libre', {}, { timeout: 3000 }));
+  fireEvent.click(await screen.findByText('Poser librement mes congés', {}, { timeout: 3000 }));
   return onApply;
 }
 
@@ -90,7 +90,7 @@ describe('Jour déjà entamé par une pose à l’heure', () => {
       />
     );
     expect(screen.getByText(/4h00 déjà posées sur ce jour/)).toBeTruthy();
-    fireEvent.click(screen.getByText('Choix libre'));
+    fireEvent.click(screen.getByText('Poser librement mes congés'));
     const options = [...(screen.getAllByRole('combobox')[0] as HTMLSelectElement).options].map((o) => o.value);
     expect(options).not.toContain('ca');
     expect(options).toContain('rtc');
