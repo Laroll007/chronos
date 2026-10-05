@@ -41,16 +41,18 @@ export function SimpleHeader({
             </div>
             {cycleInfo && (
               <div className="hidden md:flex items-center gap-2 ml-2">
-                <Badge
-                  variant="secondary"
-                  className={
-                    cycleInfo.currentWeekType === 'A'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-700 border border-slate-200'
-                  }
-                >
-                  Semaine {cycleInfo.currentWeekType}
-                </Badge>
+                {cycleInfo.currentWeekType && (
+                  <Badge
+                    variant="secondary"
+                    className={
+                      cycleInfo.currentWeekType === 'A'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }
+                  >
+                    Semaine {cycleInfo.currentWeekType}
+                  </Badge>
+                )}
                 <Badge
                   variant="secondary"
                   className={

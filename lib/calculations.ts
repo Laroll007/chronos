@@ -30,6 +30,8 @@ import {
   CET_SEUIL_OPTION,
   JOURNEE_SOLIDARITE,
   CYCLES_EXCLUS_ABONDEMENT_HS,
+  RTC_BRUT_PAR_PATTERN,
+  RTC_BRUT_ANNUEL,
 } from './constants';
 
 // ============================================
@@ -177,7 +179,30 @@ export function getWeekType(date: Date, cycleConfig: CycleConfig): WeekType {
 function getWorkingDayConfigHash(cycleConfig: CycleConfig): string {
   const scheduleA = Object.values(cycleConfig.semaineA).join('');
   const scheduleB = cycleConfig.semaineB ? Object.values(cycleConfig.semaineB).join('') : scheduleA;
-  return `${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}|${scheduleA}|${scheduleB}`;
+  const rotation = getRotation(cycleConfig)?.join('-') ?? '';
+  return `${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}|${scheduleA}|${scheduleB}|${rotation}`;
+}
+
+/**
+ * Cycles en rotation continue : [jours travaillés, jours de repos], sans lien
+ * avec les jours de la semaine. `dateDebutCycle` est alors le PREMIER jour
+ * d'une série travaillée.
+ */
+export const ROTATIONS: Partial<Record<CyclePattern, readonly [number, number]>> = {
+  '3/3': [3, 3],
+};
+
+export function getRotation(cycleConfig: CycleConfig): readonly [number, number] | undefined {
+  if (cycleConfig.type !== 'alterne' || !cycleConfig.pattern) return undefined;
+  return ROTATIONS[cycleConfig.pattern];
+}
+
+/** Rotation : rang du jour dans la série (0 = 1er jour travaillé). */
+export function positionDansRotation(date: Date, cycleConfig: CycleConfig, rotation: readonly [number, number]): number {
+  const [a, m, j] = cycleConfig.dateDebutCycle.split('-').map(Number);
+  const diff = daysBetween(a, m, j, date.getFullYear(), date.getMonth() + 1, date.getDate());
+  const longueur = rotation[0] + rotation[1];
+  return ((diff % longueur) + longueur) % longueur;
 }
 
 /**
@@ -194,6 +219,14 @@ export function isWorkingDay(date: Date, cycleConfig: CycleConfig): boolean {
   const cached = workingDayCache.get(cacheKey);
   if (cached !== undefined) {
     return cached;
+  }
+
+  const rotation = getRotation(cycleConfig);
+  if (rotation) {
+    const travaille = positionDansRotation(date, cycleConfig, rotation) < rotation[0];
+    pruneCache(workingDayCache);
+    workingDayCache.set(cacheKey, travaille);
+    return travaille;
   }
 
   // Calculer
@@ -329,6 +362,12 @@ export function countWorkingMinutes(
 /**
  * Retourne le nombre de CA selon le pattern de cycle
  */
+/** Dotation RTC annuelle du cycle, nette ou non de la journée de solidarité. */
+export function getRTCAnnuel(cycleConfig: CycleConfig | undefined, journeeSolidariteAppliquee?: boolean): number {
+  const brut = (cycleConfig?.pattern && RTC_BRUT_PAR_PATTERN[cycleConfig.pattern]) || RTC_BRUT_ANNUEL;
+  return journeeSolidariteAppliquee ? brut - JOURNEE_SOLIDARITE : brut;
+}
+
 export function getCAParCycle(pattern?: CyclePattern): number {
   if (!pattern) return CA_TOTAL_ANNUEL;
   return CA_PAR_CYCLE[pattern] ?? CA_TOTAL_ANNUEL;

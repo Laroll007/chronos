@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { CycleConfig, WeekType } from '@/lib/types';
 import {
   getWeekType,
+  getRotation,
   isWorkingDay,
   isSundayWorked,
   countSundaysWorked,
@@ -11,7 +12,8 @@ import {
 } from '@/lib/calculations';
 
 export interface CycleInfo {
-  currentWeekType: WeekType;
+  /** null pour un cycle en rotation (3/3), qui n'a pas de semaines A/B. */
+  currentWeekType: WeekType | null;
   isWorkingToday: boolean;
   isSundayWorkedToday: boolean;
   workingDaysThisMonth: number;
@@ -38,7 +40,8 @@ export function useCycle(cycleConfig: CycleConfig | null): CycleInfo | null {
     const yearStart = new Date(year, 0, 1);
 
     // Type de semaine actuelle
-    const currentWeekType = getWeekType(today, cycleConfig);
+    // Sans objet pour un cycle en rotation (3/3) : pas de semaines A/B.
+    const currentWeekType = getRotation(cycleConfig) ? null : getWeekType(today, cycleConfig);
 
     // Aujourd'hui est-il travaillé ?
     const isWorkingToday = isWorkingDay(today, cycleConfig);

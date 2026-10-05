@@ -43,6 +43,12 @@ export const RTC_BRUT_ANNUEL = 187 * 60 + 9; // 187h09 = 11229 minutes (brut)
 export const JOURNEE_SOLIDARITE = HEURES_PAR_JOUR; // 12h08 = 728 minutes
 export const RTC_NET_ANNUEL = RTC_BRUT_ANNUEL - JOURNEE_SOLIDARITE; // 175h01 = 10501 minutes
 
+// Dotation RTC brute propre à certains cycles (relevé d'un agent en 3/3 : 188h09).
+// Les autres cycles gardent RTC_BRUT_ANNUEL.
+export const RTC_BRUT_PAR_PATTERN: Partial<Record<string, number>> = {
+  '3/3': 188 * 60 + 9,
+};
+
 // Cycles exclus de l'abondement HS (journée solidarité)
 export const CYCLES_EXCLUS_ABONDEMENT_HS = ['2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'];
 

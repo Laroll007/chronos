@@ -8,7 +8,7 @@ import {
   DEFAULT_CYCLE_ALTERNE_B,
   DEFAULT_HEBDO_HEURES,
 } from './types';
-import { getCATotalForCycle } from './calculations';
+import { getCATotalForCycle, getRTCAnnuel } from './calculations';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
@@ -222,7 +222,7 @@ export function migrateUserData(data: UserData): UserData {
     if (c.hasCF !== false) c.cf = CF_TOTAL_ANNUEL;
     if (c.hasRTC !== false) {
       // Le drapeau dit si l'agent déduit la journée de solidarité de ses RTC.
-      c.rtc = c.journeeSolidariteAppliquee ? RTC_NET_ANNUEL : RTC_BRUT_ANNUEL;
+      c.rtc = getRTCAnnuel(data.cycleConfig, c.journeeSolidariteAppliquee);
     }
     if (c.hasARTT) c.artt = ARTT_QUOTA_ANNUEL;
     if (c.hasRTT) c.rtt = RTT_QUOTA_HEBDO;

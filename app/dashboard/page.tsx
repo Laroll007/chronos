@@ -748,7 +748,7 @@ export default function DashboardPage() {
                 <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
                   <p className="text-sm text-muted-foreground mb-2">Cycle actuel</p>
                   <p className="text-lg font-semibold text-slate-800">
-                    Semaine {cycleInfo.currentWeekType}
+                    {cycleInfo.currentWeekType ? `Semaine ${cycleInfo.currentWeekType}` : `Cycle ${cycleConfig?.pattern ?? ''}`}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {cycleInfo.isWorkingToday ? 'Jour de travail' : 'Jour de repos'}

@@ -5,7 +5,7 @@ import { CycleConfig, CycleType, WeekType, WeekSchedule, CyclePattern, WeekHours
 import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
 import { baremeRPSDepuisHoraires, baremeRPSNuit, baremeRPSParDefaut, minutesDeNuit } from '@/lib/rps';
-import { aujourdhuiISO, getWeekType, lundiDeLaSemaine } from '@/lib/calculations';
+import { aujourdhuiISO, getWeekType, lundiDeLaSemaine, positionDansRotation, ROTATIONS } from '@/lib/calculations';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
 import { TimeSelect } from '@/components/shared/TimeSelect';
 
@@ -37,6 +37,18 @@ const fromHHMM = (v: string): number | null => {
   const m = /^(\d{2}):(\d{2})$/.exec(v);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
+/** Date locale 'YYYY-MM-DD' décalée de `jours`. */
+const decalerISO = (iso: string, jours: number): string => {
+  const [a, m, j] = iso.split('-').map(Number);
+  const d = new Date(a, m - 1, j + jours);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const ORDINAUX = ['1er', '2e', '3e', '4e', '5e', '6e'];
+
+// Cycles proposés à l'inscription. Les autres restent « Prochainement ».
+const PATTERNS_DISPONIBLES: CyclePattern[] = ['2/2/3/2/2/3', '3/3'];
+
 const DUREE_MIN = 60;
 const DUREE_MAX = 16 * 60;
 
@@ -67,7 +79,18 @@ function buildHebdoHeures(cfg?: CycleConfig): WeekHours {
 
 export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [cycleType, setCycleType] = useState<CycleType>(initialConfig?.type ?? 'alterne');
-  const [cyclePattern, setCyclePattern] = useState<CyclePattern>('2/2/3/2/2/3');
+  const [cyclePattern, setCyclePattern] = useState<CyclePattern>(
+    initialConfig?.pattern && PATTERNS_DISPONIBLES.includes(initialConfig.pattern) ? initialConfig.pattern : '2/2/3/2/2/3'
+  );
+  // Cycle en rotation (3/3) : l'agent dit où il en est aujourd'hui dans la
+  // série (0 = 1er jour travaillé). La référence interne est le 1er jour de la
+  // série en cours. Modification du cycle : reprise de la position actuelle.
+  const rotation = cycleType === 'alterne' ? ROTATIONS[cyclePattern] : undefined;
+  const [positionRotation, setPositionRotation] = useState<number | null>(() => {
+    const rot = initialConfig?.pattern ? ROTATIONS[initialConfig.pattern] : undefined;
+    if (!initialConfig || initialConfig.type !== 'alterne' || !rot) return null;
+    return positionDansRotation(new Date(), initialConfig, rot);
+  });
   // Horaires de vacation (cycle alterné). Défaut 07h00 → 19h08 : un agent de
   // jour n'a rien à toucher. Agent déjà inscrit sans horaires : on part de son
   // ancien réglage jour/nuit (19h00 pour la nuit), qu'il peut corriger ici.
@@ -103,7 +126,8 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const aujourdhuiTravaille =
     semaineActuelle !== null &&
     (semaineActuelle === 'A' ? semaineA : semaineB)[JOURS_CLES[new Date().getDay()]];
-  const choixManquant = cycleType === 'alterne' && semaineActuelle === null;
+  const choixManquant =
+    cycleType === 'alterne' && (rotation ? positionRotation === null : semaineActuelle === null);
 
   // Service de jour ou de nuit — détermine le barème de crédit des RPS.
   // L'APORTT accorde 0,4 le dimanche et 0,1 pour le travail de nuit (21h–6h) :
@@ -151,7 +175,10 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       heuresSemaine: isHebdo ? { ...heuresSemaine, samedi: 0, dimanche: 0 } : undefined,
       // Hebdo : on force une semaine de référence stable (lundi du jour J),
       // car la date de réf et l'alternance A/B n'ont pas de sens en hebdo.
-      dateDebutCycle: lundiCourant,
+      // Rotation : 1er jour de la série travaillée en cours.
+      dateDebutCycle: rotation && positionRotation !== null
+        ? decalerISO(aujourdhuiISO(), -positionRotation)
+        : lundiCourant,
       semaineActuelle: isHebdo ? 'A' : semaineActuelle ?? 'A',
       semaineA: isHebdo ? hebdoSchedule : semaineA,
       semaineB: isHebdo ? undefined : semaineB,
@@ -201,7 +228,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
               }`}
             >
               <div className="font-semibold text-slate-800">Cycle alterné</div>
-              <div className="text-sm text-slate-500">Semaines A/B</div>
+              <div className="text-sm text-slate-500">2/2/3/2/2/3, 3/3…</div>
             </button>
             <button
               type="button"
@@ -228,22 +255,29 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           </div>
           <div className="px-6">
             <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setCyclePattern('2/2/3/2/2/3')}
-                className={`w-full px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 hover:scale-[1.01] ${
-                  cyclePattern === '2/2/3/2/2/3'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <span className="font-semibold text-slate-800">Cycle 2/2/3/2/2/3</span>
-                <span className="ml-2 text-sm text-slate-500">{CA_PAR_CYCLE['2/2/3/2/2/3']} CA</span>
-              </button>
+              {([
+                { value: '2/2/3/2/2/3', label: 'Cycle 2/2/3/2/2/3', detail: 'Semaines A/B' },
+                { value: '3/3', label: 'Cycle 3/3', detail: '3 jours travaillés, 3 jours de repos' },
+              ] as { value: CyclePattern; label: string; detail: string }[]).map((cycle) => (
+                <button
+                  key={cycle.value}
+                  type="button"
+                  onClick={() => setCyclePattern(cycle.value)}
+                  aria-pressed={cyclePattern === cycle.value}
+                  className={`w-full px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 hover:scale-[1.01] ${
+                    cyclePattern === cycle.value
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <span className="font-semibold text-slate-800">{cycle.label}</span>
+                  <span className="ml-2 text-sm text-slate-500">{CA_PAR_CYCLE[cycle.value]} CA</span>
+                  <span className="block text-xs text-slate-500 mt-0.5">{cycle.detail}</span>
+                </button>
+              ))}
               {([
                 { value: '4/2', label: 'Cycle 4/2', ca: CA_PAR_CYCLE['4/2'] },
                 { value: '2/2', label: 'Cycle 2/2', ca: CA_PAR_CYCLE['2/2'] },
-                { value: '3/3', label: 'Cycle 3/3', ca: CA_PAR_CYCLE['3/3'] },
                 { value: 'vacation_forte', label: 'Vacation Forte', ca: CA_PAR_CYCLE['vacation_forte'] },
               ] as { value: CyclePattern; label: string; ca: number }[]).map((cycle) => (
                 <div key={cycle.value} className="relative">
@@ -392,7 +426,71 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           On ne demande plus de date : une date saisie à la main qui n'était pas
           un lundi décalait toute l'alternance A/B. L'agent dit seulement si la
           semaine en cours est A ou B ; la référence interne est son lundi. */}
-      {cycleType === 'alterne' && (
+      {rotation && (
+        <div className={cardClass}>
+          <div className="px-6 mb-4">
+            <div className={titleClass}>Où en êtes-vous aujourd&apos;hui ?</div>
+            <div className={labelClass}>{formatJour(new Date())}</div>
+          </div>
+          <div className="px-6 space-y-3">
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Position dans le cycle">
+              {Array.from({ length: rotation[0] + rotation[1] }, (_, i) => {
+                const travail = i < rotation[0];
+                const rang = travail ? i : i - rotation[0];
+                const actif = positionRotation === i;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    role="radio"
+                    aria-checked={actif}
+                    onClick={() => setPositionRotation(i)}
+                    className={`px-2 py-2.5 rounded-xl border-2 text-sm font-medium leading-tight transition-all ${
+                      actif
+                        ? travail
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+                          : 'border-red-500 bg-red-500 text-white shadow-md'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {ORDINAUX[rang]} jour
+                    <span className="block text-xs font-normal opacity-80">{travail ? 'travaillé' : 'de repos'}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {positionRotation !== null ? (
+              <div>
+                <p className="text-xs text-slate-500 mb-1.5">Vos 12 prochains jours :</p>
+                <div className="grid grid-cols-12 gap-0.5" aria-hidden="true">
+                  {Array.from({ length: 12 }, (_, k) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + k);
+                    const travail = (positionRotation + k) % (rotation[0] + rotation[1]) < rotation[0];
+                    return (
+                      <div key={k} className="text-center">
+                        <div className="text-[10px] text-slate-500 capitalize">
+                          {d.toLocaleDateString('fr-FR', { weekday: 'narrow' })}
+                        </div>
+                        <div className={`h-6 rounded text-[10px] font-semibold flex items-center justify-center ${
+                          travail ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
+                        } ${k === 0 ? 'ring-2 ring-offset-1 ring-amber-400' : ''}`}>
+                          {d.getDate()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">En bleu, les jours travaillés. Si ce n&apos;est pas le cas, changez de case.</p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Choisissez votre position dans la série d&apos;aujourd&apos;hui.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {cycleType === 'alterne' && !rotation && (
       <div className={cardClass}>
         <div className="px-6 mb-4">
           <div className={titleClass}>Semaine en cours</div>
@@ -435,7 +533,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       )}
 
       {/* Semaine A / Jours travaillés — uniquement pour cycle alterné (en hebdo, c'est figé Lu-Ve) */}
-      {cycleType === 'alterne' && (
+      {cycleType === 'alterne' && !rotation && (
       <div className={cardClass}>
         <div className="px-6 mb-4">
           <div className={titleClass}>Semaine A</div>
@@ -467,7 +565,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       )}
 
       {/* Semaine B — rouge français */}
-      {cycleType === 'alterne' && (
+      {cycleType === 'alterne' && !rotation && (
         <div className={cardClass}>
           <div className="px-6 mb-4">
             <div className={titleClass}>Semaine B</div>
@@ -556,7 +654,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
           boxShadow: '0 8px 24px rgba(0,85,164,0.25)',
         }}
       >
-        {choixManquant ? 'Choisissez la semaine en cours' : horaireInvalide ? 'Vérifiez vos horaires' : 'Continuer'}
+        {choixManquant ? (rotation ? 'Indiquez où vous en êtes' : 'Choisissez la semaine en cours') : horaireInvalide ? 'Vérifiez vos horaires' : 'Continuer'}
         <ChevronRight className="w-5 h-5" />
       </button>
     </div>
