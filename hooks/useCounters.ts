@@ -494,25 +494,31 @@ export function useCounters() {
   // calculé sur les reliquats de l'année écoulée (RTC relevés à la bascule,
   // CA / CA HP antérieurs, HS). Remplace l'ancien bouton, qui ne gérait que les
   // CA et les prélevait sur la dotation de l'année qui commence.
-  const enregistrerEpargneCET = useCallback(() => {
+  // `avecSurplus` : l'agent a versé le maximum, et le surplus que le CET ne peut
+  // conserver est indemnisé (ou versé à la RAFP) — il ne reste pas au CET.
+  const enregistrerEpargneCET = useCallback((avecSurplus = false) => {
     const current = userDataRef.current;
     if (!current) return { success: false, error: 'Données non chargées' };
     const plan = planEpargneCET(current);
     if (plan.mode !== 'janvier') {
       return { success: false, error: "Le versement au CET se fait en janvier, au titre de l'année écoulée." };
     }
-    const { apport } = plan;
+    const apport = avecSurplus ? plan.maximum : plan.apport;
     if (apport.total <= 0) return { success: false, error: 'Rien à verser au CET' };
+    const indemnises = Math.max(0, apport.total - plan.capacite);
 
     const c = current.counters;
     const counters: Counters = {
       ...c,
-      cet: c.cet + apport.total,
+      cet: c.cet + apport.total - indemnises,
       caAnterieur: Math.max(0, c.caAnterieur - apport.ca),
       caHPAnterieur: Math.max(0, c.caHPAnterieur - apport.caHP),
-      hs: Math.max(0, c.hs - plan.hsMinutes),
+      hs: Math.max(0, c.hs - apport.hs * HS_COUT_PAR_JOUR_CET),
     };
-    const detail = { rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs };
+    const detail = {
+      rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs,
+      ...(indemnises > 0 && { indemnises }),
+    };
     const parts = [
       apport.rtc && `${apport.rtc}j de RTC`,
       apport.caHP && `${apport.caHP}j de CA HP`,
@@ -525,7 +531,9 @@ export function useCounters() {
       action: 'transfer_cet',
       type: 'cet',
       amount: apport.total,
-      description: `Épargne CET ${plan.anneeConges} : ${parts.join(', ')}`,
+      description: `Épargne CET ${plan.anneeConges} : ${parts.join(', ')}${
+        indemnises > 0 ? ` (dont ${indemnises}j indemnisés ou RAFP)` : ''
+      }`,
       countersSnapshot: { cet: counters.cet },
       cetDetail: detail,
     };
@@ -563,7 +571,8 @@ export function useCounters() {
 
       // Annuler une épargne CET (transfer_cet)
       if (entry.action === 'transfer_cet') {
-        updatedCounters.cet = Math.max(0, updatedCounters.cet - entry.amount);
+        const sortis = entry.cetDetail?.indemnises ?? 0;
+        updatedCounters.cet = Math.max(0, updatedCounters.cet - (entry.amount - sortis));
         let reliquatCET = current.reliquatCET;
         if (entry.cetDetail) {
           // Versement multi-sources : chaque jour retourne d'où il vient.

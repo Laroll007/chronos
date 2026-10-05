@@ -243,7 +243,7 @@ function checkRTCLibres(
       id: generateId(),
       priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
       action: `Consommer ${formatMinutes(rtcLibres)} de RTC libres`,
-      reason: `Perdus au 31/12 (après réserve CET de 83h30)`,
+      reason: `Perdus au 31/12 s'ils ne sont ni posés ni versés au CET (83h30 conseillés pour le CET)`,
       deadline: `${year}-12-31`,
       counterType: 'rtc',
       amountToConsume: rtcLibres,

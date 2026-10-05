@@ -201,7 +201,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
               ? <Alert type="info" text={`Les ${formatMinutes(reserves)} réservés CET sont intacts. Gain net : +37h50/an par rapport à une pose classique.`} />
               : <Alert type="error" text="⚠️ Les RTC réservés CET ont été entamés ! Cela réduit le gain annuel CET." />
             }
-            <Alert type="warning" text="Les RTC libres sont perdus au 31/12 s'ils ne sont pas posés ou épargnés." />
+            <Alert type="warning" text="Les RTC libres sont perdus au 31/12 s'ils ne sont ni posés ni versés au CET (au-delà de ce que le CET peut garder, le versement est indemnisé)." />
           </>
         );
       }
@@ -308,15 +308,16 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
             />
             {counters.cet > CET_PLAFOND && (
               <p className="text-xs text-slate-500 mt-1">
-                Solde supérieur au plafond (relèvement exceptionnel, JO 2024…) : vos jours sont
-                conservés, mais l&apos;app ne propose plus de nouveau versement.
+                Solde supérieur au plafond grâce aux relèvements exceptionnels (COVID, JOP 2024 :
+                jusqu&apos;à 80 jours) : vos jours sont conservés, mais le compte est gelé — plus
+                aucun versement tant qu&apos;il dépasse 60 jours.
               </p>
             )}
             <div className="mt-3 space-y-1.5">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sources d'alimentation</p>
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                <span>RTC réservés : 10j/an (coût 83h30, gain +37h50)</span>
+                <span>RTC : tous versables, 10 j conseillés (83h30, gain +37h50)</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />

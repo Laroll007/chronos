@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateYearEndBalance, BILAN_MOIS_DEBUT } from '@/lib/yearEnd';
 import { simulatePose, countCAHPDays, countWorkingDays, ajusterSoldeCAHP, getCAHPUtilises } from '@/lib/calculations';
 import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
-import { CA_HP_BONUS, CET_APPORT_ANNUEL_MAX, CA_MAX_VERS_CET } from '@/lib/constants';
+import { CA_HP_BONUS, CA_MAX_VERS_CET } from '@/lib/constants';
 import type { Counters } from '@/lib/types';
 
 const cfg = DEFAULT_CYCLE_CONFIG;
@@ -28,22 +28,22 @@ describe('Bilan de fin d’année', () => {
   });
 
   it('n’annonce pas 5 CA épargnables si le RTC a déjà pris les places', () => {
-    // Les sources se disputent les places du plafond annuel. Avec un RTC plein,
-    // il ne reste rien pour les CA : leur « réserve de 5 jours » est un mirage.
-    const c = C({ ca: 18, cet: 0, rtc: 11229, caHP: 2 });
+    // Les sources se disputent les 10 places annuelles (CET déjà à 20 j). Avec
+    // un RTC plein, il ne reste rien pour les CA : leur « réserve » est un mirage.
+    const c = C({ ca: 18, cet: 20, rtc: 11229, caHP: 2 });
     const b = calculateYearEndBalance(c, cfg, SEPTEMBRE);
 
-    expect(b.capaciteCET).toBe(CET_APPORT_ANNUEL_MAX);
-    expect(b.apportCET.rtc).toBe(CET_APPORT_ANNUEL_MAX);
+    expect(b.capaciteCET).toBe(10);
+    expect(b.apportCET.rtc).toBe(10);
     expect(b.apportCET.ca).toBe(0);
     expect(b.apportCET.caHP).toBe(0);
-    expect(b.apportCET.total).toBe(CET_APPORT_ANNUEL_MAX);
+    expect(b.apportCET.total).toBe(10);
     // Donc la totalité des CA est à poser.
     expect(item(b, 'ca')!.aSolder).toBe(18);
   });
 
   it('respecte les CA que l’agent a sécurisés (son intention passe devant)', () => {
-    const c = C({ ca: 18, cet: 0, caReservesCET: 5, rtc: 11229, caHP: 2 });
+    const c = C({ ca: 18, cet: 20, caReservesCET: 5, rtc: 11229, caHP: 2 });
     const b = calculateYearEndBalance(c, cfg, SEPTEMBRE);
 
     expect(b.apportCET.ca).toBe(5);            // la réserve est honorée

@@ -23,7 +23,7 @@ import {
   RTC_COUT_PAR_JOUR_CET,
   RTC_VALEUR_REELLE_JOUR,
   RTC_GAIN_PAR_JOUR,
-  RTC_MAX_JOURS_CET,
+  RTC_JOURS_CET_CONSEILLES,
   RTC_RESERVES_CET,
   RTC_GAIN_ANNUEL_TOTAL,
   RTC_LIBRES,
@@ -38,7 +38,9 @@ import {
   HS_MAX_VERS_CET,
   // CET
   CET_PLAFOND,
-  CET_APPORT_ANNUEL_MAX,
+  CET_PROGRESSION_ANNUELLE_MAX,
+  CET_SEUIL_OPTION,
+  CET_INDEMNISATION_JOUR,
   HS_MAX_MINUTES_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
   // Dates
@@ -195,18 +197,18 @@ describe('RTC - Récupération Temps de Cycle', () => {
       expect(minutesToHoursMinutes(RTC_GAIN_PAR_JOUR)).toBe('3h47');
     });
 
-    it('RTC_MAX_JOURS_CET = 10 jours', () => {
-      expect(RTC_MAX_JOURS_CET).toBe(10);
+    it('RTC_JOURS_CET_CONSEILLES = 10 jours', () => {
+      expect(RTC_JOURS_CET_CONSEILLES).toBe(10);
     });
 
     it('RTC_RESERVES_CET = 10 × 8h21 = 83h30 (5010 minutes)', () => {
-      expect(RTC_RESERVES_CET).toBe(RTC_COUT_PAR_JOUR_CET * RTC_MAX_JOURS_CET);
+      expect(RTC_RESERVES_CET).toBe(RTC_COUT_PAR_JOUR_CET * RTC_JOURS_CET_CONSEILLES);
       expect(RTC_RESERVES_CET).toBe(5010);
       expect(minutesToHoursMinutes(RTC_RESERVES_CET)).toBe('83h30');
     });
 
     it('RTC_GAIN_ANNUEL_TOTAL = 10 × 3h47 = 37h50 (2270 minutes)', () => {
-      expect(RTC_GAIN_ANNUEL_TOTAL).toBe(RTC_GAIN_PAR_JOUR * RTC_MAX_JOURS_CET);
+      expect(RTC_GAIN_ANNUEL_TOTAL).toBe(RTC_GAIN_PAR_JOUR * RTC_JOURS_CET_CONSEILLES);
       expect(RTC_GAIN_ANNUEL_TOTAL).toBe(2270);
       expect(minutesToHoursMinutes(RTC_GAIN_ANNUEL_TOTAL)).toBe('37h50');
     });
@@ -292,16 +294,20 @@ describe('CET - Compte Épargne Temps', () => {
     expect(CET_PLAFOND).toBe(60);
   });
 
-  it('CET_APPORT_ANNUEL_MAX = 10 jours', () => {
-    expect(CET_APPORT_ANNUEL_MAX).toBe(10);
+  it('progression de 10 jours par an au-delà de 15 jours', () => {
+    expect(CET_PROGRESSION_ANNUELLE_MAX).toBe(10);
+    expect(CET_SEUIL_OPTION).toBe(15);
   });
 
-  // Le plafond annuel n'est PAS la somme des limites par source : celles-ci se
-  // disputent les places. Avec 10 j/an, les seuls RTC peuvent tout consommer —
-  // c'est ce qui rend le conseil « gardez 5 CA pour le CET » faux dans ce cas.
-  it('le plafond annuel est inférieur à la somme des sources', () => {
-    const sommeDesSources = RTC_MAX_JOURS_CET + CA_MAX_VERS_CET + CA_HP_BONUS + HS_MAX_VERS_CET;
-    expect(CET_APPORT_ANNUEL_MAX).toBeLessThan(sommeDesSources);
+  // Les 10 RTC conseillés suffisent à remplir la progression annuelle : au-delà,
+  // un versement serait indemnisé — d'où le conseil de garder 83h30.
+  it('les RTC conseillés couvrent la progression annuelle', () => {
+    expect(RTC_JOURS_CET_CONSEILLES).toBe(CET_PROGRESSION_ANNUELLE_MAX);
+    expect(RTC_JOURS_CET_CONSEILLES + CA_MAX_VERS_CET + CA_HP_BONUS + HS_MAX_VERS_CET).toBeGreaterThan(CET_PROGRESSION_ANNUELLE_MAX);
+  });
+
+  it('indemnisation par catégorie (brut par jour)', () => {
+    expect(CET_INDEMNISATION_JOUR).toEqual({ A: 150, B: 100, C: 83 });
   });
 
   it('un jour de CET payé en HS coûte 8h21, comme en RTC', () => {
@@ -491,7 +497,7 @@ describe('Cohérence entre constantes', () => {
 
   it('gain CET = (valeur réelle - coût) × max jours', () => {
     expect(RTC_GAIN_ANNUEL_TOTAL).toBe(
-      (RTC_VALEUR_REELLE_JOUR - RTC_COUT_PAR_JOUR_CET) * RTC_MAX_JOURS_CET
+      (RTC_VALEUR_REELLE_JOUR - RTC_COUT_PAR_JOUR_CET) * RTC_JOURS_CET_CONSEILLES
     );
   });
 

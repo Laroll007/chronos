@@ -4,40 +4,45 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AlertTriangle, CheckCircle2, PiggyBank, X } from 'lucide-react';
 import type { UserData } from '@/lib/types';
-import { planEpargneCET } from '@/lib/cet';
+import { planEpargneCET, type ApportCET } from '@/lib/cet';
 import { formatMinutes } from '@/lib/calculations';
-import { CET_PLAFOND, RTC_GAIN_PAR_JOUR } from '@/lib/constants';
+import {
+  CET_INDEMNISATION_JOUR,
+  CET_PLAFOND,
+  CET_PLAFOND_DEROGATOIRE,
+  CET_PROGRESSION_ANNUELLE_MAX,
+  CET_SEUIL_OPTION,
+  HS_COUT_PAR_JOUR_CET,
+  RTC_COUT_PAR_JOUR_CET,
+  RTC_GAIN_PAR_JOUR,
+  type CategorieAgent,
+} from '@/lib/constants';
 
 interface CETPlanModalProps {
   userData: UserData;
   onClose: () => void;
-  /** Janvier : enregistre le versement demandé dans GesTT. */
-  onRecord: () => { success: boolean; error?: string };
+  /** Janvier : enregistre le versement demandé (conseillé, ou maximum avec surplus indemnisé). */
+  onRecord: (avecSurplus: boolean) => { success: boolean; error?: string };
 }
 
-/**
- * « Mon épargne CET » : combien verser, et quels congés, dans l'ordre le plus
- * avantageux. Estimation le reste de l'année, plan réel en janvier.
- */
-export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps) {
-  const plan = useMemo(() => planEpargneCET(userData), [userData]);
-  const [error, setError] = useState<string | null>(null);
-  const { apport, capacite } = plan;
-  const cet = userData.counters.cet;
-  const janvier = plan.mode === 'janvier';
-  const c = userData.counters;
-  // L'avertissement sur le seuil de CA n'a de sens que s'il change le résultat :
-  // des CA figurent dans l'estimation, ou (janvier) il en reste qui auraient
-  // pu compléter le versement.
-  const caConcernes = janvier
-    ? apport.total < capacite && c.caAnterieur + c.caHPAnterieur > 0
-    : apport.ca + apport.caHP > 0;
+const CATEGORIE_KEY = 'chronos_categorie';
 
-  const lignes = [
+function lireCategorie(): CategorieAgent {
+  try {
+    const v = localStorage.getItem(CATEGORIE_KEY);
+    if (v === 'A' || v === 'B' || v === 'C') return v;
+  } catch {
+    /* stockage indisponible : catégorie par défaut */
+  }
+  return 'B';
+}
+
+function lignesApport(apport: ApportCET, janvier: boolean) {
+  return [
     apport.rtc > 0 && {
       key: 'rtc',
       label: `${apport.rtc} jour${apport.rtc > 1 ? 's' : ''} de RTC`,
-      detail: `${formatMinutes(plan.rtcMinutes)} de RTC — le plus avantageux : 8h21 par jour au lieu de 12h08, soit ${formatMinutes(apport.rtc * RTC_GAIN_PAR_JOUR)} gagnées`,
+      detail: `${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)} de RTC — le plus avantageux : 8h21 par jour au lieu d’une journée entière, soit ${formatMinutes(apport.rtc * RTC_GAIN_PAR_JOUR)} gagnées`,
     },
     apport.caHP > 0 && {
       key: 'caHP',
@@ -52,15 +57,63 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
     apport.hs > 0 && {
       key: 'hs',
       label: `${apport.hs} jour${apport.hs > 1 ? 's' : ''} d’HS`,
-      detail: `${formatMinutes(plan.hsMinutes)} d’heures supplémentaires (8h21 par jour)`,
+      detail: `${formatMinutes(apport.hs * HS_COUT_PAR_JOUR_CET)} d’heures supplémentaires (8h21 par jour)`,
     },
   ].filter(Boolean) as { key: string; label: string; detail: string }[];
+}
+
+const jours = (n: number) => `${n} jour${n > 1 ? 's' : ''}`;
+
+/**
+ * « Mon épargne CET » : combien verser, et quels congés, dans l'ordre le plus
+ * avantageux. Estimation le reste de l'année, plan réel en janvier.
+ *
+ * Deux montants : le versement conseillé (tout reste sur le CET) et le
+ * versement maximal, dont le surplus est indemnisé ou versé à la RAFP.
+ */
+export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps) {
+  const plan = useMemo(() => planEpargneCET(userData), [userData]);
+  const [error, setError] = useState<string | null>(null);
+  // CET au plafond : seul un versement indemnisé reste possible.
+  const [avecSurplus, setAvecSurplus] = useState(() => plan.apport.total === 0);
+  const [categorie, setCategorie] = useState<CategorieAgent>(lireCategorie);
+  const { apport, capacite, maximum, indemnises } = plan;
+  const cet = userData.counters.cet;
+  const gele = cet > CET_PLAFOND;
+  const janvier = plan.mode === 'janvier';
+  const c = userData.counters;
+  const verse = avecSurplus ? maximum : apport;
+  // L'avertissement sur le seuil de CA n'a de sens que s'il change le résultat :
+  // des CA figurent dans l'estimation, ou (janvier) il en reste qui auraient
+  // pu compléter le versement.
+  const caConcernes = janvier
+    ? apport.total < capacite && c.caAnterieur + c.caHPAnterieur > 0
+    : maximum.ca + maximum.caHP > 0;
+
+  const lignes = lignesApport(apport, janvier);
+  const surplus = indemnises > 0;
+  const montant = indemnises * CET_INDEMNISATION_JOUR[categorie];
+
+  const choisirCategorie = (v: CategorieAgent) => {
+    setCategorie(v);
+    try {
+      localStorage.setItem(CATEGORIE_KEY, v);
+    } catch {
+      /* simple confort d'affichage */
+    }
+  };
 
   const record = () => {
-    const res = onRecord();
+    const res = onRecord(avecSurplus);
     if (res.success) onClose();
     else setError(res.error ?? 'Enregistrement impossible');
   };
+
+  // Ce que le CET peut garder, expliqué selon la situation de l'agent.
+  const regleConservation =
+    cet < CET_SEUIL_OPTION
+      ? `Votre CET peut monter jusqu’à ${CET_SEUIL_OPTION} jours, puis ${CET_PROGRESSION_ANNUELLE_MAX} de plus par an (${CET_PLAFOND} au total).`
+      : `Au-delà de ${CET_SEUIL_OPTION} jours, votre CET ne progresse que de ${CET_PROGRESSION_ANNUELLE_MAX} jours par an (${CET_PLAFOND} au total).`;
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -88,32 +141,34 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
-          {capacite === 0 ? (
+          {gele ? (
             <p className="text-sm text-slate-700">
-              {cet > CET_PLAFOND
-                ? `Votre CET (${cet} jours) dépasse le plafond habituel de ${CET_PLAFOND} jours, grâce aux relèvements exceptionnels (COVID, JOP 2024) qui permettent d’aller jusqu’à 80 jours : vos jours sont conservés, mais le compte est gelé et ne peut plus être alimenté tant qu’il reste au-dessus de 60 jours.`
-                : `Votre CET a atteint le plafond de ${CET_PLAFOND} jours : vous ne pouvez plus rien y verser.`}
+              Votre CET ({cet} jours) dépasse le plafond habituel de {CET_PLAFOND} jours, grâce aux
+              relèvements exceptionnels (COVID, JOP 2024) qui permettent d’aller jusqu’à{' '}
+              {CET_PLAFOND_DEROGATOIRE} jours : vos jours sont conservés, mais le compte est gelé et ne
+              peut plus être alimenté tant qu’il reste au-dessus de {CET_PLAFOND} jours.
+            </p>
+          ) : maximum.total === 0 ? (
+            <p className="text-sm text-slate-600">
+              Aucun solde ne peut alimenter le CET pour l&apos;instant (RTC, CA, CA HP ou HS).
             </p>
           ) : (
             <>
               <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
                 <p className="text-sm text-slate-700">
                   {janvier
-                    ? <>Au titre de {plan.anneeConges}, vous pouvez verser jusqu&apos;à</>
-                    : <>En janvier {plan.anneeVersement}, vous pourrez verser jusqu&apos;à</>}
+                    ? <>Au titre de {plan.anneeConges}, versement conseillé :</>
+                    : <>En janvier {plan.anneeVersement}, versement conseillé :</>}
                 </p>
-                <p className="text-3xl font-bold text-blue-700 mt-1">
-                  {apport.total} jour{apport.total > 1 ? 's' : ''}
-                  {apport.total < capacite && (
-                    <span className="text-sm font-medium text-slate-500"> sur {capacite} possibles</span>
-                  )}
-                </p>
+                <p className="text-3xl font-bold text-blue-700 mt-1">{jours(apport.total)}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  {capacite} jours maximum par an, dans la limite de {CET_PLAFOND} jours au total.
+                  {capacite === 0
+                    ? `Votre CET est au plafond de ${CET_PLAFOND} jours : tout versement serait indemnisé ou versé à la RAFP.`
+                    : `${regleConservation} Ces jours restent sur votre CET.`}
                 </p>
               </div>
 
-              {lignes.length > 0 ? (
+              {lignes.length > 0 && (
                 <div>
                   <p className="text-sm font-semibold text-slate-800 mb-2">
                     {janvier ? 'À demander (GesTT ou service de gestion)' : 'Le plus avantageux'}
@@ -127,10 +182,52 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
                     ))}
                   </ul>
                 </div>
-              ) : (
-                <p className="text-sm text-slate-600">
-                  Aucun solde ne peut alimenter le CET pour l&apos;instant (RTC, CA, CA HP ou HS).
-                </p>
+              )}
+
+              {surplus && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">
+                      Vous pouvez verser jusqu’à {jours(maximum.total)}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {maximum.rtc > apport.rtc && `Soit ${maximum.rtc} jours de RTC au total (${formatMinutes(maximum.rtc * RTC_COUT_PAR_JOUR_CET)}). `}
+                      Mais votre CET ne peut en garder que {jours(capacite)} : les{' '}
+                      <strong>{jours(indemnises)}</strong> de plus sont{' '}
+                      <strong>indemnisés</strong> ou versés à la <strong>RAFP</strong> (retraite
+                      additionnelle — d’office si vous ne choisissez pas). Ils ne reviennent pas en congés.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-700 mb-1.5">Votre catégorie</p>
+                    <div className="flex gap-1.5" role="radiogroup" aria-label="Catégorie">
+                      {(Object.keys(CET_INDEMNISATION_JOUR) as CategorieAgent[]).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          role="radio"
+                          aria-checked={categorie === k}
+                          onClick={() => choisirCategorie(k)}
+                          className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-colors ${
+                            categorie === k
+                              ? 'bg-amber-600 border-amber-600 text-white'
+                              : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-100'
+                          }`}
+                        >
+                          {k} · {CET_INDEMNISATION_JOUR[k]} €/j
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-600 mt-2">
+                      Indemnisation estimée : <strong>{montant.toLocaleString('fr-FR')} € brut</strong>{' '}
+                      pour {jours(indemnises)}.
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Conseil : en versant {jours(apport.total)}, vous ne perdez aucune heure — tout reste
+                    en congés sur votre CET. Le surplus n’a d’intérêt que si vous préférez être payé.
+                  </p>
+                </div>
               )}
 
               {!plan.conditionCA.ok && caConcernes && (
@@ -151,6 +248,27 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
                 </p>
               )}
 
+              {janvier && surplus && apport.total > 0 && (
+                <div className="space-y-2" role="radiogroup" aria-label="Versement demandé">
+                  <p className="text-sm font-semibold text-slate-800">Vous avez demandé :</p>
+                  {[
+                    { v: false, label: `Le versement conseillé (${jours(apport.total)})` },
+                    { v: true, label: `Le maximum (${jours(maximum.total)}, dont ${indemnises} indemnisés ou RAFP)` },
+                  ].map((o) => (
+                    <label key={String(o.v)} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="versement-cet"
+                        checked={avecSurplus === o.v}
+                        onChange={() => setAvecSurplus(o.v)}
+                        className="h-4 w-4 accent-blue-600"
+                      />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+
               <p className="text-xs text-slate-500">
                 {janvier
                   ? 'Faites la demande avant le 31 janvier (GesTT ou service de gestion), puis enregistrez-la ici pour mettre vos compteurs à jour.'
@@ -169,7 +287,7 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
           >
             Fermer
           </button>
-          {janvier && apport.total > 0 && (
+          {janvier && !gele && verse.total > 0 && (
             <button
               type="button"
               onClick={record}

@@ -96,7 +96,7 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
     items: [
       { key: 'ca', name: 'Congés Annuels (CA)', short: 'Perdus au 31/12 si non utilisés', helpKey: 'ca' },
       { key: 'cf', name: 'Crédits Fériés (CF)', short: '109h12/an, à lisser sur l\'année', helpKey: 'cf' },
-      { key: 'rtc', name: 'RTC', short: 'Récupération Temps de Cycle, 83h30 réservés CET', helpKey: 'rtc' },
+      { key: 'rtc', name: 'RTC', short: 'Récupération Temps de Cycle, 83h30 conseillés pour le CET', helpKey: 'rtc' },
       { key: 'rtt', name: 'RTT (cycle hebdo)', short: 'Récupération Temps de Travail, perdus au 31/12', helpKey: 'rtt' },
       { key: 'artt', name: 'ARTT', short: '20j/an, perdus au 31/12 (arrêté 3 mai 2002)', helpKey: 'artt' },
       { key: 'rps', name: 'RPS', short: 'Récupération dimanche, gardés indéfiniment', helpKey: 'rps' },
@@ -612,13 +612,13 @@ export function CountersSetup({
                 <span className="ml-2 text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Gain CET +37h50/an</span>
                 <HelpButton onClick={() => setHelpKey('rtc')} />
               </div>
-              <div className={`${subClass} mt-1`}>83h30 à réserver pour le CET</div>
+              <div className={`${subClass} mt-1`}>83h30 conseillés pour le CET</div>
             </div>
             <div className="px-6 space-y-4">
-              <TimeInput label="RTC restant" value={counters.rtc} onChange={(v) => updateCounter('rtc', v)} hint="Perdus au 31/12" colorKey="rtc" />
+              <TimeInput label="RTC restant" value={counters.rtc} onChange={(v) => updateCounter('rtc', v)} hint="Perdus au 31/12 s'ils ne sont ni posés ni versés au CET" colorKey="rtc" />
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-sm text-blue-700">
-                  <strong>Astuce CET :</strong> Réservez 83h30 de RTC pour les convertir en 10 jours CET (8h21 au lieu de 12h08 par jour = gain 37h50).
+                  <strong>Astuce CET :</strong> Gardez 83h30 de RTC pour les verser au CET en janvier : 10 jours à 8h21 au lieu de 12h08, soit 37h50 gagnées.
                 </p>
               </div>
             </div>

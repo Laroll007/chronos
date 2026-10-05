@@ -7,7 +7,7 @@ import { formatMinutes } from '@/lib/calculations';
 import {
   CET_PLAFOND,
   RTC_COUT_PAR_JOUR_CET,
-  RTC_MAX_JOURS_CET,
+  RTC_JOURS_CET_CONSEILLES,
   CA_MAX_VERS_CET,
   HS_MAX_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
@@ -219,10 +219,9 @@ export function Projection({ currentCET, counters, projection, onOpenPlan, onUpd
           {/* RTC */}
           <SourceRow
             label="RTC (Récupération Temps de Cycle)"
-            sublabel={`Max ${RTC_MAX_JOURS_CET}j/an vers CET`}
+            sublabel={`Tous versables (8h21/j) · ${RTC_JOURS_CET_CONSEILLES}j conseillés`}
             balance={`${formatMinutes(counters.rtc)} (≈ ${rtcJoursDisponibles}j)`}
             towardsCET={projection.apportCET.rtc}
-            maxAllowed={RTC_MAX_JOURS_CET}
             note={projection.apportCET.rtc > 0 ? `Coût : ${formatMinutes(projection.apportCET.rtc * RTC_COUT_PAR_JOUR_CET)} (8h21/j au lieu de 12h08)` : undefined}
             gain={projection.apportCET.rtc > 0 ? `Gain +${formatMinutes(projection.gainNetRTC)}` : undefined}
             color="emerald"
@@ -330,7 +329,7 @@ export function Projection({ currentCET, counters, projection, onOpenPlan, onUpd
           <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20">
             <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
             <span className="text-sm text-rose-400">
-              <strong>{projection.joursPerdus} jour(s)</strong> seront perdus au 31/12 si aucune action n&apos;est prise (CA excédentaires ou RTC libres non posés).
+              <strong>{projection.joursPerdus} jour(s)</strong> de CA seront perdus au 31/12 s&apos;ils ne sont pas posés (au-delà des 5 versables au CET).
             </span>
           </div>
         )}

@@ -6,9 +6,8 @@ import {
   RTC_RESERVES_CET,
   CF_PAR_SEMESTRE,
   CET_PLAFOND,
-  CET_APPORT_ANNUEL_MAX,
 } from './constants';
-import { formatMinutes, getDaysUntil, getRTCLibres } from './calculations';
+import { formatMinutes, getCETApportMaxAnnee, getDaysUntil, getRTCLibres } from './calculations';
 import { calculateYearEndBalance, formatYearEndSummary } from './yearEnd';
 
 // ============================================
@@ -169,7 +168,7 @@ export function calculateDeadlineNotifications(
     notifications.push({
       id: 'rtc-deadline',
       title: 'RTC libres à utiliser',
-      message: `${formatMinutes(rtcLibres)} de RTC libres seront perdus au 31/12.`,
+      message: `${formatMinutes(rtcLibres)} de RTC libres seront perdus au 31/12 s'ils ne sont ni posés ni versés au CET.`,
       priority: getPriority(daysUntilCA),
       daysRemaining: daysUntilCA,
       deadline: caDeadline,
@@ -184,7 +183,7 @@ export function calculateDeadlineNotifications(
   // un bandeau rouge permanent et non désactivable à tout agent consommant ses
   // RTC — c'est-à-dire l'usage normal. Muette aussi si le CET ne peut plus rien
   // recevoir : la réserve n'a alors plus d'objet.
-  const margeCET = Math.min(CET_PLAFOND - counters.cet, CET_APPORT_ANNUEL_MAX);
+  const margeCET = getCETApportMaxAnnee(counters.cet);
   if (
     counters.hasRTC !== false &&
     counters.rtc < RTC_RESERVES_CET &&
@@ -242,12 +241,12 @@ export function calculateDeadlineNotifications(
   }
 
   // 6. Transfert CET possible avant la deadline
-  const cetDisponible = Math.min(CET_PLAFOND - counters.cet, CET_APPORT_ANNUEL_MAX);
+  const cetDisponible = getCETApportMaxAnnee(counters.cet);
   if (cetDisponible > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.warning) {
     notifications.push({
       id: 'cet-transfert',
-      title: 'Transfert CET possible',
-      message: `Vous pouvez encore épargner ${cetDisponible} jour(s) au CET avant le 31/12. Pensez à optimiser vos transferts.`,
+      title: 'Épargne CET : préparez janvier',
+      message: `Votre CET peut conserver ${cetDisponible} jour(s) de plus, à verser en janvier. Gardez de côté les RTC ou CA à y verser plutôt que de les laisser se perdre au 31/12.`,
       priority: daysUntilCA <= 14 ? 'warning' : 'info',
       daysRemaining: daysUntilCA,
       deadline: caDeadline,

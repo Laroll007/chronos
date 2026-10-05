@@ -1,16 +1,15 @@
 // Bilan de fin d'année : ce qui sera réellement perdu au 31/12 si rien n'est fait.
 //
-// Le point clé : le CET n'accepte qu'un nombre limité de jours par an
-// (CET_APPORT_ANNUEL_MAX) et 60 au total. Les sources se disputent donc ces
-// places : si les RTC les consomment, « garder 5 CA pour le CET » est un mauvais
-// conseil — ces CA ne rentreront pas et sont perdus s'ils ne sont pas posés.
+// Le point clé : le CET ne CONSERVE qu'un nombre limité de jours par an (10 au-delà
+// de 15, 60 au total — cf. getCETApportMaxAnnee). Au-delà, les jours versés sont
+// indemnisés ou partent à la RAFP. Les sources se disputent donc ces places : si
+// les RTC les consomment, « garder 5 CA pour le CET » est un mauvais conseil.
 // À l'inverse, les CA que l'agent a explicitement sécurisés (`caReservesCET`) ne
 // doivent jamais apparaître comme « à solder ».
 
 import { Counters, CycleConfig, CounterType } from './types';
 import {
   RTC_COUT_PAR_JOUR_CET,
-  RTC_RESERVES_CET,
   HEURES_PAR_JOUR,
   CF_PAR_SEMESTRE,
 } from './constants';
@@ -90,7 +89,7 @@ export function calculateYearEndBalance(
     'ca', 'Congés annuels', counters.ca, apport.ca,
     apport.ca > 0
       ? `${apport.ca}j partiront au CET, le reste est perdu au 31/12`
-      : `Aucune place au CET cette année (${capacite} dispo, déjà prises) — tout est à poser`
+      : `Plus de place au CET cette année — à poser, sinon perdus au 31/12`
   );
 
   // ── CA HP : bonus non reportable ────────────────────────────────────────────
@@ -101,8 +100,8 @@ export function calculateYearEndBalance(
     pushHeures(
       'rtc', 'RTC', counters.rtc, apport.rtc * RTC_COUT_PAR_JOUR_CET,
       apport.rtc > 0
-        ? `${apport.rtc}j convertis au CET (${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)}), le reste est perdu`
-        : `Perdus au 31/12 — la réserve de ${formatMinutes(RTC_RESERVES_CET)} ne sert que si le CET a de la place`
+        ? `${apport.rtc}j à verser au CET (${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)}). Le reste : à poser, ou à verser au CET contre indemnisation`
+        : `Plus de place au CET : à poser, ou à verser au CET contre indemnisation (sinon perdus au 31/12)`
     );
   }
 

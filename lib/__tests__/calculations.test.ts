@@ -30,7 +30,6 @@ import {
   JOURNEE_SOLIDARITE,
   CF_PAR_SEMESTRE,
   CET_PLAFOND,
-  CET_APPORT_ANNUEL_MAX,
   CA_REQUIS_POUR_HP,
   CA_HP_BONUS,
 } from '../constants';
@@ -332,9 +331,16 @@ describe('Calculs CET', () => {
   });
 
   describe('getCETApportMaxAnnee', () => {
-    it('retourne le minimum entre marge et apport annuel max', () => {
-      expect(getCETApportMaxAnnee(0)).toBe(CET_APPORT_ANNUEL_MAX);
-      expect(getCETApportMaxAnnee(50)).toBe(Math.min(CET_PLAFOND - 50, CET_APPORT_ANNUEL_MAX));
+    it('jusqu’à 15 jours, puis 10 de progression par an, 60 au total', () => {
+      expect(getCETApportMaxAnnee(0)).toBe(25); // ouverture : 15 + 10
+      expect(getCETApportMaxAnnee(4)).toBe(21);
+      expect(getCETApportMaxAnnee(15)).toBe(10);
+      expect(getCETApportMaxAnnee(30)).toBe(10);
+      expect(getCETApportMaxAnnee(55)).toBe(5);
+    });
+
+    it('CET gelé au-delà de 60 (relèvement COVID/JOP) : rien', () => {
+      expect(getCETApportMaxAnnee(72)).toBe(0);
     });
 
     it('retourne 0 si plafond atteint', () => {

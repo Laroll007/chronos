@@ -26,7 +26,8 @@ import {
   RTC_GAIN_PAR_JOUR,
   RPS_PAR_DIMANCHE,
   CET_PLAFOND,
-  CET_APPORT_ANNUEL_MAX,
+  CET_PROGRESSION_ANNUELLE_MAX,
+  CET_SEUIL_OPTION,
   JOURNEE_SOLIDARITE,
   CYCLES_EXCLUS_ABONDEMENT_HS,
 } from './constants';
@@ -607,11 +608,18 @@ export function getCETMargeDisponible(cetActuel: number): number {
 }
 
 /**
- * Calcule l'apport CET maximum possible cette année
+ * Jours que le CET peut encore CONSERVER après le versement de janvier :
+ * jusqu'à 15 jours sans condition, puis 10 jours de progression par an, dans la
+ * limite de 60. Ce qui est versé au-delà est indemnisé (ou versé à la RAFP).
+ * 0 pour un CET au plafond, ou gelé au-delà (relèvement COVID/JOP).
  */
 export function getCETApportMaxAnnee(cetActuel: number): number {
-  const margePlafond = getCETMargeDisponible(cetActuel);
-  return Math.min(margePlafond, CET_APPORT_ANNUEL_MAX);
+  if (cetActuel >= CET_PLAFOND) return 0;
+  const conservable = Math.min(
+    CET_PLAFOND,
+    Math.max(CET_SEUIL_OPTION, cetActuel) + CET_PROGRESSION_ANNUELLE_MAX
+  );
+  return Math.max(0, conservable - cetActuel);
 }
 
 // ============================================

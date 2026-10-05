@@ -9,12 +9,13 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
   cet: {
     title: 'Compte Épargne Temps (CET)',
     bullets: [
-      'Plafond légal : 60 jours au total.',
-      'Apport annuel maximum : 15 jours.',
-      'Sources : RTC (max 10j/an), CA classiques (max 5j/an), CA Hors Période (max 2j/an), Heures Sup (max 5j).',
-      'Les jours épargnés sont conservés indéfiniment.',
+      'Versement en janvier, au titre de l\'année écoulée.',
+      'Sources : tous les RTC restants (8h21 le jour), CA (max 5j, si 15 CA pris dans l\'année), CA Hors Période (max 2j), Heures Sup (max 5j).',
+      'Le CET garde jusqu\'à 15 jours, puis 10 jours de plus par an au maximum, dans la limite de 60 jours.',
+      'Au-delà, les jours versés sont indemnisés (A 150 €, B 100 €, C 83 € brut par jour) ou versés à la RAFP — d\'office sans choix de votre part.',
+      'CET au-delà de 60 jours (relèvements COVID/JOP, jusqu\'à 80) : jours conservés, mais compte gelé.',
     ],
-    tip: 'Astuce RTC : convertir 83h30 de RTC en 10j CET coûte 8h21/jour au lieu de 12h08 → gain de 3h47 par jour converti.',
+    tip: 'Conseil : versez 10 jours de RTC (83h30). Un jour de RTC ne coûte que 8h21 au lieu d\'une journée entière, et vous ne perdez aucune heure en indemnisation.',
   },
   ca: {
     title: 'Congés Annuels (CA)',
@@ -50,9 +51,10 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     title: 'Récupération Temps de Cycle (RTC)',
     bullets: [
       'RTC brut annuel : 285h13 (soit 273h05 net après déduction de la Journée de Solidarité de 12h08).',
-      '83h30 doivent être réservés pour alimenter le CET (= 10 jours).',
+      'Conseil : gardez 83h30 (10 jours à 8h21) pour alimenter le CET en janvier.',
       'Le reste (RTC libres) peut être posé comme congé.',
-      'Les RTC non utilisés sont perdus au 31 décembre.',
+      'Tous les RTC restants peuvent être versés au CET, mais au-delà de ce que le CET peut garder, ils sont indemnisés ou versés à la RAFP.',
+      'Les RTC ni posés ni versés au CET sont perdus au 31 décembre.',
     ],
     tip: 'La Journée de Solidarité déduit 12h08 de vos RTC. Cochez l\'option si elle s\'applique à votre cycle.',
   },

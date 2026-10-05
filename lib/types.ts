@@ -183,6 +183,8 @@ export interface DetailEpargneCET {
   caHP: number;
   ca: number;
   hs: number;
+  /** Jours versés mais sortis aussitôt du CET (indemnisés ou RAFP). */
+  indemnises?: number;
 }
 
 export type EventCategory = 'rdv' | 'formation' | 'audience' | 'perso' | 'autre';

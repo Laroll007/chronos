@@ -12,14 +12,13 @@
 //    (cf. `counters.caReservesCET`) mais ne se fait pas.
 
 import { Counters, CycleConfig, HistoryEntry, CounterType, CETProjection, UserData } from './types';
-import { getCATotalForCycle, getRTCLibres } from './calculations';
+import { getCATotalForCycle, getCETApportMaxAnnee } from './calculations';
 import {
   CET_PLAFOND,
-  CET_APPORT_ANNUEL_MAX,
+  CA_HP_BONUS,
   CA_MAX_VERS_CET,
   HS_MAX_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
-  RTC_MAX_JOURS_CET,
   RTC_COUT_PAR_JOUR_CET,
   RTC_GAIN_PAR_JOUR,
   HEURES_PAR_JOUR,
@@ -144,48 +143,60 @@ export interface ApportCET {
   total: number;
 }
 
+export interface RepartitionCET {
+  /** Jours que le CET peut conserver sans indemnisation (cf. getCETApportMaxAnnee). */
+  capacite: number;
+  /** Versement conseillé : remplit la capacité, dans l'ordre le plus avantageux. */
+  apport: ApportCET;
+  /** Tout ce qui peut être versé (limites par source du guide). */
+  maximum: ApportCET;
+  /** Jours du maximum qui ne pourraient pas rester sur le CET : indemnisés ou RAFP. */
+  indemnises: number;
+}
+
+const total = (a: Omit<ApportCET, 'total'>): ApportCET => ({ ...a, total: a.rtc + a.caHP + a.ca + a.hs });
+
 /**
- * Répartit les places disponibles au CET entre les sources éligibles.
+ * Répartit l'épargne CET entre les sources éligibles.
  *
- * ⚠️ Source de vérité UNIQUE. Cette logique existait en deux exemplaires — un
- * dans la Projection du Profil, un dans le bilan de fin d'année — et les deux
- * divergeaient : seul le second respectait les CA que l'agent avait sécurisés.
- * Les deux écrans annonçaient donc des répartitions différentes pour les mêmes
- * données.
+ * ⚠️ Source de vérité UNIQUE (Projection, bilan de fin d'année, « Mon épargne CET »).
  *
- * Ordre : l'intention explicite de l'agent d'abord (CA sécurisés), puis l'ordre
- * avantageux — RTC (8h21 payés pour 12h08 de valeur), CA HP, CA restants, HS.
+ * Limites par source (guide APORTT) : tous les RTC restants (8h21 le jour),
+ * 5 CA, 2 CA HP, 5 jours d'HS. Il n'y a pas de plafond annuel au versement :
+ * la limite des 10 jours porte sur ce que le CET CONSERVE au-delà de 15 jours
+ * (`capacite`). Le surplus d'un versement maximal est indemnisé ou versé à la RAFP.
+ *
+ * Le versement conseillé remplit la capacité dans l'ordre : l'intention
+ * explicite de l'agent (CA sécurisés), puis RTC (8h21 payés pour une journée
+ * entière), CA HP, CA restants, HS.
  */
-export function repartirApportCET(counters: Counters): { capacite: number; apport: ApportCET } {
-  const capacite = Math.max(0, Math.min(CET_PLAFOND - counters.cet, CET_APPORT_ANNUEL_MAX));
-  const apport: ApportCET = { rtc: 0, caHP: 0, ca: 0, hs: 0, total: 0 };
+export function repartirApportCET(counters: Counters): RepartitionCET {
+  const vide = total({ rtc: 0, caHP: 0, ca: 0, hs: 0 });
+  // Au-delà de 60 jours (relèvement COVID/JOP), le CET est gelé : aucun versement.
+  if (counters.cet > CET_PLAFOND) return { capacite: 0, apport: vide, maximum: vide, indemnises: 0 };
+
+  const maximum = total({
+    rtc: Math.floor(Math.max(0, counters.rtc) / RTC_COUT_PAR_JOUR_CET),
+    caHP: Math.min(CA_HP_BONUS, Math.max(0, counters.caHP)),
+    ca: Math.min(CA_MAX_VERS_CET, Math.max(0, counters.ca)),
+    hs: Math.min(HS_MAX_VERS_CET, Math.floor(Math.max(0, counters.hs) / HS_COUT_PAR_JOUR_CET)),
+  });
+
+  const capacite = getCETApportMaxAnnee(counters.cet);
   let reste = capacite;
+  const prendre = (dispo: number) => {
+    const n = Math.max(0, Math.min(dispo, reste));
+    reste -= n;
+    return n;
+  };
+  const caSecurises = prendre(Math.min(Math.max(0, counters.caReservesCET ?? 0), maximum.ca));
+  const rtc = prendre(maximum.rtc);
+  const caHP = prendre(maximum.caHP);
+  const ca = caSecurises + prendre(maximum.ca - caSecurises);
+  const hs = prendre(maximum.hs);
+  const apport = total({ rtc, caHP, ca, hs });
 
-  const reserve = Math.max(0, counters.caReservesCET ?? 0);
-  apport.ca = Math.min(reserve, CA_MAX_VERS_CET, counters.ca, reste);
-  reste -= apport.ca;
-
-  if (reste > 0) {
-    apport.rtc = Math.min(RTC_MAX_JOURS_CET, Math.floor(counters.rtc / RTC_COUT_PAR_JOUR_CET), reste);
-    reste -= apport.rtc;
-  }
-  if (reste > 0) {
-    apport.caHP = Math.min(counters.caHP, reste);
-    reste -= apport.caHP;
-  }
-  if (reste > 0) {
-    const encoreCA = Math.max(0, CA_MAX_VERS_CET - apport.ca);
-    const supplement = Math.min(encoreCA, counters.ca - apport.ca, reste);
-    apport.ca += supplement;
-    reste -= supplement;
-  }
-  if (reste > 0) {
-    apport.hs = Math.min(HS_MAX_VERS_CET, Math.floor(counters.hs / HS_COUT_PAR_JOUR_CET), reste);
-    reste -= apport.hs;
-  }
-
-  apport.total = apport.rtc + apport.caHP + apport.ca + apport.hs;
-  return { capacite, apport };
+  return { capacite, apport, maximum, indemnises: Math.max(0, maximum.total - capacite) };
 }
 
 /** Projection CET affichée dans le Profil, bâtie sur la répartition commune. */
@@ -193,9 +204,9 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
   const { capacite, apport } = repartirApportCET(counters);
   const gainNetRTC = apport.rtc * RTC_GAIN_PAR_JOUR;
 
-  const caExcedentaires = Math.max(0, counters.ca - CA_MAX_VERS_CET - apport.ca);
-  const rtcLibresRestants = Math.max(0, getRTCLibres(counters.rtc) - apport.rtc * RTC_COUT_PAR_JOUR_CET);
-  const rtcJoursPerdus = Math.floor(rtcLibresRestants / HEURES_PAR_JOUR);
+  // Perdus au 31/12 s'ils ne sont ni posés ni versés : les CA au-delà des 5
+  // versables. Les RTC peuvent tous partir au CET (au pire indemnisés).
+  const caExcedentaires = Math.max(0, counters.ca - CA_MAX_VERS_CET);
 
   return {
     apportCET: { rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs },
@@ -203,7 +214,7 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
     cetFinal: counters.cet + apport.total,
     gainNetRTC,
     joursEconomises: Math.floor(gainNetRTC / HEURES_PAR_JOUR),
-    joursPerdus: caExcedentaires + rtcJoursPerdus,
+    joursPerdus: caExcedentaires,
     isOptimal: apport.total >= capacite,
   };
 }
@@ -224,9 +235,15 @@ export interface PlanEpargneCET {
   anneeConges: number;
   /** Année du versement (janvier). */
   anneeVersement: number;
+  /** Jours que le CET peut conserver (au-delà : indemnisation ou RAFP). */
   capacite: number;
+  /** Versement conseillé, sans indemnisation. */
   apport: ApportCET;
-  /** Coût en minutes des jours de RTC / HS versés (8h21 le jour). */
+  /** Versement maximal (limites par source). */
+  maximum: ApportCET;
+  /** Jours du versement maximal indemnisés ou versés à la RAFP. */
+  indemnises: number;
+  /** Coût en minutes des jours de RTC / HS versés (8h21 le jour), versement conseillé. */
   rtcMinutes: number;
   hsMinutes: number;
   /** Seuil de congés pris requis pour verser des CA (et CA HP). */
@@ -254,13 +271,15 @@ export function planEpargneCET(data: UserData, date: Date = new Date()): PlanEpa
       caHP: caOk ? counters.caHPAnterieur : 0,
       caReservesCET: caOk ? reliquat?.caReserves ?? 0 : 0,
     };
-    const { capacite, apport } = repartirApportCET(sources);
+    const { capacite, apport, maximum, indemnises } = repartirApportCET(sources);
     return {
       mode: 'janvier',
       anneeConges,
       anneeVersement: date.getFullYear(),
       capacite,
       apport,
+      maximum,
+      indemnises,
       rtcMinutes: apport.rtc * RTC_COUT_PAR_JOUR_CET,
       hsMinutes: apport.hs * HS_COUT_PAR_JOUR_CET,
       conditionCA: { ok: caOk, poses, seuil },
@@ -270,13 +289,15 @@ export function planEpargneCET(data: UserData, date: Date = new Date()): PlanEpa
 
   const anneeConges = date.getFullYear();
   const poses = countCAPosesAnnee(history, anneeConges);
-  const { capacite, apport } = repartirApportCET(counters);
+  const { capacite, apport, maximum, indemnises } = repartirApportCET(counters);
   return {
     mode: 'estimation',
     anneeConges,
     anneeVersement: anneeConges + 1,
     capacite,
     apport,
+    maximum,
+    indemnises,
     rtcMinutes: apport.rtc * RTC_COUT_PAR_JOUR_CET,
     hsMinutes: apport.hs * HS_COUT_PAR_JOUR_CET,
     conditionCA: { ok: poses >= seuil, poses, seuil },

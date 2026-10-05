@@ -55,10 +55,13 @@ export const RTC_COUT_PAR_JOUR_CET = 8 * 60 + 21; // 8h21 = 501 minutes pour 1 j
 export const RTC_VALEUR_REELLE_JOUR = HEURES_PAR_JOUR; // 12h08 = 728 minutes
 export const RTC_GAIN_PAR_JOUR = RTC_VALEUR_REELLE_JOUR - RTC_COUT_PAR_JOUR_CET; // 3h47 = 227 minutes
 
-// RTC réservés pour CET
-export const RTC_MAX_JOURS_CET = 10; // jours max vers CET
-export const RTC_RESERVES_CET = RTC_COUT_PAR_JOUR_CET * RTC_MAX_JOURS_CET; // 83h30 = 5010 minutes
-export const RTC_GAIN_ANNUEL_TOTAL = RTC_GAIN_PAR_JOUR * RTC_MAX_JOURS_CET; // 37h50 = 2270 minutes
+// RTC conseillés pour le CET. Ce n'est PAS un plafond : tous les RTC restants
+// peuvent être versés (8h21 le jour). Mais une fois le CET au-delà de 15 jours,
+// il ne progresse que de 10 jours par an, et le surplus est indemnisé (ou versé
+// à la RAFP) : on conseille donc d'en garder 10 jours (83h30), sans les poser.
+export const RTC_JOURS_CET_CONSEILLES = 10;
+export const RTC_RESERVES_CET = RTC_COUT_PAR_JOUR_CET * RTC_JOURS_CET_CONSEILLES; // 83h30 = 5010 minutes
+export const RTC_GAIN_ANNUEL_TOTAL = RTC_GAIN_PAR_JOUR * RTC_JOURS_CET_CONSEILLES; // 37h50 = 2270 minutes
 
 // RTC libres (après réserve CET)
 export const RTC_LIBRES = RTC_TOTAL_ANNUEL - RTC_RESERVES_CET; // 103h39 = 6219 minutes
@@ -117,18 +120,25 @@ export const HS_HISTORIQUE_TAUX_HORAIRE = 13.25; // €/h brut (indemnisation ca
 // CET - COMPTE ÉPARGNE TEMPS
 // ============================================
 export const CET_PLAFOND = 60; // jours max
-// Jours maximum épargnables sur le CET par an.
-// ⚠️ Le guide APORTT (« Gestion du temps de travail ») ne fixe pas de plafond
-// annuel global : il liste des limites par source (5 CA + 1-2 HP, 5 j de HS,
-// « tout ou partie » des ARTT/RTC). Les « 10 jours/an » qu'il mentionne visent
-// le droit d'option — ce qu'on peut CONSERVER au-delà du seuil de 15 jours.
-// Valeur retenue sur décision de l'utilisateur, qui applique la pratique de son
-// service. Voir aussi CET_SEUIL_OPTION.
-export const CET_APPORT_ANNUEL_MAX = 10;
+// Relèvements exceptionnels (COVID, JOP 2024) : jusqu'à 80 jours. Au-delà de
+// 60, le CET est gelé (plus d'alimentation) mais les jours sont conservés.
+export const CET_PLAFOND_DEROGATOIRE = 80;
+
+// Guide APORTT (« Gestion du temps de travail ») : il n'y a PAS de plafond
+// annuel au versement — des limites par source seulement (5 CA + 1-2 HP, 5 j
+// de HS, tous les RTC). La limite des 10 jours porte sur ce que le CET peut
+// CONSERVER : au-delà de 15 jours, il ne progresse que de 10 jours par an
+// (60 au total). Le reste relève du droit d'option : indemnisation ou RAFP.
+export const CET_PROGRESSION_ANNUELLE_MAX = 10;
 
 // Seuil du droit d'option : en dessous, les jours du CET ne sont utilisables
-// qu'en congés. Au-delà, choix annuel entre maintien, indemnisation ou RAFP.
+// qu'en congés. Au-delà, choix annuel entre maintien, indemnisation ou RAFP
+// (RAFP d'office pour un titulaire qui ne choisit pas).
 export const CET_SEUIL_OPTION = 15; // jours
+
+// Indemnisation d'un jour de CET, en euros bruts, selon la catégorie.
+export const CET_INDEMNISATION_JOUR = { A: 150, B: 100, C: 83 } as const;
+export type CategorieAgent = keyof typeof CET_INDEMNISATION_JOUR;
 
 // ============================================
 // DATES IMPORTANTES
@@ -164,7 +174,7 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   rtc: {
     name: 'RTC',
-    description: '83h30 à réserver pour CET. Perdus au 31/12.',
+    description: '83h30 conseillés pour le CET. Perdus au 31/12 s\'ils ne sont ni posés ni versés.',
     unit: 'heures',
   },
   rtcReserves: {

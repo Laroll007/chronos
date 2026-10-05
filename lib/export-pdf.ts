@@ -6,7 +6,7 @@ import { calculateOptimalCETStrategy } from './cet';
 import {
   CA_MAX_VERS_CET,
   RTC_RESERVES_CET,
-  RTC_MAX_JOURS_CET,
+  RTC_JOURS_CET_CONSEILLES,
   CF_TOTAL_ANNUEL,
   CET_PLAFOND,
 } from './constants';
@@ -378,7 +378,7 @@ export function generateCETReportHTML(data: PDFReportData): string {
   <div class="section">
     <div class="section-title">Apports vers CET</div>
     <div class="row">
-      <span class="label">RTC (10j max)</span>
+      <span class="label">RTC (8h21/jour)</span>
       <span class="value">${cetProjection.apportCET.rtc} jours</span>
     </div>
     <div class="row">
