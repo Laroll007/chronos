@@ -73,7 +73,7 @@ export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndB
         />
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-semibold ${urgent ? 'text-rose-800' : 'text-amber-800'}`}>
-            {bilan.joursASolder} journée{bilan.joursASolder > 1 ? 's' : ''} à poser avant le 31 décembre
+            {bilan.joursASolder.toLocaleString('fr-FR')} journée{bilan.joursASolder >= 2 ? 's' : ''} à poser avant le 31 décembre
           </div>
           <div className={`text-xs mt-0.5 ${urgent ? 'text-rose-700' : 'text-amber-700'}`}>
             {formatYearEndSummary(bilan)}

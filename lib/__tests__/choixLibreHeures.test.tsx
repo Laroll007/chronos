@@ -70,3 +70,33 @@ describe('Choix libre en heures', () => {
     expect(valider().disabled).toBe(true);
   });
 });
+
+describe('Jour déjà entamé par une pose à l’heure', () => {
+  it('seuls les compteurs horaires complètent les heures restantes, pas de journée entière de CA', async () => {
+    const onApply = vi.fn((c: Combination) => { void c; return true; });
+    render(
+      <OptimizationModal
+        isOpen
+        onClose={vi.fn()}
+        startDate={new Date(2026, 9, 6)}
+        endDate={new Date(2026, 9, 6)}
+        workingDaysCount={1}
+        workingMinutesCount={NUIT - h(4)}
+        dureesJours={[NUIT - h(4)]}
+        minutesDejaPosees={h(4)}
+        jourMinutes={NUIT}
+        counters={{ ...DEFAULT_COUNTERS, ca: 10, cf: 0, hasCF: false, rtc: h(20), rps: 0, hs: 0 }}
+        onApply={onApply}
+      />
+    );
+    expect(screen.getByText(/4h00 déjà posées sur ce jour/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Choix libre'));
+    const options = [...(screen.getAllByRole('combobox')[0] as HTMLSelectElement).options].map((o) => o.value);
+    expect(options).not.toContain('ca');
+    expect(options).toContain('rtc');
+    // RTC pré-rempli avec ce qui reste (8h08)
+    expect((screen.getAllByLabelText('heures')[0] as HTMLInputElement).value).toBe('8');
+    fireEvent.click(valider());
+    expect(onApply.mock.calls[0]![0].repartition).toEqual([{ type: 'rtc', amount: h(8, 8), debut: 0, fin: 0 }]);
+  });
+});

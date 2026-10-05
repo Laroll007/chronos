@@ -58,7 +58,7 @@ describe('légende du calendrier', () => {
 
   it('ne montre que ce qui est affiché sur la période', () => {
     expect(legendFlagsForDays(days, [], [], false)).toEqual({
-      travail: true, conge: false, cmo: false, astreinte: false, heures: false, evenement: false, stage: false, horaires: false, selection: false,
+      travail: true, conge: false, cmo: false, astreinte: false, heures: false, evenement: false, stage: false, horaires: false, selection: false, ferie: false,
     });
   });
 

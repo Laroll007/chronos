@@ -33,6 +33,7 @@ import {
   RTC_BRUT_PAR_PATTERN,
   RTC_BRUT_ANNUEL,
 } from './constants';
+import { estFerie } from './feries';
 
 // ============================================
 // HELPERS DATE (sans problèmes de DST)
@@ -219,6 +220,14 @@ export function isWorkingDay(date: Date, cycleConfig: CycleConfig): boolean {
   const cached = workingDayCache.get(cacheKey);
   if (cached !== undefined) {
     return cached;
+  }
+
+  // Régime hebdomadaire : un jour férié n'est pas travaillé (guide DNPAF). Les
+  // cycles, eux, travaillent les fériés selon leur rotation (compensés en CF).
+  if (cycleConfig.type === 'hebdo' && estFerie(date)) {
+    pruneCache(workingDayCache);
+    workingDayCache.set(cacheKey, false);
+    return false;
   }
 
   const rotation = getRotation(cycleConfig);

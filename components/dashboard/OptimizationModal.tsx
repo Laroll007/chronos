@@ -33,6 +33,12 @@ interface OptimizationModalProps {
   jourMinutes?: number;
   /** Durée (minutes) de chaque jour travaillé de la période : choix libre en heures. */
   dureesJours?: number[];
+  /**
+   * Heures déjà posées « à l'heure » sur ce jour : il reste travaillé pour le
+   * reste. On ne propose alors que des compteurs horaires pour compléter (une
+   * journée entière de CA par-dessus serait décomptée deux fois).
+   */
+  minutesDejaPosees?: number;
   counters: Counters;
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
@@ -60,6 +66,7 @@ export function OptimizationModal({
   workingMinutesCount,
   jourMinutes = HEURES_PAR_JOUR,
   dureesJours,
+  minutesDejaPosees = 0,
   counters,
   onApply,
   onMarkCMO,
@@ -125,8 +132,8 @@ export function OptimizationModal({
     // solde horaire inférieur à une journée reste proposé : il se complète par
     // un autre compteur (7h de RTC + 5h08 de RPS).
     return LIBELLES.map(({ type, label }) => ({ type, label, available: Math.max(0, getRawBalance(counters, type)) }))
-      .filter((t) => t.available > 0);
-  }, [counters]);
+      .filter((t) => t.available > 0 && (minutesDejaPosees === 0 || !isDayBasedType(t.type)));
+  }, [counters, minutesDejaPosees]);
 
   const getAvailableForType = useCallback((type: CounterType): number => {
     return availableTypes.find(t => t.type === type)?.available ?? 0;
@@ -245,7 +252,7 @@ export function OptimizationModal({
 
   // PERF-009: Générer les combinaisons seulement si les données ont vraiment changé
   useEffect(() => {
-    if (!isOpen || !startDate || !endDate || workingDaysCount <= 0) {
+    if (!isOpen || !startDate || !endDate || workingDaysCount <= 0 || minutesDejaPosees > 0) {
       return;
     }
 
@@ -284,7 +291,7 @@ export function OptimizationModal({
     }, 150); // Réduit de 300ms à 150ms
 
     return () => clearTimeout(timeoutId);
-  }, [isOpen, startDate, endDate, workingDaysCount, workingMinutesCount, countersHash, counters]);
+  }, [isOpen, startDate, endDate, workingDaysCount, workingMinutesCount, countersHash, counters, minutesDejaPosees]);
 
   // PERF-009: useCallback pour stabiliser la référence
   const handleSelect = useCallback((combination: Combination) => {
@@ -295,6 +302,10 @@ export function OptimizationModal({
   // Formater la période sélectionnée
   const formattedPeriod = useMemo(() => {
     if (!startDate || !endDate) return '';
+    // Un seul jour : « mardi 13 octobre 2026 » plutôt que « 13 octobre - 13 octobre 2026 ».
+    if (startDate.toDateString() === endDate.toDateString()) {
+      return startDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
     const start = startDate.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
@@ -663,7 +674,16 @@ export function OptimizationModal({
               </div>
             )}
 
-            {isCalculating ? (
+            {minutesDejaPosees > 0 ? (
+              <div className="rounded-lg bg-teal-50 border border-teal-200 p-4 text-sm text-teal-800">
+                <p className="font-semibold">{formatMinutes(minutesDejaPosees)} déjà posées sur ce jour</p>
+                <p className="mt-1 text-teal-700">
+                  Le reste de la journée ({formatMinutes(workingMinutesCount ?? 0)}) est travaillé. Pour le poser
+                  aussi, utilisez « Choix libre » (en heures) ou « Poser quelques heures ». Pour annuler les
+                  heures déjà posées, passez par « Congés posés ».
+                </p>
+              </div>
+            ) : isCalculating ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
                 <p className="text-sm text-muted-foreground">

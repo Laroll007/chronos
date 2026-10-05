@@ -125,7 +125,7 @@ export function calculateDeadlineNotifications(
     if (bilan.actif && bilan.items.length > 0) {
       notifications.push({
         id: 'bilan-fin-annee',
-        title: `${bilan.joursASolder} journée(s) à poser avant le 31/12`,
+        title: `${bilan.joursASolder.toLocaleString("fr-FR")} journée(s) à poser avant le 31/12`,
         message: `${formatYearEndSummary(bilan)}. ${
           bilan.apportCET.total > 0
             ? `${bilan.apportCET.total}j partiront au CET et sont déjà déduits.`

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
 import { jourModifieDu } from '@/lib/journees';
+import { estFerie } from '@/lib/feries';
 import { useMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
@@ -73,9 +74,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         history,
         events,
         dateRange.selectedStart !== null,
-        joursModifies
+        joursModifies,
+        cycleConfig.type === 'hebdo'
       ),
-    [days, month, history, events, dateRange.selectedStart, joursModifies]
+    [days, month, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type]
   );
 
   // Ref pour les boutons des jours (navigation clavier)
@@ -315,6 +317,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
             const layout = eventLayout.get(toDayKey(day.date));
+            // Hebdo : un jour férié n'est pas travaillé → case grisée, mais
+            // toujours sélectionnable (rappel, astreinte, événement…).
+            const isFerie = cycleConfig.type === 'hebdo' && estFerie(day.date);
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -326,7 +331,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const statusParts: string[] = [];
             if (day.isToday) statusParts.push("aujourd'hui");
             if (day.isWorking) statusParts.push('jour travaillé');
-            else statusParts.push('jour de repos');
+            else statusParts.push(isFerie ? 'jour férié' : 'jour de repos');
             if (isPosted) statusParts.push('congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
@@ -369,7 +374,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                               ? 'bg-teal-50'
                               : day.isWorking
                                 ? 'bg-blue-100/70 hover:bg-blue-100'
-                                : 'bg-white hover:bg-slate-50'
+                                : isFerie
+                                  ? 'bg-slate-200/80 hover:bg-slate-200'
+                                  : 'bg-white hover:bg-slate-50'
                 )}
               >
                 <button
@@ -399,7 +406,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                                 ? 'text-teal-800 font-semibold'
                                 : day.isWorking
                                   ? 'text-blue-700 font-semibold'
-                                  : 'text-slate-400 font-medium',
+                                  : isFerie
+                                    ? 'text-slate-500 font-medium'
+                                    : 'text-slate-400 font-medium',
                   )}
                 >
                   {day.date.getDate()}

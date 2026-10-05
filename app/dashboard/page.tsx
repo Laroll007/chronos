@@ -57,7 +57,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig, PersonalEvent } from '@/lib/types';
-import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches } from '@/lib/calculations';
+import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches, getPartialMinutesOnDate } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -79,6 +79,13 @@ function rangeHasRestDay(start: Date, end: Date, cycleConfig: CycleConfig): bool
   return false;
 }
 
+/** Minutes posées « à l'heure » (pose fractionnée) entre deux dates incluses. */
+function minutesPoseesALHeure(start: Date, end: Date, history: HistoryEntry[]): number {
+  let total = 0;
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) total += getPartialMinutesOnDate(d, history);
+  return total;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [showCounters, setShowCounters] = useState(false);
@@ -92,6 +99,8 @@ export default function DashboardPage() {
     workingDays: number;
     workingMinutes: number;
     hasRestDays: boolean;
+    /** Heures déjà posées « à l'heure » sur la période (le jour reste travaillé). */
+    minutesDejaPosees?: number;
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -228,20 +237,31 @@ export default function DashboardPage() {
 
   // Durée de chaque jour travaillé de la sélection (choix libre en heures).
   const dureesSelection = useMemo(
-    () => (selectedRange && cycleConfig ? dureesJoursTravailles(selectedRange.start, selectedRange.end, cycleConfig) : []),
-    [selectedRange, cycleConfig]
+    () => {
+      if (!selectedRange || !cycleConfig) return [];
+      // Heures déjà posées à l'heure : déduites du jour concerné.
+      const jours: Date[] = [];
+      for (const d = new Date(selectedRange.start); d <= selectedRange.end; d.setDate(d.getDate() + 1)) {
+        if (isWorkingDay(d, cycleConfig)) jours.push(new Date(d));
+      }
+      return dureesJoursTravailles(selectedRange.start, selectedRange.end, cycleConfig).map(
+        (duree, i) => Math.max(0, duree - getPartialMinutesOnDate(jours[i], history))
+      );
+    },
+    [selectedRange, cycleConfig, history]
   );
 
   // PERF-001: useCallback pour éviter les re-renders
   const handleRangeSelected = useCallback((start: Date, end: Date, workingDays: number) => {
-    const workingMinutes = cycleConfig
+    const minutesDejaPosees = minutesPoseesALHeure(start, end, history);
+    const workingMinutes = (cycleConfig
       ? countWorkingMinutes(start, end, cycleConfig)
-      : workingDays * HEURES_PAR_JOUR;
+      : workingDays * HEURES_PAR_JOUR) - minutesDejaPosees;
     const hasRestDays = cycleConfig ? rangeHasRestDay(start, end, cycleConfig) : false;
-    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
+    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays, minutesDejaPosees });
     setShowOptimization(true);
     track('range_select');
-  }, [cycleConfig]);
+  }, [cycleConfig, history]);
 
   // Modifier un congé posé : supprime + rouvre le modal avec la même plage
   const handleEditLeave = useCallback((entry: HistoryEntry) => {
@@ -619,6 +639,7 @@ export default function DashboardPage() {
             workingDaysCount={selectedRange?.workingDays || 0}
             workingMinutesCount={selectedRange?.workingMinutes}
             dureesJours={dureesSelection}
+            minutesDejaPosees={selectedRange?.minutesDejaPosees ?? 0}
             // Durée MOYENNE réelle d'un jour de la période sélectionnée, et non
             // `heuresParJour` (valeur représentative = le lundi). En régime hebdo
             // 39h25, le forfait faisait consommer 40h00 pour 5 jours au « Choix

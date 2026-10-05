@@ -4,6 +4,7 @@ import type { HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
 import { jourModifieDu } from '@/lib/journees';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { eventsOnDate } from '@/lib/events';
+import { estFerie } from '@/lib/feries';
 import { cn } from '@/lib/utils';
 
 export interface LegendFlags {
@@ -16,6 +17,7 @@ export interface LegendFlags {
   stage: boolean;
   horaires: boolean;
   selection: boolean;
+  ferie: boolean;
 }
 
 /**
@@ -29,14 +31,17 @@ export function legendFlagsForDays(
   history: HistoryEntry[],
   events: PersonalEvent[] | undefined,
   hasSelection: boolean,
-  joursModifies?: JourModifie[]
+  joursModifies?: JourModifie[],
+  /** Régime hebdomadaire : les jours fériés (non travaillés) sont grisés. */
+  hebdo = false
 ): LegendFlags {
   const flags: LegendFlags = {
     travail: false, conge: false, cmo: false, astreinte: false, heures: false,
-    evenement: false, stage: false, horaires: false, selection: hasSelection,
+    evenement: false, stage: false, horaires: false, selection: hasSelection, ferie: false,
   };
   for (const { date, isWorking } of days) {
     if (isWorking) flags.travail = true;
+    if (hebdo && estFerie(date)) flags.ferie = true;
     if (hasPostedLeaveOnDate(date, history)) flags.conge = true;
     else if (hasCMOOnDate(date, history)) flags.cmo = true;
     else if (hasAstreinteOnDate(date, history)) flags.astreinte = true;
@@ -55,6 +60,7 @@ const ITEMS: { key: keyof LegendFlags; label: string; swatch: string }[] = [
   { key: 'cmo', label: 'CMO', swatch: 'bg-violet-200 border border-violet-400' },
   { key: 'astreinte', label: 'Astreinte', swatch: 'bg-amber-200 border border-amber-400' },
   { key: 'heures', label: 'Heures', swatch: 'bg-teal-100 border border-teal-400' },
+  { key: 'ferie', label: 'Férié', swatch: 'bg-slate-300 border border-slate-400' },
   // Pas d'entrée « Événement » : chaque barre porte son titre et sa couleur.
   { key: 'stage', label: 'Stage', swatch: 'bg-indigo-600' },
   { key: 'horaires', label: 'Horaires modifiés', swatch: 'bg-sky-500' },

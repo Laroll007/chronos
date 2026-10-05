@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
 import { jourModifieDu } from '@/lib/journees';
+import { estFerie } from '@/lib/feries';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -75,8 +76,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
   }, [currentWeekStart, cycleConfig, today]);
 
   const legendFlags = useMemo(
-    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies),
-    [weekDays, history, events, dateRange.selectedStart, joursModifies]
+    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies, cycleConfig.type === 'hebdo'),
+    [weekDays, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type]
   );
 
   const goToPrevWeek = () => {
@@ -256,6 +257,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const statusParts: string[] = [];
             if (day.isToday) statusParts.push("aujourd'hui");
             if (day.isWorking) statusParts.push('jour travaillé');
+            else if (cycleConfig.type === 'hebdo' && estFerie(day.date)) statusParts.push('jour férié');
             else statusParts.push('jour de repos');
             if (isPosted) statusParts.push('congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
@@ -311,7 +313,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     // État par défaut (non sélectionné)
                     !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && {
                       'bg-blue-50 border border-blue-100': day.isWorking,
-                      'bg-slate-50 border border-slate-100': !day.isWorking,
+                      'bg-slate-200 border border-slate-300': !day.isWorking && cycleConfig.type === 'hebdo' && estFerie(day.date),
+                      'bg-slate-50 border border-slate-100': !day.isWorking && !(cycleConfig.type === 'hebdo' && estFerie(day.date)),
                     },
                     // Aujourd'hui (non sélectionné)
                     day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
