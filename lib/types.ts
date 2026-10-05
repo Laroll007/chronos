@@ -307,6 +307,12 @@ export interface Combination {
     after: number; // valeur après (minutes ou jours)
   }[];
   isValid: boolean;
+  /**
+   * Choix libre en heures : placement exact de chaque compteur sur les jours
+   * travaillés de la période (indices), plusieurs compteurs pouvant se partager
+   * un jour. `amount` en jours (CA…) ou en minutes (compteurs horaires).
+   */
+  repartition?: { type: CounterType; amount: number; debut: number; fin: number }[];
 }
 
 // ============================================

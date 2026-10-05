@@ -31,6 +31,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         action: { label: 'Modifier mon cycle', target: 'cycle' },
       },
       {
+        emoji: '⏳',
+        title: 'Une journée sur plusieurs compteurs',
+        text: 'Dans « Choix libre », les RTC, RPS, HS et CF se posent en heures : une nuit en 7h35 de RTC et 4h33 de RPS, ou 7h de RTC complétées par du RPS.',
+      },
+      {
         emoji: '💰',
         title: 'Épargne CET : les vraies règles',
         text: 'Tous vos RTC restants peuvent aller au CET. Au-delà de 15 jours, le CET ne garde que 10 jours de plus par an : l’app vous conseille le bon versement et estime l’indemnisation du surplus.',

@@ -336,6 +336,18 @@ export function getJourMinutes(date: Date, cycleConfig: CycleConfig): number {
  * Utilisé pour dimensionner la pose des compteurs horaires (CF/RTC/RPS/HS) selon
  * la durée réelle des jours (et non un forfait 12h08), notamment en cycle hebdo.
  */
+/** Durée (minutes) de chaque jour travaillé de la période, dans l'ordre. */
+export function dureesJoursTravailles(startDate: Date, endDate: Date, cycleConfig: CycleConfig): number[] {
+  const durees: number[] = [];
+  const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  while (current <= end) {
+    if (isWorkingDay(current, cycleConfig)) durees.push(getJourMinutes(current, cycleConfig));
+    current.setDate(current.getDate() + 1);
+  }
+  return durees;
+}
+
 export function countWorkingMinutes(
   startDate: Date,
   endDate: Date,

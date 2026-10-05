@@ -57,7 +57,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig, PersonalEvent } from '@/lib/types';
-import { countWorkingDays, countWorkingMinutes, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches } from '@/lib/calculations';
+import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -225,6 +225,12 @@ export default function DashboardPage() {
       onDismiss: () => confirmerBasculeAnnuelle(),
     });
   }, [isLoading, basculeAnnuelleAConfirmer, confirmerBasculeAnnuelle]);
+
+  // Durée de chaque jour travaillé de la sélection (choix libre en heures).
+  const dureesSelection = useMemo(
+    () => (selectedRange && cycleConfig ? dureesJoursTravailles(selectedRange.start, selectedRange.end, cycleConfig) : []),
+    [selectedRange, cycleConfig]
+  );
 
   // PERF-001: useCallback pour éviter les re-renders
   const handleRangeSelected = useCallback((start: Date, end: Date, workingDays: number) => {
@@ -428,7 +434,22 @@ export default function DashboardPage() {
       const jourMin = cycleConfig.heuresParJour || HEURES_PAR_JOUR;
       const items = combination.items;
 
-      for (let idx = 0; idx < items.length; idx++) {
+      // Choix libre en heures : chaque compteur à sa place exacte, deux
+      // compteurs pouvant se partager une même journée.
+      if (combination.repartition) {
+        for (const t of combination.repartition) {
+          const debut = workingDates[t.debut] ?? selectedRange.start;
+          const fin = workingDates[t.fin] ?? debut;
+          const result = poseConge(t.type, t.amount, debut, fin, undefined, groupId);
+          if (!result.success) {
+            failed.push(`${t.type.toUpperCase()} : ${result.error ?? 'échec'}`);
+            break;
+          }
+          if (result.entryId) posedIds.push(result.entryId);
+        }
+      }
+
+      for (let idx = 0; idx < (combination.repartition ? 0 : items.length); idx++) {
         const item = items[idx];
         // L'unité dépend du TYPE de compteur, pas de la présence de amountMinutes
         // (les types en jours — CA, CET… — ont aussi un amountMinutes égal à leur nb de jours).
@@ -597,6 +618,7 @@ export default function DashboardPage() {
             endDate={selectedRange?.end || null}
             workingDaysCount={selectedRange?.workingDays || 0}
             workingMinutesCount={selectedRange?.workingMinutes}
+            dureesJours={dureesSelection}
             // Durée MOYENNE réelle d'un jour de la période sélectionnée, et non
             // `heuresParJour` (valeur représentative = le lundi). En régime hebdo
             // 39h25, le forfait faisait consommer 40h00 pour 5 jours au « Choix

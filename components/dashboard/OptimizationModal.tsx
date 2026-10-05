@@ -7,6 +7,7 @@ import { Counters, Combination, CounterType, PersonalEvent } from '@/lib/types';
 import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, formatEventWhen } from '@/lib/events';
 import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
+import { repartirSurJours } from '@/lib/repartition';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { CombinationCard } from './CombinationCard';
 import {
@@ -30,6 +31,8 @@ interface OptimizationModalProps {
   workingMinutesCount?: number;
   // Durée représentative d'un jour du régime (minutes) : 12h08 en cycle APORTT, ~8h en hebdo.
   jourMinutes?: number;
+  /** Durée (minutes) de chaque jour travaillé de la période : choix libre en heures. */
+  dureesJours?: number[];
   counters: Counters;
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
@@ -56,6 +59,7 @@ export function OptimizationModal({
   workingDaysCount,
   workingMinutesCount,
   jourMinutes = HEURES_PAR_JOUR,
+  dureesJours,
   counters,
   onApply,
   onMarkCMO,
@@ -117,32 +121,52 @@ export function OptimizationModal({
       { type: 'cet', label: 'CET (utiliser)' },
     ];
 
-    return LIBELLES.map(({ type, label }) => {
-      const solde = getRawBalance(counters, type);
-      // Compteurs horaires : convertir en journées entières couvrables.
-      const available = isDayBasedType(type) ? solde : Math.floor(solde / jourMinutes);
-      return { type, label, available };
-    }).filter((t) => t.available > 0);
-  }, [counters, jourMinutes]);
+    // Solde dans l'unité du compteur : jours (CA…) ou minutes (RTC, RPS…). Un
+    // solde horaire inférieur à une journée reste proposé : il se complète par
+    // un autre compteur (7h de RTC + 5h08 de RPS).
+    return LIBELLES.map(({ type, label }) => ({ type, label, available: Math.max(0, getRawBalance(counters, type)) }))
+      .filter((t) => t.available > 0);
+  }, [counters]);
 
   const getAvailableForType = useCallback((type: CounterType): number => {
     return availableTypes.find(t => t.type === type)?.available ?? 0;
   }, [availableTypes]);
 
+  // Durée de chaque jour travaillé de la période (repli : durée moyenne).
+  const durees = useMemo(
+    () => dureesJours && dureesJours.length === workingDaysCount
+      ? dureesJours
+      : Array.from({ length: workingDaysCount }, () => Math.round(jourMinutes)),
+    [dureesJours, workingDaysCount, jourMinutes]
+  );
+  const totalMinutes = useMemo(() => durees.reduce((t, d) => t + d, 0), [durees]);
+
+  // Minutes encore à couvrir si l'on ignore la ligne `sauf` (pré-remplissage).
+  const resteACouvrir = useCallback((items: { type: CounterType; amount: number }[], sauf?: number) => {
+    const r = repartirSurJours(items.filter((_, i) => i !== sauf), durees);
+    return !r.ok && r.raison === 'incomplet' ? r.ecart : 0;
+  }, [durees]);
+
+  // Un compteur horaire se pré-remplit avec ce qui manque, dans la limite de son solde.
+  const prerempli = useCallback((type: CounterType, reste: number) =>
+    isDayBasedType(type) ? 0 : Math.min(getAvailableForType(type), reste),
+  [getAvailableForType]);
+
   const toggleCustom = useCallback(() => {
     if (!showCustom && customItems.length === 0 && availableTypes.length > 0) {
-      setCustomItems([{ type: availableTypes[0].type, amount: 0 }]);
+      const type = availableTypes[0].type;
+      setCustomItems([{ type, amount: prerempli(type, totalMinutes) }]);
     }
     setShowCustom(prev => !prev);
-  }, [showCustom, customItems.length, availableTypes]);
+  }, [showCustom, customItems.length, availableTypes, prerempli, totalMinutes]);
 
   const addCustomItem = useCallback(() => {
     const usedTypes = customItems.map(item => item.type);
     const nextType = availableTypes.find(t => !usedTypes.includes(t.type));
     if (nextType) {
-      setCustomItems(prev => [...prev, { type: nextType.type, amount: 0 }]);
+      setCustomItems(prev => [...prev, { type: nextType.type, amount: prerempli(nextType.type, resteACouvrir(prev)) }]);
     }
-  }, [customItems, availableTypes]);
+  }, [customItems, availableTypes, prerempli, resteACouvrir]);
 
   const removeCustomItem = useCallback((index: number) => {
     setCustomItems(prev => prev.filter((_, i) => i !== index));
@@ -151,34 +175,48 @@ export function OptimizationModal({
   const updateCustomItem = useCallback((index: number, field: 'type' | 'amount', value: string | number) => {
     setCustomItems(prev => prev.map((item, i) => {
       if (i !== index) return item;
-      if (field === 'type') return { ...item, type: value as CounterType };
-      return { ...item, amount: Number(value) || 0 };
+      if (field === 'type') {
+        const type = value as CounterType;
+        return { type, amount: prerempli(type, resteACouvrir(prev, index)) };
+      }
+      return { ...item, amount: Math.max(0, Number(value) || 0) };
     }));
-  }, []);
+  }, [prerempli, resteACouvrir]);
 
+  const repartitionLibre = useMemo(() => repartirSurJours(customItems, durees), [customItems, durees]);
+  const avecHeures = customItems.some(item => !isDayBasedType(item.type));
   const customTotal = useMemo(() =>
-    customItems.reduce((sum, item) => sum + (item.amount || 0), 0),
+    customItems.filter(item => isDayBasedType(item.type)).reduce((sum, item) => sum + (item.amount || 0), 0),
     [customItems]
   );
 
   const isCustomValid = useMemo(() => {
-    if (customItems.length === 0) return false;
-    if (customTotal !== workingDaysCount) return false;
+    if (customItems.length === 0 || !repartitionLibre.ok) return false;
     return customItems.every(item =>
       item.amount > 0 && item.amount <= getAvailableForType(item.type)
     );
-  }, [customTotal, workingDaysCount, customItems, getAvailableForType]);
+  }, [customItems, repartitionLibre, getAvailableForType]);
 
   const handleCustomApply = useCallback(() => {
-    if (!isCustomValid || !startDate) return;
+    if (!isCustomValid || !startDate || !repartitionLibre.ok) return;
+    // Le moteur de score attend des jours : un compteur horaire y entre en
+    // fraction de journée, puis ses minutes exactes sont rétablies.
     const combination = createCombination(
-      customItems.map(item => ({ type: item.type, amount: item.amount })),
+      customItems.map(item => ({
+        type: item.type,
+        amount: isDayBasedType(item.type) ? item.amount : item.amount / jourMinutes,
+      })),
       counters,
       startDate,
       jourMinutes
     );
+    combination.items = combination.items.map((it, i) =>
+      isDayBasedType(it.type) ? it : { ...it, amountMinutes: customItems[i].amount }
+    );
+    combination.totalDays = workingDaysCount;
+    combination.repartition = repartitionLibre.tranches;
     if (onApply(combination) !== false) onClose();
-  }, [startDate, isCustomValid, customItems, counters, onApply, onClose, jourMinutes]);
+  }, [startDate, isCustomValid, repartitionLibre, customItems, counters, onApply, onClose, jourMinutes, workingDaysCount]);
 
   // PERF-009: Ref pour tracker si on doit recalculer
   const lastCalculationRef = useRef<{
@@ -356,19 +394,53 @@ export function OptimizationModal({
                           >
                             {selectableTypes.map(t => (
                               <option key={t.type} value={t.type}>
-                                {t.label} ({t.available}j)
+                                {t.label} ({isDayBasedType(t.type) ? `${t.available}j` : formatMinutes(t.available)})
                               </option>
                             ))}
                           </select>
-                          <input
-                            type="number"
-                            min={1}
-                            max={getAvailableForType(item.type)}
-                            value={item.amount || ''}
-                            onChange={(e) => updateCustomItem(index, 'amount', e.target.value)}
-                            className="w-16 sm:w-24 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="j"
-                          />
+                          {isDayBasedType(item.type) ? (
+                            <span className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={1}
+                                max={getAvailableForType(item.type)}
+                                value={item.amount || ''}
+                                onChange={(e) => updateCustomItem(index, 'amount', e.target.value)}
+                                className="w-14 sm:w-16 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="0"
+                                aria-label="jours"
+                              />
+                              <span className="text-slate-400 text-sm">j</span>
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={Math.floor(item.amount / 60) || ''}
+                                onChange={(e) => updateCustomItem(index, 'amount', (parseInt(e.target.value) || 0) * 60 + (item.amount % 60))}
+                                className="w-14 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="0"
+                                aria-label="heures"
+                              />
+                              <span className="text-slate-400 text-sm">h</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={59}
+                                value={item.amount % 60 || ''}
+                                onChange={(e) => updateCustomItem(index, 'amount', Math.floor(item.amount / 60) * 60 + Math.min(59, parseInt(e.target.value) || 0))}
+                                className="w-14 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="0"
+                                aria-label="minutes"
+                              />
+                            </span>
+                          )}
+                          {item.amount > getAvailableForType(item.type) && (
+                            <p className="basis-full text-xs text-rose-500">
+                              Solde insuffisant ({isDayBasedType(item.type) ? `${getAvailableForType(item.type)}j` : formatMinutes(getAvailableForType(item.type))})
+                            </p>
+                          )}
                           {customItems.length > 1 && (
                             <button
                               onClick={() => removeCustomItem(index)}
@@ -393,21 +465,38 @@ export function OptimizationModal({
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                       <div>
-                        <span className={`text-sm font-medium ${
-                          customTotal === workingDaysCount
-                            ? 'text-emerald-600'
-                            : customTotal > workingDaysCount
-                              ? 'text-rose-600'
-                              : 'text-slate-600'
-                        }`}>
-                          Total : {customTotal} / {workingDaysCount} jour{workingDaysCount > 1 ? 's' : ''}
-                        </span>
-                        {customTotal > 0 && customTotal !== workingDaysCount && (
+                        {avecHeures ? (
+                          <span className={`text-sm font-medium ${
+                            repartitionLibre.ok ? 'text-emerald-600' : 'text-slate-600'
+                          }`}>
+                            Total : {formatMinutes(repartitionLibre.ok ? totalMinutes : totalMinutes - repartitionLibre.ecart)} / {formatMinutes(totalMinutes)}
+                          </span>
+                        ) : (
+                          <span className={`text-sm font-medium ${
+                            customTotal === workingDaysCount
+                              ? 'text-emerald-600'
+                              : customTotal > workingDaysCount
+                                ? 'text-rose-600'
+                                : 'text-slate-600'
+                          }`}>
+                            Total : {customTotal} / {workingDaysCount} jour{workingDaysCount > 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {!repartitionLibre.ok && customItems.some(item => item.amount > 0) && (
                           <p className="text-xs text-rose-500 mt-1">
-                            {customTotal < workingDaysCount
-                              ? `Il manque ${workingDaysCount - customTotal} jour(s)`
-                              : `${customTotal - workingDaysCount} jour(s) en trop`}
+                            {repartitionLibre.raison === 'jours'
+                              ? 'Plus de jours que dans la période'
+                              : avecHeures
+                                ? repartitionLibre.raison === 'incomplet'
+                                  ? `Il manque ${formatMinutes(repartitionLibre.ecart)}`
+                                  : `${formatMinutes(-repartitionLibre.ecart)} en trop`
+                                : customTotal < workingDaysCount
+                                  ? `Il manque ${workingDaysCount - customTotal} jour(s)`
+                                  : `${customTotal - workingDaysCount} jour(s) en trop`}
                           </p>
+                        )}
+                        {avecHeures && (
+                          <p className="text-xs text-slate-500 mt-1">Les heures peuvent se partager une même journée (ex. 7h RTC + 5h08 RPS).</p>
                         )}
                       </div>
                       <button
