@@ -7,7 +7,7 @@ import {
   CF_PAR_SEMESTRE,
   CET_PLAFOND,
 } from './constants';
-import { formatMinutes, getCETApportMaxAnnee, getDaysUntil, getRTCLibres } from './calculations';
+import { formatMinutes, getCETApportMaxAnnee, getDaysUntil, getRTCLibres, reserveRTC } from './calculations';
 import { calculateYearEndBalance, formatYearEndSummary } from './yearEnd';
 
 // ============================================
@@ -162,7 +162,7 @@ export function calculateDeadlineNotifications(
   }
 
   // 2. Deadline RTC libres - 31 décembre
-  const rtcLibres = getRTCLibres(counters.rtc);
+  const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
 
   if (counters.hasRTC !== false && daysUntilCA > 0 && daysUntilCA <= NOTIFICATION_THRESHOLDS.info && rtcLibres > 0) {
     notifications.push({
@@ -186,11 +186,11 @@ export function calculateDeadlineNotifications(
   const margeCET = getCETApportMaxAnnee(counters.cet);
   if (
     counters.hasRTC !== false &&
-    counters.rtc < RTC_RESERVES_CET &&
+    counters.rtc < reserveRTC(counters) &&
     daysUntilCA <= NOTIFICATION_THRESHOLDS.info &&
     margeCET > 0
   ) {
-    const rtcManquants = RTC_RESERVES_CET - counters.rtc;
+    const rtcManquants = reserveRTC(counters) - counters.rtc;
     notifications.push({
       id: 'rtc-reserves-alert',
       title: 'RTC réservés entamés !',

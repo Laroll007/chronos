@@ -157,6 +157,8 @@ function checkCounters(v: unknown): string[] {
   if (v.congesBonifies !== undefined && !isNum(v.congesBonifies as unknown, 0)) errors.push('congesBonifies: nombre >= 0 attendu');
   if (v.hsHistorique !== undefined && !isNum(v.hsHistorique as unknown, 0)) errors.push('hsHistorique: nombre >= 0 attendu');
   if (v.caReservesCET !== undefined && !isNum(v.caReservesCET as unknown, 0)) errors.push('caReservesCET: nombre >= 0 attendu');
+  if (v.rtcJoursCET !== undefined && !isNum(v.rtcJoursCET as unknown, 0)) errors.push('rtcJoursCET: nombre >= 0 attendu');
+  if (v.hsJoursCET !== undefined && !isNum(v.hsJoursCET as unknown, 0)) errors.push('hsJoursCET: nombre >= 0 attendu');
   if (v.rpsDernierCredit !== undefined && !isStr(v.rpsDernierCredit)) errors.push('rpsDernierCredit: date attendue');
   return errors;
 }

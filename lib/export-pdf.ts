@@ -1,7 +1,7 @@
 // Export PDF pour Chronos - Rapport annuel et récapitulatif CET
 
 import { Counters, CycleConfig, HistoryEntry } from './types';
-import { formatMinutes, getRTCLibres, getWeeklyMinutes } from './calculations';
+import { formatMinutes, getRTCLibres, getWeeklyMinutes, reserveRTC } from './calculations';
 import { calculateOptimalCETStrategy } from './cet';
 import {
   CA_MAX_VERS_CET,
@@ -33,7 +33,7 @@ export interface PDFReportData {
 export function generateAnnualReportHTML(data: PDFReportData): string {
   const { counters, cycleConfig, history, generatedAt, year } = data;
   const cetProjection = calculateOptimalCETStrategy(counters);
-  const rtcLibres = getRTCLibres(counters.rtc);
+  const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
 
   // Filtrer l'historique de l'année
   const yearHistory = history.filter((entry) => {
@@ -171,7 +171,7 @@ export function generateAnnualReportHTML(data: PDFReportData): string {
       <div class="card">
         <div class="card-title">RTC</div>
         <div class="card-value">${formatMinutes(counters.rtc)}</div>
-        <div class="card-detail">Libres: ${formatMinutes(rtcLibres)} | Réservés CET: ${formatMinutes(RTC_RESERVES_CET)}</div>
+        <div class="card-detail">Libres: ${formatMinutes(rtcLibres)} | Réservés CET: ${formatMinutes(reserveRTC(counters))}</div>
       </div>
       <div class="card">
         <div class="card-title">RPS</div>

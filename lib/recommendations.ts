@@ -24,6 +24,7 @@ import {
   jourLocal,
   aujourdhuiISO,
   calculateUrgencyPercent,
+  reserveRTC,
 } from './calculations';
 import { generateId } from './storage';
 
@@ -232,7 +233,7 @@ function checkRTCLibres(
 ): Recommendation[] {
   if (counters.hasRTC === false) return [];
   const recommendations: Recommendation[] = [];
-  const rtcLibres = getRTCLibres(counters.rtc);
+  const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
 
   if (rtcLibres > 0) {
     const deadline = new Date(year, 11, 31);
@@ -257,8 +258,8 @@ function checkRTCReserves(counters: Counters): Recommendation[] {
   if (counters.hasRTC === false) return [];
   const recommendations: Recommendation[] = [];
 
-  if (isRTCReservesEntames(counters.rtc)) {
-    const manque = RTC_RESERVES_CET - counters.rtc;
+  if (isRTCReservesEntames(counters.rtc, reserveRTC(counters))) {
+    const manque = reserveRTC(counters) - counters.rtc;
     recommendations.push({
       id: generateId(),
       priority: 'high',

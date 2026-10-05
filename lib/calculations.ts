@@ -32,6 +32,7 @@ import {
   CYCLES_EXCLUS_ABONDEMENT_HS,
   RTC_BRUT_PAR_PATTERN,
   RTC_BRUT_ANNUEL,
+  HS_COUT_PAR_JOUR_CET,
 } from './constants';
 import { estFerie } from './feries';
 
@@ -641,15 +642,25 @@ export function getDaysUntilSemesterDeadline(date: Date): number {
 /**
  * Calcule les RTC libres disponibles (après réserve CET)
  */
-export function getRTCLibres(rtcTotal: number): number {
-  return Math.max(0, rtcTotal - RTC_RESERVES_CET);
+/** Minutes de RTC protégées pour le CET : choix de l'agent, sinon 83h30. */
+export function reserveRTC(c: Pick<Counters, 'rtcJoursCET'>): number {
+  return c.rtcJoursCET !== undefined ? Math.max(0, c.rtcJoursCET) * RTC_COUT_PAR_JOUR_CET : RTC_RESERVES_CET;
+}
+
+/** Minutes d'HS gardées pour le CET (0 sans choix de l'agent). */
+export function reserveHS(c: Pick<Counters, 'hsJoursCET'>): number {
+  return Math.max(0, c.hsJoursCET ?? 0) * HS_COUT_PAR_JOUR_CET;
+}
+
+export function getRTCLibres(rtcTotal: number, reserve: number = RTC_RESERVES_CET): number {
+  return Math.max(0, rtcTotal - reserve);
 }
 
 /**
  * Vérifie si les RTC réservés pour CET sont entamés
  */
-export function isRTCReservesEntames(rtcTotal: number): boolean {
-  return rtcTotal < RTC_RESERVES_CET;
+export function isRTCReservesEntames(rtcTotal: number, reserve: number = RTC_RESERVES_CET): boolean {
+  return rtcTotal < reserve;
 }
 
 /**
@@ -795,7 +806,7 @@ export function simulatePose(
       newCounters.rtc -= amount;
 
       // Alerte si RTC réservés entamés
-      if (isRTCReservesEntames(newCounters.rtc)) {
+      if (isRTCReservesEntames(newCounters.rtc, reserveRTC(newCounters))) {
         alerts.push({
           id: '2',
           type: 'warning',

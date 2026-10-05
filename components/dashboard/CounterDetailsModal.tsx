@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Counters, CycleConfig, WeekHours } from '@/lib/types';
 import { RPSBaremeEditor } from './RPSBaremeEditor';
-import { formatMinutes, getDaysUntil, jourLocal } from '@/lib/calculations';
+import { formatMinutes, getDaysUntil, jourLocal, reserveRTC } from '@/lib/calculations';
 import {
   CA_TOTAL_ANNUEL,
   CA_HP_BONUS,
@@ -189,7 +189,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
 
       case 'rtcReserves':
       case 'rtc': {
-        const reserves = RTC_RESERVES_CET;
+        const reserves = reserveRTC(counters);
         const rtcLibres = Math.max(0, counters.rtc - reserves);
         const reservesIntactes = counters.rtc >= reserves;
         return (

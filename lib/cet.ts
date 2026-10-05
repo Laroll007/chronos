@@ -166,9 +166,9 @@ const total = (a: Omit<ApportCET, 'total'>): ApportCET => ({ ...a, total: a.rtc 
  * la limite des 10 jours porte sur ce que le CET CONSERVE au-delà de 15 jours
  * (`capacite`). Le surplus d'un versement maximal est indemnisé ou versé à la RAFP.
  *
- * Le versement conseillé remplit la capacité dans l'ordre : l'intention
- * explicite de l'agent (CA sécurisés), puis RTC (8h21 payés pour une journée
- * entière), CA HP, CA restants, HS.
+ * Le versement conseillé remplit la capacité dans l'ordre : CA sécurisés, RTC
+ * (8h21 payés pour une journée entière ; plafonnés au nombre choisi par
+ * l'agent s'il en a fixé un), HS gardées par l'agent, CA HP, CA restants, HS.
  */
 export function repartirApportCET(counters: Counters): RepartitionCET {
   const vide = total({ rtc: 0, caHP: 0, ca: 0, hs: 0 });
@@ -189,11 +189,16 @@ export function repartirApportCET(counters: Counters): RepartitionCET {
     reste -= n;
     return n;
   };
+  // Choix de l'agent (« je garde 9 RTC, 2 jours d'HS ») : pris en priorité,
+  // et les RTC plafonnés à son choix. Sans choix : RTC jusqu'à remplir la place.
+  const rtcChoisi = counters.rtcJoursCET;
+  const hsChoisi = Math.max(0, counters.hsJoursCET ?? 0);
   const caSecurises = prendre(Math.min(Math.max(0, counters.caReservesCET ?? 0), maximum.ca));
-  const rtc = prendre(maximum.rtc);
+  const rtc = prendre(rtcChoisi !== undefined ? Math.min(maximum.rtc, Math.max(0, rtcChoisi)) : maximum.rtc);
+  const hsSecurises = prendre(Math.min(hsChoisi, maximum.hs));
   const caHP = prendre(maximum.caHP);
   const ca = caSecurises + prendre(maximum.ca - caSecurises);
-  const hs = prendre(maximum.hs);
+  const hs = hsSecurises + prendre(maximum.hs - hsSecurises);
   const apport = total({ rtc, caHP, ca, hs });
 
   return { capacite, apport, maximum, indemnises: Math.max(0, maximum.total - capacite) };

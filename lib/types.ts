@@ -76,7 +76,12 @@ export interface Counters {
 
   // RTC - Récupération Temps de Cycle (en minutes)
   rtc: number; // total restant
-  rtcReservesCET: number; // 83h30 = 5010 min réservés pour CET
+  rtcReservesCET: number; // historique, non utilisé : voir rtcJoursCET
+  // Jours que l'agent garde de côté pour le CET (versés en janvier à 8h21).
+  // Absent = réglage automatique : 10 jours de RTC protégés, aucune HS.
+  // Choisis : protégés à la pose et repris en priorité dans le versement conseillé.
+  rtcJoursCET?: number;
+  hsJoursCET?: number;
   hasRTC?: boolean; // false = compteur désactivé (agent sans RTC) ; absent/true = actif
 
   // RTT - optionnel, pour cycles hebdo (en jours) — 16j/an

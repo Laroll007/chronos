@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AlertTriangle, CheckCircle2, PiggyBank, X } from 'lucide-react';
-import type { UserData } from '@/lib/types';
+import type { Counters, UserData } from '@/lib/types';
 import { planEpargneCET, type ApportCET } from '@/lib/cet';
 import { formatMinutes } from '@/lib/calculations';
 import {
@@ -12,7 +12,9 @@ import {
   CET_PROGRESSION_ANNUELLE_MAX,
   CET_SEUIL_OPTION,
   HS_COUT_PAR_JOUR_CET,
+  HS_MAX_VERS_CET,
   RTC_COUT_PAR_JOUR_CET,
+  RTC_JOURS_CET_CONSEILLES,
   RTC_GAIN_PAR_JOUR,
 } from '@/lib/constants';
 
@@ -21,6 +23,8 @@ interface CETPlanModalProps {
   onClose: () => void;
   /** Janvier : enregistre le versement demandé (conseillé, ou maximum avec surplus indemnisé). */
   onRecord: (avecSurplus: boolean) => { success: boolean; error?: string };
+  /** Réglage « ce que je garde pour le CET » (RTC / HS). */
+  onUpdateCounters?: (updates: Partial<Counters>) => unknown;
 }
 
 function lignesApport(apport: ApportCET, janvier: boolean) {
@@ -57,7 +61,7 @@ const jours = (n: number) => `${n} jour${n > 1 ? 's' : ''}`;
  * Deux montants : le versement conseillé (tout reste sur le CET) et le
  * versement maximal, dont le surplus est indemnisé ou versé à la RAFP.
  */
-export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps) {
+export function CETPlanModal({ userData, onClose, onRecord, onUpdateCounters }: CETPlanModalProps) {
   const plan = useMemo(() => planEpargneCET(userData), [userData]);
   const [error, setError] = useState<string | null>(null);
   // CET au plafond : seul un versement indemnisé reste possible.
@@ -142,6 +146,10 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
                     : `${regleConservation} Ces jours restent sur votre CET.`}
                 </p>
               </div>
+
+              {onUpdateCounters && (
+                <ReglageGarde counters={c} capacite={capacite} onUpdate={onUpdateCounters} />
+              )}
 
               {lignes.length > 0 && (
                 <div>
@@ -252,5 +260,75 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * « Ce que je garde pour le CET » : nombre de jours de RTC et d'HS que l'agent
+ * met de côté (9 RTC au lieu de 10, 2 ou 3 selon la place restante…). Ces
+ * heures ne sont plus proposées à la pose et passent en tête du versement.
+ */
+function ReglageGarde({
+  counters,
+  capacite,
+  onUpdate,
+}: {
+  counters: Counters;
+  capacite: number;
+  onUpdate: (updates: Partial<Counters>) => unknown;
+}) {
+  const rtcAuto = counters.rtcJoursCET === undefined;
+  const rtc = counters.rtcJoursCET ?? RTC_JOURS_CET_CONSEILLES;
+  const hs = counters.hsJoursCET ?? 0;
+  const champ = (
+    id: string,
+    label: string,
+    value: number,
+    max: number,
+    onChange: (v: number) => void,
+    detail: string
+  ) => (
+    <div className="flex items-center gap-2">
+      <label htmlFor={id} className="flex-1 text-sm text-slate-700">
+        {label}
+        <span className="block text-xs text-slate-500">{detail}</span>
+      </label>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Math.max(0, Math.min(max, parseInt(e.target.value) || 0)))}
+        className="w-16 h-10 rounded-lg border border-slate-200 bg-white px-2 text-base text-center"
+      />
+      <span className="text-sm text-slate-500">j</span>
+    </div>
+  );
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-slate-800">Ce que je garde pour le CET</p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Ces heures ne vous seront plus proposées quand vous posez des congés, et passent en premier
+          dans le versement de janvier.{capacite > 0 && ` Votre CET peut encore garder ${capacite} jour${capacite > 1 ? 's' : ''} sans indemnisation.`}
+        </p>
+      </div>
+      {counters.hasRTC !== false &&
+        champ('garde-rtc', 'RTC', rtc, 40, (v) => onUpdate({ rtcJoursCET: v }),
+          `${formatMinutes(rtc * RTC_COUT_PAR_JOUR_CET)} à 8h21 le jour${rtcAuto ? ' · réglage conseillé' : ''}`)}
+      {champ('garde-hs', 'Heures supplémentaires', hs, HS_MAX_VERS_CET, (v) => onUpdate({ hsJoursCET: v }),
+        `${formatMinutes(hs * HS_COUT_PAR_JOUR_CET)} · 5 jours maximum`)}
+      {!rtcAuto && (
+        <button
+          type="button"
+          onClick={() => onUpdate({ rtcJoursCET: undefined })}
+          className="text-xs font-medium text-blue-700 hover:text-blue-800"
+        >
+          Revenir au réglage conseillé (10 jours de RTC)
+        </button>
+      )}
+    </div>
   );
 }

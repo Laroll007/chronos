@@ -18,6 +18,8 @@ import {
   getRTCLibres,
   getCANeededForHP,
   isInCAHPPeriod,
+  reserveRTC,
+  reserveHS,
 } from './calculations';
 
 // ============================================
@@ -268,7 +270,7 @@ function getPriorityWeight(
     }
 
     case 'rtc': {
-      const rtcLibres = getRTCLibres(counters.rtc);
+      const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
       if (rtcLibres > 0) {
         return 30; // RTC libres : priorité
       } else {
@@ -280,6 +282,8 @@ function getPriorityWeight(
       return 20; // Gardés mais utilisables
 
     case 'hs':
+      // HS gardées pour le CET par l'agent : à ne pas consommer.
+      if (reserveHS(counters) > 0 && counters.hs <= reserveHS(counters)) return 5;
       return counters.hs >= HS_MAX_STOCKABLES * 0.9 ? 25 : 15; // Si proche limite
 
     case 'caHP':
@@ -329,10 +333,17 @@ function calculateLossPrevention(
   for (const item of combination) {
     // Pénalité si entame RTC réservés
     if (item.type === 'rtc') {
-      const rtcLibres = getRTCLibres(counters.rtc);
+      const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
       const amountInMinutes = toMinutes(item.amount, 'rtc');
       if (amountInMinutes > rtcLibres) {
         score -= 15; // Pénalité lourde
+      }
+    }
+
+    // Pénalité si entame les HS gardées pour le CET
+    if (item.type === 'hs' && reserveHS(counters) > 0) {
+      if (toMinutes(item.amount, 'hs') > Math.max(0, counters.hs - reserveHS(counters))) {
+        score -= 15;
       }
     }
 
@@ -360,7 +371,7 @@ function calculateCETOptimization(
   // Bonus si garde RTC réservés intacts
   const usesRTCReserves = combination.some((item) => {
     if (item.type !== 'rtc') return false;
-    const rtcLibres = getRTCLibres(counters.rtc);
+    const rtcLibres = getRTCLibres(counters.rtc, reserveRTC(counters));
     const amountInMinutes = toMinutes(item.amount, 'rtc');
     return amountInMinutes > rtcLibres;
   });
@@ -447,9 +458,12 @@ function generateAdvantages(
     }
   }
 
-  // Garde RTC réservés
+  // Garde RTC réservés (seulement si l'agent a des RTC et en garde pour le CET)
   const rtcItem = combination.find((item) => item.type === 'rtc');
-  if (!rtcItem || toMinutes(rtcItem.amount, 'rtc') <= getRTCLibres(counters.rtc)) {
+  if (
+    counters.hasRTC !== false && reserveRTC(counters) > 0 &&
+    (!rtcItem || toMinutes(rtcItem.amount, 'rtc') <= getRTCLibres(counters.rtc, reserveRTC(counters)))
+  ) {
     advantages.push('Garde RTC réservés CET intacts');
   }
 
@@ -469,8 +483,14 @@ function generateDisadvantages(
 
   // Entame RTC réservés
   const rtcItem = combination.find((item) => item.type === 'rtc');
-  if (rtcItem && toMinutes(rtcItem.amount, 'rtc') > getRTCLibres(counters.rtc)) {
+  if (rtcItem && toMinutes(rtcItem.amount, 'rtc') > getRTCLibres(counters.rtc, reserveRTC(counters))) {
     disadvantages.push('⚠️ Entame RTC réservés (perte gain CET)');
+  }
+
+  // Entame les HS gardées pour le CET
+  const hsItem = combination.find((item) => item.type === 'hs');
+  if (hsItem && reserveHS(counters) > 0 && toMinutes(hsItem.amount, 'hs') > Math.max(0, counters.hs - reserveHS(counters))) {
+    disadvantages.push('⚠️ Entame les HS gardées pour le CET');
   }
 
   // Complexe (3+ types)

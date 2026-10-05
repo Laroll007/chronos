@@ -888,6 +888,7 @@ export default function DashboardPage() {
           userData={userData}
           onClose={() => setShowCETPlan(false)}
           onRecord={handleRecordCET}
+          onUpdateCounters={handleUpdateCounters}
         />
       )}
 
