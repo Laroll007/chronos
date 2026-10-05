@@ -325,7 +325,7 @@ export function Settings({
                   <ChevronRight className="w-4 h-4 text-rose-300 shrink-0" />
                 </button>
               </DialogTrigger>
-              <DialogContent className="w-[92vw] max-w-sm rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
+              <DialogContent className="w-[92vw] max-w-sm rounded-2xl border-0 shadow-2xl p-0 overflow-y-auto overscroll-contain">
                 <div className="px-5 pt-5 pb-4 bg-rose-50">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-rose-700">

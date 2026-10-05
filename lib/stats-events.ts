@@ -11,6 +11,7 @@ export const STATS_EVENTS = {
   onboarding_resume: { label: 'Onboarding : reprise après fermeture', group: 'Onboarding' },
   onboarding_skip_counters: { label: 'Onboarding : compteurs remis à plus tard', group: 'Onboarding' },
   counters_completed_later: { label: 'Compteurs complétés plus tard', group: 'Onboarding' },
+  counters_manage_open: { label: 'Gérer mes compteurs', group: 'Outils' },
   counters_reminder_dismissed: { label: 'Rappel compteurs masqué', group: 'Onboarding' },
 
   // Calendrier

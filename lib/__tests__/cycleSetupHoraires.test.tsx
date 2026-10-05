@@ -3,6 +3,19 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { CycleSetup } from '@/components/onboarding/CycleSetup';
 import type { CycleConfig } from '../types';
 
+// Heure + minutes dans deux listes (plus de <input type="time">)
+function choisirHeure(label: string, hhmm: string) {
+  const [h, m] = hhmm.split(':');
+  fireEvent.change(screen.getByLabelText(label), { target: { value: h } });
+  fireEvent.change(screen.getByLabelText(`${label}, minutes`), { target: { value: m } });
+}
+
+function heureAffichee(label: string) {
+  const h = (screen.getByLabelText(label) as HTMLSelectElement).value;
+  const m = (screen.getByLabelText(`${label}, minutes`) as HTMLSelectElement).value;
+  return `${h}:${m}`;
+}
+
 function submit(onNext: ReturnType<typeof vi.fn>) {
   // Choix de la semaine en cours (obligatoire en cycle alterné)
   fireEvent.click(screen.getAllByRole('radio')[0]!);
@@ -24,8 +37,8 @@ describe('Étape cycle : horaires de vacation', () => {
   it('19h30 → 07h38 : durée déduite et barème exact (54 min / 3h21 / 2h24)', () => {
     const onNext = vi.fn();
     render(<CycleSetup onNext={onNext} />);
-    fireEvent.change(screen.getByLabelText('Prise de service'), { target: { value: '19:30' } });
-    fireEvent.change(screen.getByLabelText('Fin de service'), { target: { value: '07:38' } });
+    choisirHeure('Prise de service', '19:30');
+    choisirHeure('Fin de service', '07:38');
     expect(screen.getByText(/fin le lendemain/)).toBeTruthy();
     expect(screen.getByText(/54 min|0h54/)).toBeTruthy();
     const cfg = submit(onNext);
@@ -38,7 +51,7 @@ describe('Étape cycle : horaires de vacation', () => {
     const onNext = vi.fn();
     render(<CycleSetup onNext={onNext} />);
     fireEvent.click(screen.getAllByRole('radio')[0]!);
-    fireEvent.change(screen.getByLabelText('Fin de service'), { target: { value: '07:00' } }); // 0 min
+    choisirHeure('Fin de service', '07:00'); // 0 min
     expect((screen.getByRole('button', { name: /Vérifiez vos horaires/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -52,8 +65,8 @@ describe('Étape cycle : horaires de vacation', () => {
       rpsParJour: { lundi: 67, mardi: 67, mercredi: 67, jeudi: 67, vendredi: 67, samedi: 67, dimanche: 267 },
     } as CycleConfig;
     render(<CycleSetup onNext={onNext} initialConfig={existant} />);
-    expect((screen.getByLabelText('Prise de service') as HTMLInputElement).value).toBe('19:00');
-    expect((screen.getByLabelText('Fin de service') as HTMLInputElement).value).toBe('06:08');
+    expect(heureAffichee('Prise de service')).toBe('19:00');
+    expect(heureAffichee('Fin de service')).toBe('06:08');
   });
 });
 
@@ -69,5 +82,25 @@ describe('Étape compteurs : CET au-delà de 60 jours', () => {
     fireEvent.change(screen.getByLabelText('Stock CET actuel'), { target: { value: '72' } });
     fireEvent.click(screen.getByText('Terminer'));
     expect(onNext.mock.calls[0]![0].cet).toBe(72);
+  });
+});
+
+describe('« Gérer mes compteurs » (hors onboarding)', () => {
+  it('pré-coche les compteurs actifs et permet d’activer le RTC sans perdre les autres', async () => {
+    const { CountersSetup } = await import('@/components/onboarding/CountersSetup');
+    const { DEFAULT_CYCLE_CONFIG, DEFAULT_COUNTERS } = await import('@/lib/storage');
+    const onNext = vi.fn();
+    const actuels = { ...DEFAULT_COUNTERS, ca: 12, cf: 3000, hasCF: true, rtc: 0, hasRTC: false, cet: 20, rps: 0 };
+    const { container } = render(
+      <CountersSetup cycleConfig={DEFAULT_CYCLE_CONFIG} onNext={onNext} onBack={vi.fn()}
+        initialCounters={actuels} skipIntro preselection />
+    );
+    const coche = (k: string) => (container.querySelector(`#counter-${k}`) as HTMLInputElement).checked;
+    expect([coche('ca'), coche('cf'), coche('cet'), coche('rtc'), coche('rps')]).toEqual([true, true, true, false, false]);
+    fireEvent.click(container.querySelector('#counter-rtc')!);
+    fireEvent.click(screen.getByText('Continuer'));
+    fireEvent.click(screen.getByText('Terminer'));
+    const final = onNext.mock.calls[0]![0];
+    expect(final).toMatchObject({ ca: 12, cf: 3000, hasCF: true, hasRTC: true, cet: 20 });
   });
 });

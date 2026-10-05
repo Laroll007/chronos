@@ -65,7 +65,7 @@ export function HorairesPrompt({ onRenseigner }: HorairesPromptProps) {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) plusTard(); }}>
-      <DialogContent className="w-[92vw] max-w-sm p-0 overflow-hidden border-0 shadow-2xl rounded-2xl" showCloseButton={false}>
+      <DialogContent className="w-[92vw] max-w-sm p-0 overflow-y-auto overscroll-contain border-0 shadow-2xl rounded-2xl" showCloseButton={false}>
         <div
           className="px-6 pt-6 pb-5 text-white"
           style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0d2347 50%, #0055A4 100%)' }}
@@ -84,7 +84,7 @@ export function HorairesPrompt({ onRenseigner }: HorairesPromptProps) {
           <p className="text-sm text-slate-600 leading-relaxed">
             Indiquez vos heures de <strong>prise et de fin de service</strong> : vos RPS de nuit et du
             dimanche, ainsi que vos journées modifiées (heures en plus, stage…), seront calculés
-            exactement comme dans GesTT.
+            selon les règles APORTT.
           </p>
           <p className="text-xs text-slate-500">Moins d&apos;une minute, modifiable à tout moment.</p>
           <button

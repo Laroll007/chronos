@@ -57,7 +57,7 @@ export function WorkedDaysCalculator({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="w-[92vw] max-w-sm p-0 overflow-hidden border-0 shadow-2xl rounded-2xl"
+        className="w-[92vw] max-w-sm p-0 overflow-y-auto overscroll-contain border-0 shadow-2xl rounded-2xl"
         showCloseButton={false}
       >
         {/* Header */}

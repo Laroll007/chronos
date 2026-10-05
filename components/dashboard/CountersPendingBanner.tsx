@@ -32,7 +32,7 @@ export function CountersPendingBanner({ onComplete, onDismiss }: CountersPending
         <div className="min-w-0">
           <p className="font-semibold text-slate-800">Vos compteurs ne sont pas encore renseignés</p>
           <p className="text-sm text-slate-600 mt-0.5">
-            Votre calendrier fonctionne déjà. Munissez-vous de GesTT pour activer
+            Votre calendrier fonctionne déjà. Munissez-vous de vos soldes (GesTT ou autre relevé) pour activer
             l&apos;optimisation de vos congés, les alertes et les recommandations.
           </p>
           <button

@@ -96,6 +96,8 @@ export default function DashboardPage() {
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCompleteCounters, setShowCompleteCounters] = useState(false);
+  // « Gérer mes compteurs » (tiroir) : même écran, pour activer ou retirer un compteur.
+  const [gestionCompteurs, setGestionCompteurs] = useState(false);
   // Événement en cours de création / modification (null = fenêtre fermée)
   const [eventDraft, setEventDraft] = useState<EventDraft | null>(null);
   const [showCETPlan, setShowCETPlan] = useState(false);
@@ -218,7 +220,7 @@ export default function DashboardPage() {
     toast.info(`Bonne année ${basculeAnnuelleAConfirmer} !`, {
       duration: 12000,
       description:
-        'Vos compteurs ont été renouvelés et le reliquat de CA basculé en « CA antérieurs » (à poser avant le 30 avril). Les quotas appliqués sont ceux du régime standard : vérifiez-les dans GesTT et corrigez-les si besoin.',
+        'Vos compteurs ont été renouvelés et le reliquat de CA basculé en « CA antérieurs » (à poser avant le 30 avril). Les quotas appliqués sont ceux du régime standard : vérifiez-les sur votre relevé (GesTT ou service de gestion) et corrigez-les si besoin.',
       action: { label: 'Compris', onClick: () => confirmerBasculeAnnuelle() },
       onDismiss: () => confirmerBasculeAnnuelle(),
     });
@@ -574,7 +576,7 @@ export default function DashboardPage() {
         <Suspense
           fallback={
             <Dialog open={true}>
-              <DialogContent className="max-w-4xl">
+              <DialogContent className="max-w-4xl overflow-y-auto overscroll-contain">
                 <DialogTitle className="sr-only">Chargement de l&apos;optimisation</DialogTitle>
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -683,6 +685,12 @@ export default function DashboardPage() {
           cycleConfig={cycleConfig}
           onUpdateCycle={handleUpdateCycle}
           onOpenCETPlan={() => { setShowCounters(false); openCETPlan(); }}
+          onManageCounters={() => {
+            track('counters_manage_open');
+            setShowCounters(false);
+            setGestionCompteurs(true);
+            setShowCompleteCounters(true);
+          }}
         />
       </Suspense>
 
@@ -783,7 +791,7 @@ export default function DashboardPage() {
 
       {/* Saisie des compteurs remise à plus tard pendant l'onboarding */}
       {showCompleteCounters && (
-        <Dialog open={showCompleteCounters} onOpenChange={setShowCompleteCounters}>
+        <Dialog open={showCompleteCounters} onOpenChange={(o) => { setShowCompleteCounters(o); if (!o) setGestionCompteurs(false); }}>
           <DialogContent
             className="w-[95vw] max-w-lg p-0 rounded-2xl border-0 shadow-2xl overflow-hidden flex flex-col"
             style={{ height: '90vh', maxHeight: '90vh' }}
@@ -793,7 +801,9 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <DialogTitle className="text-base font-bold leading-tight text-white">Mes compteurs</DialogTitle>
-                  <p className="text-blue-200 text-xs mt-0.5">Recopiez vos soldes depuis GesTT</p>
+                  <p className="text-blue-200 text-xs mt-0.5">
+                    {gestionCompteurs ? 'Cochez les compteurs que vous possédez' : 'Recopiez vos soldes depuis votre relevé'}
+                  </p>
                 </div>
                 <DialogClose className="shrink-0 w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white/80 hover:text-white transition-all">
                   <X className="w-4 h-4" />
@@ -806,16 +816,18 @@ export default function DashboardPage() {
                 <CountersSetup
                   cycleConfig={cycleConfig}
                   initialCounters={counters}
-                  onBack={() => setShowCompleteCounters(false)}
-                  onSkip={() => setShowCompleteCounters(false)}
-                  skipLabel="Plus tard"
+                  preselection
+                  onBack={() => { setShowCompleteCounters(false); setGestionCompteurs(false); }}
+                  onSkip={() => { setShowCompleteCounters(false); setGestionCompteurs(false); }}
+                  skipLabel={gestionCompteurs ? 'Annuler' : 'Plus tard'}
                   skipIntro
                   onNext={(data) => {
                     if (completerCompteurs(data)) {
-                      toast.success('Compteurs enregistrés', {
+                      toast.success(gestionCompteurs ? 'Compteurs mis à jour' : 'Compteurs enregistrés', {
                         description: 'Optimisation, alertes et recommandations sont activées.',
                       });
                       setShowCompleteCounters(false);
+                      setGestionCompteurs(false);
                     } else {
                       toast.error('Impossible d\'enregistrer les compteurs');
                     }

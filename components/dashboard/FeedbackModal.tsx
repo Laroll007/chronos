@@ -77,7 +77,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
-      <DialogContent className="w-[92vw] max-w-sm p-0 overflow-hidden border-0 shadow-2xl rounded-2xl" showCloseButton={false}>
+      <DialogContent className="w-[92vw] max-w-sm p-0 overflow-y-auto overscroll-contain border-0 shadow-2xl rounded-2xl" showCloseButton={false}>
         {/* Header */}
         <div
           className="px-6 pt-6 pb-5 text-white"

@@ -7,6 +7,7 @@ import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES 
 import { baremeRPSDepuisHoraires, baremeRPSNuit, baremeRPSParDefaut, minutesDeNuit } from '@/lib/rps';
 import { aujourdhuiISO, getWeekType, lundiDeLaSemaine } from '@/lib/calculations';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
+import { TimeSelect } from '@/components/shared/TimeSelect';
 
 const JOURS_CLES: (keyof WeekSchedule)[] = [
   'dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi',
@@ -282,29 +283,31 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="heure-debut" className="text-sm font-medium text-slate-600">Prise de service</label>
-                <input
-                  id="heure-debut"
-                  type="time"
-                  value={toHHMM(heureDebut)}
-                  onChange={(e) => {
-                    const v = fromHHMM(e.target.value);
-                    if (v !== null) setHeureDebut(v);
-                  }}
-                  className={`mt-2 w-full h-11 ${inputClass}`}
-                />
+                <div className="mt-2">
+                  <TimeSelect
+                    id="heure-debut"
+                    label="Prise de service"
+                    value={toHHMM(heureDebut)}
+                    onChange={(val) => {
+                      const v = fromHHMM(val);
+                      if (v !== null) setHeureDebut(v);
+                    }}
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="heure-fin" className="text-sm font-medium text-slate-600">Fin de service</label>
-                <input
-                  id="heure-fin"
-                  type="time"
-                  value={toHHMM(heureFin)}
-                  onChange={(e) => {
-                    const v = fromHHMM(e.target.value);
-                    if (v !== null) setHeureFin(v);
-                  }}
-                  className={`mt-2 w-full h-11 ${inputClass}`}
-                />
+                <div className="mt-2">
+                  <TimeSelect
+                    id="heure-fin"
+                    label="Fin de service"
+                    value={toHHMM(heureFin)}
+                    onChange={(val) => {
+                      const v = fromHHMM(val);
+                      if (v !== null) setHeureFin(v);
+                    }}
+                  />
+                </div>
               </div>
             </div>
             {horaireInvalide ? (

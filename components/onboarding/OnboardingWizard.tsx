@@ -132,7 +132,7 @@ export function OnboardingWizard() {
       if (compteursARenseigner) {
         track('onboarding_skip_counters');
         toast.success('Votre calendrier est prêt !', {
-          description: 'Renseignez vos compteurs dès que vous avez GesTT sous les yeux.',
+          description: 'Renseignez vos compteurs dès que vous avez vos soldes sous les yeux.',
         });
       } else {
         track('onboarding_done');

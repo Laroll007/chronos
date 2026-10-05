@@ -469,7 +469,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
 
   return (
     <Dialog open={!!counterId} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="w-[95vw] max-w-sm bg-background border-slate-200" showCloseButton={false}>
+      <DialogContent className="w-[95vw] max-w-sm overflow-y-auto overscroll-contain bg-background border-slate-200" showCloseButton={false}>
         <DialogHeader>
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-base font-semibold text-slate-800">

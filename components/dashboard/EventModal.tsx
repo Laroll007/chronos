@@ -5,6 +5,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import { CalendarPlus, Trash2, X } from 'lucide-react';
 import type { EventCategory, EventColor, PersonalEvent } from '@/lib/types';
 import { CATEGORY_COLOR, EVENT_CATEGORIES, EVENT_COLORS, EVENT_NOTE_MAX, EVENT_TITLE_MAX } from '@/lib/events';
+import { TimeSelect } from '@/components/shared/TimeSelect';
 
 export interface EventDraft {
   id?: string;
@@ -167,7 +168,7 @@ export function EventModal({ draft, onClose, onSave, onDelete }: EventModalProps
                 <label htmlFor="event-time" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Heure <span className="font-normal text-slate-400">(facultatif)</span>
                 </label>
-                <input id="event-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputClass} />
+                <TimeSelect id="event-time" label="Heure de l’événement" value={time} onChange={setTime} facultatif />
               </div>
             )}
           </div>

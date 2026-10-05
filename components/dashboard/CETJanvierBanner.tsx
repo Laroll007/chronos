@@ -48,7 +48,7 @@ export function CETJanvierBanner({ jours, anneeConges, onOpen }: CETJanvierBanne
           <p className="font-semibold text-slate-800">Janvier : alimentez votre CET</p>
           <p className="text-sm text-slate-600 mt-0.5">
             Jusqu&apos;au 31 janvier, vous pouvez y verser jusqu&apos;à {jours} jour{jours > 1 ? 's' : ''} au
-            titre de {anneeConges}. Voyez lesquels demander dans GesTT.
+            titre de {anneeConges}. Voyez lesquels demander (GesTT ou votre service de gestion).
           </p>
           <button
             type="button"

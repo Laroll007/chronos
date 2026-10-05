@@ -114,7 +114,7 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
   },
   {
     title: 'Compteurs spéciaux',
-    subtitle: 'À cocher uniquement s\'ils apparaissent dans votre GesTT',
+    subtitle: 'À cocher uniquement s\'ils figurent sur votre relevé de compteurs',
     items: [
       { key: 'cet2008', name: 'CET 2008', short: 'Stock historique gelé avant 2010', helpKey: 'cet2008' },
       { key: 'congesBonifies', name: 'Congés Bonifiés', short: '31j tous les 2 ans (agents DOM/TOM)', helpKey: 'congesBonifies' },
@@ -150,6 +150,8 @@ interface CountersSetupProps {
   skipLabel?: string;
   /** Hors onboarding : démarre à la liste des compteurs, sans l'écran d'intro. */
   skipIntro?: boolean;
+  /** Hors onboarding : pré-coche les compteurs déjà actifs dans `initialCounters`. */
+  preselection?: boolean;
 }
 
 // Compteurs vides pour démarrer l'onboarding sans pré-remplissage.
@@ -166,6 +168,30 @@ export const EMPTY_COUNTERS: Counters = {
 
 type SubStep = 'intro' | 'selection' | 'values';
 
+/**
+ * Compteurs déjà actifs, pour pré-cocher la liste hors onboarding (« Gérer mes
+ * compteurs ») : sinon tout repartirait décoché et l'enregistrement remettrait
+ * CF et RTC à zéro.
+ */
+function selectionDepuisCompteurs(c: Counters): CounterKey[] {
+  const actifs: [CounterKey, boolean][] = [
+    ['ca', c.ca > 0 || c.caHP > 0 || c.caConsommes > 0],
+    ['cf', c.hasCF !== false],
+    ['rtc', c.hasRTC !== false],
+    ['rtt', c.hasRTT],
+    ['artt', c.hasARTT],
+    ['rps', c.rps > 0],
+    ['hs', c.hs > 0],
+    ['cet', c.cet > 0],
+    ['caAnterieur', (c.caAnterieur ?? 0) > 0],
+    ['caHPAnterieur', (c.caHPAnterieur ?? 0) > 0],
+    ['cet2008', c.hasCET2008],
+    ['congesBonifies', c.hasCongesBonifies],
+    ['hsHistorique', (c.hsHistorique ?? 0) > 0],
+  ];
+  return actifs.filter(([, actif]) => actif).map(([k]) => k);
+}
+
 export function CountersSetup({
   cycleConfig,
   onNext,
@@ -176,6 +202,7 @@ export function CountersSetup({
   onSkip,
   skipLabel = "Je n'ai pas mes compteurs sous la main",
   skipIntro = false,
+  preselection = false,
 }: CountersSetupProps) {
   const firstSubStep: SubStep = skipIntro ? 'selection' : 'intro';
   const [subStep, setSubStep] = useState<SubStep>(initialDraft?.subStep ?? firstSubStep);
@@ -192,7 +219,11 @@ export function CountersSetup({
 
   // Aucun pré-cochage : l'utilisateur coche lui-même ce qu'il possède
   const [selectedKeys, setSelectedKeys] = useState<Set<CounterKey>>(
-    new Set(initialDraft?.selected ?? DEFAULT_SELECTED)
+    () =>
+      new Set(
+        initialDraft?.selected ??
+          (preselection && initialCounters ? selectionDepuisCompteurs(initialCounters) : DEFAULT_SELECTED)
+      )
   );
 
   // Sauvegarde de la saisie en cours (synchronisation vers le stockage, pas d'état).
@@ -306,10 +337,11 @@ export function CountersSetup({
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-800 mb-1">Munissez-vous de vos compteurs GesTT</h3>
+                <h3 className="font-semibold text-slate-800 mb-1">Munissez-vous de vos compteurs</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   Pour configurer Chronos correctement, vous avez besoin de vos soldes actuels
-                  tels qu&apos;ils apparaissent dans <strong>GesTT</strong> (Gestion des Temps de Travail).
+                  tels qu&apos;ils apparaissent dans <strong>GesTT</strong> (Gestion des Temps de Travail)
+                  ou sur le relevé de votre service si vous n&apos;utilisez pas GesTT.
                 </p>
               </div>
             </div>
@@ -332,7 +364,7 @@ export function CountersSetup({
                 <strong>Pas de panique&nbsp;:</strong>{' '}
                 si vous n&apos;avez pas vos soldes sous la main, passez cette étape avec le
                 lien ci-dessous. Votre calendrier de travail sera déjà prêt, et vous
-                renseignerez vos compteurs plus tard, devant GesTT.
+                renseignerez vos compteurs plus tard, avec votre relevé sous les yeux.
               </p>
             </div>
           </div>
@@ -367,7 +399,7 @@ export function CountersSetup({
         <div className="space-y-5">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800 mb-1">Quels compteurs possédez-vous&nbsp;?</h2>
-            <p className={subClass}>Cochez tous ceux qui apparaissent dans votre GesTT</p>
+            <p className={subClass}>Cochez tous ceux qui figurent sur votre relevé (GesTT ou autre)</p>
           </div>
 
           {COUNTER_GROUPS.map((group) => (
@@ -445,7 +477,7 @@ export function CountersSetup({
       <div className="space-y-5">
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-1">Saisissez vos soldes</h2>
-          <p className={subClass}>Reprenez les valeurs depuis votre GesTT</p>
+          <p className={subClass}>Reprenez les valeurs de votre relevé de compteurs</p>
         </div>
 
         {/* CET */}

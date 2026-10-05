@@ -271,7 +271,7 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
         onOpenChange={(open) => !open && closeDetail()}
       >
         <DialogContent
-          className="w-[92vw] max-w-sm p-0 overflow-hidden border-0 shadow-2xl rounded-2xl"
+          className="w-[92vw] max-w-sm p-0 overflow-y-auto overscroll-contain border-0 shadow-2xl rounded-2xl"
           showCloseButton={false}
         >
           {activeDetail && (() => {
@@ -441,7 +441,7 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
 
       {/* Confirmation suppression */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="max-w-sm glass border-slate-200">
+        <DialogContent className="max-w-sm overflow-y-auto overscroll-contain glass border-slate-200">
           <DialogHeader>
             <DialogTitle>
               {deleteTarget && deleteTarget.items.length > 1

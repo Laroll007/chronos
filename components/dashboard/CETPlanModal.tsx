@@ -91,7 +91,7 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
           {capacite === 0 ? (
             <p className="text-sm text-slate-700">
               {cet > CET_PLAFOND
-                ? `Votre CET (${cet} jours) dépasse le plafond habituel de ${CET_PLAFOND} jours, grâce à un relèvement exceptionnel : vos jours sont conservés, mais l’app ne propose pas de nouveau versement. En cas de doute, vérifiez dans GesTT.`
+                ? `Votre CET (${cet} jours) dépasse le plafond habituel de ${CET_PLAFOND} jours, grâce aux relèvements exceptionnels (COVID, JOP 2024) qui permettent d’aller jusqu’à 80 jours : vos jours sont conservés, mais le compte est gelé et ne peut plus être alimenté tant qu’il reste au-dessus de 60 jours.`
                 : `Votre CET a atteint le plafond de ${CET_PLAFOND} jours : vous ne pouvez plus rien y verser.`}
             </p>
           ) : (
@@ -116,7 +116,7 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
               {lignes.length > 0 ? (
                 <div>
                   <p className="text-sm font-semibold text-slate-800 mb-2">
-                    {janvier ? 'À demander dans GesTT' : 'Le plus avantageux'}
+                    {janvier ? 'À demander (GesTT ou service de gestion)' : 'Le plus avantageux'}
                   </p>
                   <ul className="space-y-2">
                     {lignes.map((l) => (
@@ -147,14 +147,14 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
               {plan.reliquatRTCInconnu && (
                 <p className="text-xs text-slate-500">
                   Vos RTC restants au 31 décembre ne sont pas connus de l&apos;app (inscription
-                  récente) : ils ne sont pas comptés ici. Vérifiez-les dans GesTT.
+                  récente) : ils ne sont pas comptés ici. Vérifiez-les sur votre relevé de compteurs.
                 </p>
               )}
 
               <p className="text-xs text-slate-500">
                 {janvier
-                  ? 'Faites la demande dans GesTT avant le 31 janvier, puis enregistrez-la ici pour mettre vos compteurs à jour.'
-                  : `Le versement se demande dans GesTT, du 1er au 31 janvier ${plan.anneeVersement}. D’ici là, gardez ces soldes de côté plutôt que de les poser.`}
+                  ? 'Faites la demande avant le 31 janvier (GesTT ou service de gestion), puis enregistrez-la ici pour mettre vos compteurs à jour.'
+                  : `Le versement se demande (GesTT ou service de gestion) du 1er au 31 janvier ${plan.anneeVersement}. D’ici là, gardez ces soldes de côté plutôt que de les poser.`}
               </p>
             </>
           )}

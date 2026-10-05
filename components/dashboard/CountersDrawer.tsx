@@ -12,7 +12,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, BarChart3, ChevronRight, Clock, PiggyBank, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, ChevronRight, Clock, ListChecks, PiggyBank, X } from 'lucide-react';
 import { jourLocal } from '@/lib/calculations';
 
 interface CountersDrawerProps {
@@ -27,6 +27,8 @@ interface CountersDrawerProps {
   onUpdateCycle?: (updates: Partial<CycleConfig>) => boolean;
   /** Ouvre « Mon épargne CET ». */
   onOpenCETPlan?: () => void;
+  /** Ouvre la liste des compteurs pour en activer ou en retirer. */
+  onManageCounters?: () => void;
 }
 
 export function CountersDrawer({
@@ -40,6 +42,7 @@ export function CountersDrawer({
   cycleConfig,
   onUpdateCycle,
   onOpenCETPlan,
+  onManageCounters,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -99,6 +102,20 @@ export function CountersDrawer({
                   <span className="block text-xs text-slate-500">Le maximum, et quels congés choisir</span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+              </button>
+            )}
+            {onManageCounters && (
+              <button
+                type="button"
+                onClick={onManageCounters}
+                className="mt-3 w-full flex items-center gap-3 p-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-left transition-colors"
+              >
+                <ListChecks className="w-5 h-5 text-blue-600 shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-slate-800">Gérer mes compteurs</span>
+                  <span className="block text-xs text-slate-500">Ajouter un compteur manquant (RTC, ARTT…) ou en retirer un</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
               </button>
             )}
           </div>

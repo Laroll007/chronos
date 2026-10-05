@@ -6,6 +6,7 @@ import type { CycleConfig, JourModifie } from '@/lib/types';
 import { effetJournee, heureDebutHabituelle, joursModifiesEntre, vacationPrevue, type EffetJournee } from '@/lib/journees';
 import { formatMinutes, isWorkingDay } from '@/lib/calculations';
 import { fromDayKey, toDayKey } from '@/lib/events';
+import { TimeSelect } from '@/components/shared/TimeSelect';
 
 type Saisie = { date: string; type: JourModifie['type']; debut?: number; fin?: number };
 
@@ -48,18 +49,21 @@ function joursDe(start: Date, end: Date): Date[] {
 function Horaires({
   debut, fin, onDebut, onFin, idPrefix,
 }: { debut: number; fin: number; onDebut: (v: number) => void; onFin: (v: number) => void; idPrefix: string }) {
-  const input = 'mt-1 w-full h-11 rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-800';
   return (
     <div className="grid grid-cols-2 gap-3">
       <div>
         <label htmlFor={`${idPrefix}-debut`} className="text-xs font-medium text-slate-600">Prise de service</label>
-        <input id={`${idPrefix}-debut`} type="time" value={toHHMM(debut)} className={input}
-          onChange={(e) => { const v = fromHHMM(e.target.value); if (v !== null) onDebut(v); }} />
+        <div className="mt-1">
+          <TimeSelect id={`${idPrefix}-debut`} label="Prise de service" value={toHHMM(debut)}
+            onChange={(val) => { const v = fromHHMM(val); if (v !== null) onDebut(v); }} />
+        </div>
       </div>
       <div>
         <label htmlFor={`${idPrefix}-fin`} className="text-xs font-medium text-slate-600">Fin de service</label>
-        <input id={`${idPrefix}-fin`} type="time" value={toHHMM(fin)} className={input}
-          onChange={(e) => { const v = fromHHMM(e.target.value); if (v !== null) onFin(v); }} />
+        <div className="mt-1">
+          <TimeSelect id={`${idPrefix}-fin`} label="Fin de service" value={toHHMM(fin)}
+            onChange={(val) => { const v = fromHHMM(val); if (v !== null) onFin(v); }} />
+        </div>
       </div>
     </div>
   );
