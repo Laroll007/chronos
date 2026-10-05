@@ -64,6 +64,7 @@ import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { track, setStatsProfile } from '@/lib/analytics';
+import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
 // Sert à n'afficher l'option « astreinte » que sur des jours non travaillés.
@@ -128,6 +129,7 @@ export default function DashboardPage() {
     poseConge,
     posePartiel,
     poseCMO,
+    poseAbsence,
     poseAstreinte,
     enregistrerEpargneCET,
     deleteHistoryEntry,
@@ -365,6 +367,21 @@ export default function DashboardPage() {
     }
   }, [poseCMO, selectedRange]);
 
+  const handleMarkAbsence = useCallback((motif: MotifAbsence) => {
+    if (!selectedRange) return;
+    const result = poseAbsence(motif, selectedRange.start, selectedRange.end);
+    if (result.success) {
+      toast.success(`${MOTIFS_ABSENCE[motif].court} marqué`, {
+        description: 'Jours marqués non travaillés sur le calendrier, sans impact sur vos compteurs.',
+      });
+      setShowOptimization(false);
+      setSelectedRange(null);
+      setCalendarResetTrigger((prev) => prev + 1);
+    } else {
+      toast.error('Erreur', { description: result.error });
+    }
+  }, [poseAbsence, selectedRange]);
+
   const handleMarkAstreinte = useCallback(() => {
     if (!selectedRange) return;
     const result = poseAstreinte(selectedRange.start, selectedRange.end);
@@ -547,14 +564,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-dvh overflow-hidden bg-background">
+    // Coquille fixée sur la zone visible : dans Safari (site ouvert dans un
+    // onglet), une coquille en 100dvh laissait le document défiler de quelques
+    // pixels quand les barres de Safari bougeaient, et la barre du haut
+    // disparaissait dans ce petit défilement. En position fixe, le document n'a
+    // plus rien à faire défiler ; seul <main> défile.
+    <div className="fixed inset-0 overflow-hidden bg-background">
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-blue-500/[0.04] rounded-full blur-3xl" />
         <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-red-500/[0.03] rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col h-dvh">
+      <div className="relative z-10 flex flex-col h-full">
         {/* Header */}
         <SimpleHeader
           cycleInfo={cycleInfo}
@@ -653,6 +675,7 @@ export default function DashboardPage() {
             counters={counters}
             onApply={handleApplyCombination}
             onMarkCMO={handleMarkCMO}
+            onMarkAbsence={handleMarkAbsence}
             onMarkAstreinte={handleMarkAstreinte}
             onPosePartiel={handlePosePartiel}
             hasRestDays={selectedRange?.hasRestDays}

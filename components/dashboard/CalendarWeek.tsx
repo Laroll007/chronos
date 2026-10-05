@@ -17,7 +17,7 @@ import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
-import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
+import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 
 interface CalendarWeekProps {
   cycleConfig: CycleConfig;
@@ -242,7 +242,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isPosted = hasPostedLeaveOnDate(day.date, history);
             const isCMO = !isPosted && hasCMOOnDate(day.date, history);
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
-            const isPartial = !isPosted && !isCMO && !isAstreinte && getPartialMinutesOnDate(day.date, history) > 0;
+            const isAbsence = !isPosted && !isCMO && !isAstreinte && hasAbsenceOnDate(day.date, history);
+            const isPartial = !isPosted && !isCMO && !isAstreinte && !isAbsence && getPartialMinutesOnDate(day.date, history) > 0;
             const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
@@ -311,19 +312,21 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     'transition-all duration-150 ease-out cursor-pointer',
                     'hover:scale-105 hover:z-10',
                     // État par défaut (non sélectionné)
-                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && {
+                    !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isAbsence && !isPartial && {
                       'bg-blue-50 border border-blue-100': day.isWorking,
                       'bg-slate-200 border border-slate-300': !day.isWorking && cycleConfig.type === 'hebdo' && estFerie(day.date),
                       'bg-slate-50 border border-slate-100': !day.isWorking && !(cycleConfig.type === 'hebdo' && estFerie(day.date)),
                     },
                     // Aujourd'hui (non sélectionné)
-                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
+                    day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isAbsence && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
                     // Congé déjà posé
                     isPosted && !isInRange && !isInPreview && 'bg-emerald-200 border border-emerald-300',
                     // Arrêt maladie (CMO)
                     isCMO && !isInRange && !isInPreview && 'bg-violet-200 border border-violet-300',
                     // Astreinte / permanence
                     isAstreinte && !isInRange && !isInPreview && 'bg-amber-200 border border-amber-300',
+                    // Absence sans compteur (ASA, Art. 13…)
+                    isAbsence && !isInRange && !isInPreview && 'bg-cyan-100 border border-cyan-300',
                     // Pose fractionnée (sortie anticipée)
                     isPartial && !isInRange && !isInPreview && 'bg-teal-100 border border-teal-300',
                     // Dans la plage (preview ou confirmée)

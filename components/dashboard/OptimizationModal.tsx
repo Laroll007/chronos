@@ -8,6 +8,7 @@ import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, formatEventWhen } from '@/l
 import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
 import { repartirSurJours } from '@/lib/repartition';
+import { MOTIFS_ABSENCE, ORDRE_MOTIFS, type MotifAbsence } from '@/lib/absences';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { CombinationCard } from './CombinationCard';
 import {
@@ -18,7 +19,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Plus, X, Pencil, Thermometer, ShieldAlert, Hourglass, CalendarPlus, ChevronRight } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X, Pencil, Thermometer, ShieldAlert, Hourglass, CalendarPlus, CalendarX, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OptimizationModalProps {
@@ -44,6 +45,8 @@ interface OptimizationModalProps {
   // ouverte pour que l'agent puisse choisir une autre option.
   onApply: (combination: Combination) => boolean | void;
   onMarkCMO?: () => void;
+  /** ASA, Art. 13, CFS, EXN, repos décalé : jours non travaillés, sans compteur. */
+  onMarkAbsence?: (motif: MotifAbsence) => void;
   onMarkAstreinte?: () => void;
   // Pose fractionnée (départ anticipé / prise retardée) — uniquement pour 1 jour sélectionné.
   onPosePartiel?: (type: CounterType, minutes: number) => void;
@@ -70,6 +73,7 @@ export function OptimizationModal({
   counters,
   onApply,
   onMarkCMO,
+  onMarkAbsence,
   onMarkAstreinte,
   onPosePartiel,
   hasRestDays = false,
@@ -83,6 +87,8 @@ export function OptimizationModal({
   const [showCustom, setShowCustom] = useState(false);
   const [customItems, setCustomItems] = useState<{ type: CounterType; amount: number }[]>([]);
   const [showCMO, setShowCMO] = useState(false);
+  const [showAbsence, setShowAbsence] = useState(false);
+  const [motif, setMotif] = useState<MotifAbsence>('asa_mariage');
   const [showAstreinte, setShowAstreinte] = useState(false);
   const [showPartial, setShowPartial] = useState(false);
   const [partialType, setPartialType] = useState<CounterType | null>(null);
@@ -243,6 +249,7 @@ export function OptimizationModal({
       setShowCustom(false);
       setCustomItems([]);
       setShowCMO(false);
+      setShowAbsence(false);
       setShowAstreinte(false);
       setShowPartial(false);
       setPartialType(null);
@@ -638,6 +645,50 @@ export function OptimizationModal({
                       >
                         <Thermometer className="w-4 h-4" />
                         Marquer en arrêt maladie
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Absences sans compteur : ASA, Art. 13, CFS, EXN, repos décalé */}
+            {onMarkAbsence && !isCalculating && (
+              <div className="mb-6 border-b border-border pb-6">
+                <button
+                  onClick={() => setShowAbsence((prev) => !prev)}
+                  className="flex items-center gap-2 text-left text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
+                >
+                  <CalendarX className="w-4 h-4 shrink-0" />
+                  {showAbsence ? 'Masquer les absences' : 'Autre absence (ASA, Art. 13, CFS, EXN, repos décalé)'}
+                </button>
+
+                {showAbsence && (
+                  <div className="mt-4 p-4 rounded-lg bg-cyan-50 border border-cyan-200 space-y-3">
+                    <label htmlFor="motif-absence" className="block text-xs font-medium text-cyan-900">Motif</label>
+                    <select
+                      id="motif-absence"
+                      value={motif}
+                      onChange={(e) => setMotif(e.target.value as MotifAbsence)}
+                      className="w-full h-10 rounded-md border border-cyan-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      {ORDRE_MOTIFS.map((m) => (
+                        <option key={m} value={m}>{MOTIFS_ABSENCE[m].label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-cyan-800">
+                      {MOTIFS_ABSENCE[motif].aide} Le jour est marqué non travaillé, <strong>sans toucher à vos compteurs</strong>.
+                    </p>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          onMarkAbsence(motif);
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-cyan-700 hover:bg-cyan-800 transition-colors flex items-center gap-2"
+                      >
+                        <CalendarX className="w-4 h-4" />
+                        Marquer : {MOTIFS_ABSENCE[motif].court}
                       </button>
                     </div>
                   </div>

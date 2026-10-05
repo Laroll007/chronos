@@ -223,6 +223,7 @@ function getCounterLabel(type: CounterType): string {
     hsHistorique: 'HS Hist.',
     cmo: 'CMO',
     astreinte: 'Astreinte',
+    absence: 'Absence',
   };
   return labels[type];
 }

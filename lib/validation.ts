@@ -30,11 +30,11 @@ const DATETIME_RE = /^\d{4}-\d{2}-\d{2}([T ][^\s].*)?$/;
 const CYCLE_TYPES = ['alterne', 'hebdo'] as const;
 const WEEK_TYPES = ['A', 'B'] as const;
 const CYCLE_PATTERNS = ['4/2', '2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'] as const;
-const HISTORY_ACTIONS = ['pose', 'credit', 'transfer_cet', 'correction', 'cmo', 'astreinte'] as const;
+const HISTORY_ACTIONS = ['pose', 'credit', 'transfer_cet', 'correction', 'cmo', 'astreinte', 'absence'] as const;
 const COUNTER_TYPES = [
   'ca', 'caHP', 'cf', 'rtc', 'rtt', 'rps', 'hs', 'cet',
   'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies', 'hsHistorique',
-  'cmo', 'astreinte',
+  'cmo', 'astreinte', 'absence',
 ] as const;
 
 function isObj(v: unknown): v is Record<string, unknown> {

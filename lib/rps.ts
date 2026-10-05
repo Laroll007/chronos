@@ -12,7 +12,7 @@
 
 import { Counters, CycleConfig, HistoryEntry, WeekHours } from './types';
 import { RPS_PAR_DIMANCHE, HEURES_PAR_JOUR } from './constants';
-import { isWorkingDay, hasPostedLeaveOnDate, hasCMOOnDate } from './calculations';
+import { isWorkingDay, hasPostedLeaveOnDate, hasCMOOnDate, hasAbsenceOnDate } from './calculations';
 
 const JOURS: (keyof WeekHours)[] = [
   'dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi',
@@ -140,6 +140,7 @@ export function isJourOuvrantRPS(
   if (!isWorkingDay(date, cycleConfig)) return false;
   if (hasPostedLeaveOnDate(date, history)) return false;
   if (hasCMOOnDate(date, history)) return false;
+  if (hasAbsenceOnDate(date, history)) return false;
   return true;
 }
 

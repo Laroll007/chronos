@@ -2,7 +2,7 @@
 
 import type { HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
 import { jourModifieDu } from '@/lib/journees';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { eventsOnDate } from '@/lib/events';
 import { estFerie } from '@/lib/feries';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ export interface LegendFlags {
   conge: boolean;
   cmo: boolean;
   astreinte: boolean;
+  absence: boolean;
   heures: boolean;
   evenement: boolean;
   stage: boolean;
@@ -36,7 +37,7 @@ export function legendFlagsForDays(
   hebdo = false
 ): LegendFlags {
   const flags: LegendFlags = {
-    travail: false, conge: false, cmo: false, astreinte: false, heures: false,
+    travail: false, conge: false, cmo: false, astreinte: false, absence: false, heures: false,
     evenement: false, stage: false, horaires: false, selection: hasSelection, ferie: false,
   };
   for (const { date, isWorking } of days) {
@@ -45,6 +46,7 @@ export function legendFlagsForDays(
     if (hasPostedLeaveOnDate(date, history)) flags.conge = true;
     else if (hasCMOOnDate(date, history)) flags.cmo = true;
     else if (hasAstreinteOnDate(date, history)) flags.astreinte = true;
+    else if (hasAbsenceOnDate(date, history)) flags.absence = true;
     else if (getPartialMinutesOnDate(date, history) > 0) flags.heures = true;
     if (!flags.evenement && eventsOnDate(date, events).length > 0) flags.evenement = true;
     const jm = jourModifieDu(date, joursModifies);
@@ -59,6 +61,7 @@ const ITEMS: { key: keyof LegendFlags; label: string; swatch: string }[] = [
   { key: 'conge', label: 'Congé', swatch: 'bg-emerald-200 border border-emerald-400' },
   { key: 'cmo', label: 'CMO', swatch: 'bg-violet-200 border border-violet-400' },
   { key: 'astreinte', label: 'Astreinte', swatch: 'bg-amber-200 border border-amber-400' },
+  { key: 'absence', label: 'Absence (ASA…)', swatch: 'bg-cyan-200 border border-cyan-400' },
   { key: 'heures', label: 'Heures', swatch: 'bg-teal-100 border border-teal-400' },
   { key: 'ferie', label: 'Férié', swatch: 'bg-slate-300 border border-slate-400' },
   // Pas d'entrée « Événement » : chaque barre porte son titre et sa couleur.

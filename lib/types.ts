@@ -227,15 +227,18 @@ export interface HistoryEntry {
   // Versement au CET multi-sources (action 'transfer_cet'). Absent sur les
   // épargnes plus anciennes, qui ne portaient que sur des CA de l'année en cours.
   cetDetail?: DetailEpargneCET;
+  /** Absence sans compteur (action 'absence') : motif, cf. lib/absences.ts. */
+  motif?: string;
 }
 
-export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte';
+export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte' | 'absence';
 
 export type CounterType =
   | 'ca' | 'caHP' | 'cf' | 'rtc' | 'rtt' | 'rps' | 'hs' | 'cet'
   | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'cet2008' | 'congesBonifies' | 'hsHistorique'
   | 'cmo'  // Congé Maladie Ordinaire — n'impacte aucun compteur, marquage calendrier uniquement
-  | 'astreinte'; // Astreinte / permanence — ajoute un jour travaillé (week-end), pas d'impact compteur auto
+  | 'astreinte' // Astreinte / permanence — ajoute un jour travaillé (week-end), pas d'impact compteur auto
+  | 'absence'; // ASA, Art. 13, CFS, EXN, repos décalé — jour non travaillé, aucun compteur (cf. lib/absences.ts)
 
 export type AlertType = 'success' | 'warning' | 'error' | 'info';
 export type AlertPriority = 'high' | 'medium' | 'low';

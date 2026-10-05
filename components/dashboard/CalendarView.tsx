@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CycleConfig, HistoryEntry, Counters, PersonalEvent, JourModifie } from '@/lib/types';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate, isWorkingDay } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate, isWorkingDay } from '@/lib/calculations';
 import { useDateRangePicker } from './DateRangePicker';
 import { CalendarMonth } from './CalendarMonth';
 import { CalendarWeek } from './CalendarWeek';
@@ -181,6 +181,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
       hasPostedLeaveOnDate(date, history) ||
       hasCMOOnDate(date, history) ||
       hasAstreinteOnDate(date, history) ||
+      hasAbsenceOnDate(date, history) ||
       getPartialMinutesOnDate(date, history) > 0,
     [history]
   );
@@ -193,7 +194,8 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
         // travaillé, donc on rouvre la journée (modifier, compléter, événement)
         // plutôt que le seul détail de la pose.
         const seulementDesHeures =
-          !hasPostedLeaveOnDate(date, history) && !hasCMOOnDate(date, history) && !hasAstreinteOnDate(date, history);
+          !hasPostedLeaveOnDate(date, history) && !hasCMOOnDate(date, history) &&
+          !hasAstreinteOnDate(date, history) && !hasAbsenceOnDate(date, history);
         if (seulementDesHeures) onRangeSelected(date, date, isWorkingDay(date, cycleConfig) ? 1 : 0);
         else setFocusDate(date);
       },

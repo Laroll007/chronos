@@ -17,6 +17,7 @@ import { planEpargneCET } from '@/lib/cet';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
 import { effetJournee, sanitizeJoursModifies } from '@/lib/journees';
+import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 /**
  * Applique le crédit RPS dû depuis le dernier passage et persiste le résultat.
@@ -448,6 +449,35 @@ export function useCounters() {
     [save]
   );
 
+  // Absence sans compteur (ASA, Art. 13, CFS, EXN, repos décalé) : marque les
+  // jours comme non travaillés, sans débit ni RPS. Cf. lib/absences.ts.
+  const poseAbsence = useCallback(
+    (motif: MotifAbsence, dateStart: Date, dateEnd?: Date) => {
+      const current = userDataRef.current;
+      if (!current) return { success: false, error: 'Données non chargées' };
+      const end = dateEnd ?? dateStart;
+      const historyEntry: HistoryEntry = {
+        id: generateId(),
+        date: dateStart.toISOString(),
+        dateEnd: dateEnd ? dateEnd.toISOString() : undefined,
+        action: 'absence',
+        type: 'absence',
+        amount: Math.max(0, countWorkingDays(dateStart, end, current.cycleConfig)),
+        motif,
+        description: MOTIFS_ABSENCE[motif].label,
+        countersSnapshot: {},
+      };
+      const success = save({
+        ...current,
+        history: [...current.history, historyEntry],
+        lastUpdated: new Date().toISOString(),
+      });
+      if (success) track('absence_pose');
+      return { success };
+    },
+    [save]
+  );
+
   // Poser une astreinte / permanence — ajoute des jours travaillés (week-end), pas d'impact compteur
   const poseAstreinte = useCallback(
     (dateStart: Date, dateEnd?: Date) => {
@@ -560,7 +590,7 @@ export function useCounters() {
       const updatedCounters = { ...current.counters };
 
       // Supprimer un arrêt maladie (CMO) ou une astreinte — aucun compteur à restaurer
-      if (entry.action === 'cmo' || entry.action === 'astreinte') {
+      if (entry.action === 'cmo' || entry.action === 'astreinte' || entry.action === 'absence') {
         const newData: UserData = {
           ...current,
           history: current.history.filter((h) => h.id !== entryId),
@@ -734,6 +764,7 @@ export function useCounters() {
     confirmerBasculeAnnuelle,
     completerCompteurs,
     masquerRappelCompteurs,
+    poseAbsence,
     enregistrerJoursModifies,
     supprimerJourModifie,
     addEvent,

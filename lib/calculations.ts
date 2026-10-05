@@ -1113,6 +1113,11 @@ export function getPartialMinutesOnDate(
 /**
  * Vérifie si une date est marquée comme arrêt maladie (CMO)
  */
+/** Absence sans compteur (ASA, Art. 13, CFS, EXN, repos décalé) ce jour-là. */
+export function hasAbsenceOnDate(date: Date, history: HistoryEntry[]): boolean {
+  return history.some((entry) => dateMatchesEntry(date, entry, 'absence'));
+}
+
 export function hasCMOOnDate(
   date: Date,
   history: HistoryEntry[]
@@ -1167,6 +1172,9 @@ export function computeWorkedDays(
         leaveDays++;
       } else if (hasCMOOnDate(current, history)) {
         cmoDays++;
+      } else if (hasAbsenceOnDate(current, history)) {
+        // ASA, Art. 13, CFS, EXN, repos décalé : non travaillé, sans compteur
+        leaveDays++;
       }
     } else if (hasAstreinteOnDate(current, history)) {
       // Jour normalement en repos mais travaillé en astreinte → compté comme travaillé

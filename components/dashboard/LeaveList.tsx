@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { HistoryEntry, CounterType, PersonalEvent } from '@/lib/types';
 import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, eventsInRange, formatEventWhen } from '@/lib/events';
+import { MOTIFS_ABSENCE, estMotifAbsence } from '@/lib/absences';
 import { formatMinutes } from '@/lib/calculations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ const TYPE_LABELS: Record<CounterType, { label: string; color: string }> = {
   hsHistorique: { label: 'HS Hist.', color: 'bg-rose-100 text-rose-700 border-rose-200' },
   cmo: { label: 'CMO', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   astreinte: { label: 'Astreinte', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  absence: { label: 'Absence', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
 };
 
 interface LeaveGroup {
@@ -93,7 +95,7 @@ function formatRange(startISO: string, endISO: string): string {
 }
 
 function formatAmount(type: CounterType, amount: number): string {
-  if (type === 'ca' || type === 'caHP' || type === 'cet' || type === 'rtt' || type === 'artt' || type === 'cmo' || type === 'astreinte') {
+  if (type === 'ca' || type === 'caHP' || type === 'cet' || type === 'rtt' || type === 'artt' || type === 'cmo' || type === 'astreinte' || type === 'absence') {
     return `${amount}j`;
   }
   return formatMinutes(amount);
@@ -145,7 +147,8 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
         entry.action === 'pose' ||
         entry.action === 'transfer_cet' ||
         entry.action === 'cmo' ||
-        entry.action === 'astreinte',
+        entry.action === 'astreinte' ||
+        entry.action === 'absence',
     );
     return buildGroups(filtered);
   }, [history]);
@@ -159,7 +162,7 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
     return (
       groups.find((g) =>
         g.items.some((it) => {
-          if (it.action !== 'pose' && it.action !== 'cmo' && it.action !== 'astreinte') return false;
+          if (it.action !== 'pose' && it.action !== 'cmo' && it.action !== 'astreinte' && it.action !== 'absence') return false;
           const s = new Date(it.date).setHours(0, 0, 0, 0);
           const e = new Date(it.dateEnd ?? it.date).setHours(0, 0, 0, 0);
           return t >= s && t <= e;
@@ -293,6 +296,11 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
               activeDetail.items.length === 1 && activeDetail.items[0].action === 'cmo';
             const isAstreinte =
               activeDetail.items.length === 1 && activeDetail.items[0].action === 'astreinte';
+            const absence =
+              activeDetail.items.length === 1 && activeDetail.items[0].action === 'absence'
+                ? activeDetail.items[0]
+                : null;
+            const motifAbsence = absence && estMotifAbsence(absence.motif) ? MOTIFS_ABSENCE[absence.motif] : null;
 
             return (
               <>
@@ -303,7 +311,7 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <DialogTitle className="text-lg font-bold leading-tight text-white">
-                        {multiItem ? 'Période de congés' : isCMO ? 'Détail de l\'arrêt' : isAstreinte ? 'Détail de l\'astreinte' : 'Détail du congé'}
+                        {multiItem ? 'Période de congés' : isCMO ? 'Détail de l\'arrêt' : isAstreinte ? 'Détail de l\'astreinte' : absence ? 'Détail de l\'absence' : 'Détail du congé'}
                       </DialogTitle>
                       <p className="text-blue-200 text-xs mt-1">
                         {multiItem
@@ -314,7 +322,9 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                               ? 'Arrêt maladie (CMO)'
                               : isAstreinte
                                 ? 'Astreinte / permanence'
-                                : 'Pose de congé'}
+                                : absence
+                                  ? motifAbsence?.label ?? 'Absence sans compteur'
+                                  : 'Pose de congé'}
                       </p>
                     </div>
                     <DialogClose className="shrink-0 w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white/80 hover:text-white transition-all">
@@ -382,7 +392,11 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                       {activeDetail.items.map((item) => {
                         const isCETTransfer = item.action === 'transfer_cet';
                         const typeInfo = TYPE_LABELS[item.type];
-                        const badgeLabel = isCETTransfer ? 'CET ↑ Épargne' : typeInfo.label;
+                        const badgeLabel = isCETTransfer
+                          ? 'CET ↑ Épargne'
+                          : item.action === 'absence' && estMotifAbsence(item.motif)
+                            ? MOTIFS_ABSENCE[item.motif].court
+                            : typeInfo.label;
                         const badgeColor = isCETTransfer
                           ? 'bg-blue-100 text-blue-700 border-blue-200'
                           : typeInfo.color;
@@ -414,6 +428,12 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                       })}
                     </div>
                   </div>
+
+                  {motifAbsence && (
+                    <p className="text-xs text-slate-600 bg-cyan-50 border border-cyan-100 rounded-lg p-3">
+                      <span className="font-medium">Code GesTT {motifAbsence.code}.</span> {motifAbsence.aide}{' '}Aucun compteur n&apos;est débité.
+                    </p>
+                  )}
 
                   {/* Événements perso de ces jours-là */}
                   {onAddEvent && onOpenEvent && (() => {
@@ -501,7 +521,9 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                     ? 'Supprimer cet arrêt maladie ?'
                     : deleteTarget?.items[0]?.action === 'astreinte'
                       ? 'Supprimer cette astreinte ?'
-                      : 'Supprimer ce congé ?'}
+                      : deleteTarget?.items[0]?.action === 'absence'
+                        ? 'Supprimer cette absence ?'
+                        : 'Supprimer ce congé ?'}
             </DialogTitle>
             <DialogDescription>
               {deleteTarget && deleteTarget.items.length > 1
@@ -512,7 +534,9 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                     ? 'Le marquage de l\'arrêt maladie sera retiré du calendrier (aucun compteur impacté).'
                     : deleteTarget?.items[0]?.action === 'astreinte'
                       ? 'Le marquage de l\'astreinte sera retiré du calendrier (aucun compteur impacté).'
-                      : 'Cette action annulera la pose et restaurera vos compteurs.'}
+                      : deleteTarget?.items[0]?.action === 'absence'
+                        ? 'Le marquage de l\'absence sera retiré du calendrier (aucun compteur impacté).'
+                        : 'Cette action annulera la pose et restaurera vos compteurs.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

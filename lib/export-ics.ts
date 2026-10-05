@@ -168,7 +168,7 @@ export function generateICS(
   if (includeLeaves) {
     const posed = history.filter(
       (h) =>
-        (h.action === 'pose' || h.action === 'cmo') &&
+        (h.action === 'pose' || h.action === 'cmo' || h.action === 'absence') &&
         new Date(h.date).getFullYear() === year,
     );
 
@@ -183,7 +183,9 @@ export function generateICS(
         uid:         makeUID(),
         dtstart:     toICSDate(startDate),
         dtend:       toICSDate(addDays(endDate, 1)),
-        summary:     LEAVE_LABELS[entry.type] ?? (isCMO ? 'Arrêt maladie (CMO)' : 'Congé'),
+        summary:     entry.action === 'absence'
+          ? entry.description ?? 'Absence'
+          : LEAVE_LABELS[entry.type] ?? (isCMO ? 'Arrêt maladie (CMO)' : 'Congé'),
         color:       isCMO ? COLORS.cmo : COLORS.leave,
         transp:      'OPAQUE',
         description: entry.description,

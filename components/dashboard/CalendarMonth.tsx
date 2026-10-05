@@ -11,7 +11,7 @@ import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/typ
 import { jourModifieDu } from '@/lib/journees';
 import { estFerie } from '@/lib/feries';
 import { useMonthCalendar } from '@/hooks/useCycle';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -312,7 +312,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isPosted = hasPostedLeaveOnDate(day.date, history);
             const isCMO = !isPosted && hasCMOOnDate(day.date, history);
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
-            const partialMin = !isPosted && !isCMO && !isAstreinte ? getPartialMinutesOnDate(day.date, history) : 0;
+            const isAbsence = !isPosted && !isCMO && !isAstreinte && hasAbsenceOnDate(day.date, history);
+            const partialMin = !isPosted && !isCMO && !isAstreinte && !isAbsence ? getPartialMinutesOnDate(day.date, history) : 0;
             const isPartial = partialMin > 0;
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
@@ -335,6 +336,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (isPosted) statusParts.push('congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
+            if (isAbsence) statusParts.push('absence (ASA, Art. 13…)');
             if (isPartial) statusParts.push('heures posées');
             if (dayEvents.length > 0) statusParts.push(`événement : ${dayEvents.map((e) => e.title).join(', ')}`);
             if (jourModifie) statusParts.push(jourModifie.type === 'stage' ? 'stage' : 'horaires modifiés');
@@ -370,7 +372,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                           ? 'bg-violet-100'
                           : isAstreinte
                             ? 'bg-amber-100'
-                            : isPartial
+                            : isAbsence
+                              ? 'bg-cyan-100'
+                              : isPartial
                               ? 'bg-teal-50'
                               : day.isWorking
                                 ? 'bg-blue-100/70 hover:bg-blue-100'
@@ -402,7 +406,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                             ? 'text-violet-800 font-semibold'
                             : isAstreinte
                               ? 'text-amber-800 font-semibold'
-                              : isPartial
+                              : isAbsence
+                                ? 'text-cyan-800 font-semibold'
+                                : isPartial
                                 ? 'text-teal-800 font-semibold'
                                 : day.isWorking
                                   ? 'text-blue-700 font-semibold'
