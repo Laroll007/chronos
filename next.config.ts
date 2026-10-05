@@ -11,6 +11,10 @@ const pkgVersion = JSON.parse(
 
 const isCapacitor = process.env.BUILD_TARGET === "capacitor";
 const isProd = process.env.NODE_ENV === "production";
+// Recette sur le réseau local (iPhone → http://Amyo.local:3012) : un build de
+// prod servi en HTTP ne doit ni forcer le HTTPS (sinon scripts bloqués) ni
+// envoyer HSTS. Jamais défini sur le VPS.
+const httpsOnly = isProd && process.env.CHRONOS_LOCAL_HTTP !== "1";
 
 // CSP stricte en prod, relaxée en dev (React HMR utilise eval).
 // connect-src : self (API interne ; l'email de feedback part du serveur).
@@ -26,7 +30,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  ...(isProd ? ["upgrade-insecure-requests"] : []),
+  ...(httpsOnly ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -52,7 +56,7 @@ const nextConfig: NextConfig = {
         {
           source: "/(.*)",
           headers: [
-            ...(isProd ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }] : []),
+            ...(httpsOnly ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }] : []),
             { key: "Content-Security-Policy", value: csp },
             { key: "X-Content-Type-Options", value: "nosniff" },
             { key: "X-Frame-Options", value: "SAMEORIGIN" },

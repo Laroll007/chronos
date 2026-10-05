@@ -130,7 +130,7 @@ export default function Home() {
                 Calculs APORTT intégrés
               </h2>
               <p className="text-sm text-slate-600">
-                Cycles 2/2/3/3, CA HP (4+4 → 2j bonus), CET (60j max, 15j/an),
+                Cycles 2/2/3/2/2/3 et 3/3, CA HP (4+4 → 2j bonus), CET (60j max, +10j/an au-delà de 15),
                 RTC réservés, CF lissé par semestre, journée de solidarité.
               </p>
             </div>
