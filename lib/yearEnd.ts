@@ -100,8 +100,8 @@ export function calculateYearEndBalance(
     pushHeures(
       'rtc', 'RTC', counters.rtc, apport.rtc * RTC_COUT_PAR_JOUR_CET,
       apport.rtc > 0
-        ? `${apport.rtc}j à verser au CET (${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)}). Le reste : à poser, ou à verser au CET contre indemnisation`
-        : `Plus de place au CET : à poser, ou à verser au CET contre indemnisation (sinon perdus au 31/12)`
+        ? `${apport.rtc}j à verser au CET (${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)}). Le reste : à poser, ou à verser au CET pour vous les faire payer`
+        : `Plus de place au CET : à poser, ou à verser au CET pour vous les faire payer (sinon perdus au 31/12)`
     );
   }
 

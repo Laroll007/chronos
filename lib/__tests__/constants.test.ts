@@ -40,7 +40,6 @@ import {
   CET_PLAFOND,
   CET_PROGRESSION_ANNUELLE_MAX,
   CET_SEUIL_OPTION,
-  CET_INDEMNISATION_JOUR,
   HS_MAX_MINUTES_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
   // Dates
@@ -306,9 +305,6 @@ describe('CET - Compte Épargne Temps', () => {
     expect(RTC_JOURS_CET_CONSEILLES + CA_MAX_VERS_CET + CA_HP_BONUS + HS_MAX_VERS_CET).toBeGreaterThan(CET_PROGRESSION_ANNUELLE_MAX);
   });
 
-  it('indemnisation par catégorie (brut par jour)', () => {
-    expect(CET_INDEMNISATION_JOUR).toEqual({ A: 150, B: 100, C: 83 });
-  });
 
   it('un jour de CET payé en HS coûte 8h21, comme en RTC', () => {
     // Guide APORTT : « base 8h21/jour pour les cycliques », plafond 41h45 = 5 × 8h21.

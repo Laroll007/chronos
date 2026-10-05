@@ -12,7 +12,7 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
       'Versement en janvier, au titre de l\'année écoulée.',
       'Sources : tous les RTC restants (8h21 le jour), CA (max 5j, si 15 CA pris dans l\'année), CA Hors Période (max 2j), Heures Sup (max 5j).',
       'Le CET garde jusqu\'à 15 jours, puis 10 jours de plus par an au maximum, dans la limite de 60 jours.',
-      'Au-delà, les jours versés sont indemnisés (A 150 €, B 100 €, C 83 € brut par jour) ou versés à la RAFP — d\'office sans choix de votre part.',
+      'Au-delà, les jours versés sont payés (forfait par jour selon votre catégorie) ou versés à la RAFP — d\'office sans choix de votre part.',
       'CET au-delà de 60 jours (relèvements COVID/JOP, jusqu\'à 80) : jours conservés, mais compte gelé.',
     ],
     tip: 'Conseil : versez 10 jours de RTC (83h30). Un jour de RTC ne coûte que 8h21 au lieu d\'une journée entière, et vous ne perdez aucune heure en indemnisation.',

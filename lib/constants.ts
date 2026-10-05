@@ -142,9 +142,6 @@ export const CET_PROGRESSION_ANNUELLE_MAX = 10;
 // (RAFP d'office pour un titulaire qui ne choisit pas).
 export const CET_SEUIL_OPTION = 15; // jours
 
-// Indemnisation d'un jour de CET, en euros bruts, selon la catégorie.
-export const CET_INDEMNISATION_JOUR = { A: 150, B: 100, C: 83 } as const;
-export type CategorieAgent = keyof typeof CET_INDEMNISATION_JOUR;
 
 // ============================================
 // DATES IMPORTANTES

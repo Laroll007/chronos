@@ -7,7 +7,6 @@ import type { UserData } from '@/lib/types';
 import { planEpargneCET, type ApportCET } from '@/lib/cet';
 import { formatMinutes } from '@/lib/calculations';
 import {
-  CET_INDEMNISATION_JOUR,
   CET_PLAFOND,
   CET_PLAFOND_DEROGATOIRE,
   CET_PROGRESSION_ANNUELLE_MAX,
@@ -15,7 +14,6 @@ import {
   HS_COUT_PAR_JOUR_CET,
   RTC_COUT_PAR_JOUR_CET,
   RTC_GAIN_PAR_JOUR,
-  type CategorieAgent,
 } from '@/lib/constants';
 
 interface CETPlanModalProps {
@@ -23,18 +21,6 @@ interface CETPlanModalProps {
   onClose: () => void;
   /** Janvier : enregistre le versement demandé (conseillé, ou maximum avec surplus indemnisé). */
   onRecord: (avecSurplus: boolean) => { success: boolean; error?: string };
-}
-
-const CATEGORIE_KEY = 'chronos_categorie';
-
-function lireCategorie(): CategorieAgent {
-  try {
-    const v = localStorage.getItem(CATEGORIE_KEY);
-    if (v === 'A' || v === 'B' || v === 'C') return v;
-  } catch {
-    /* stockage indisponible : catégorie par défaut */
-  }
-  return 'B';
 }
 
 function lignesApport(apport: ApportCET, janvier: boolean) {
@@ -76,7 +62,6 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
   const [error, setError] = useState<string | null>(null);
   // CET au plafond : seul un versement indemnisé reste possible.
   const [avecSurplus, setAvecSurplus] = useState(() => plan.apport.total === 0);
-  const [categorie, setCategorie] = useState<CategorieAgent>(lireCategorie);
   const { apport, capacite, maximum, indemnises } = plan;
   const cet = userData.counters.cet;
   const gele = cet > CET_PLAFOND;
@@ -92,16 +77,6 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
 
   const lignes = lignesApport(apport, janvier);
   const surplus = indemnises > 0;
-  const montant = indemnises * CET_INDEMNISATION_JOUR[categorie];
-
-  const choisirCategorie = (v: CategorieAgent) => {
-    setCategorie(v);
-    try {
-      localStorage.setItem(CATEGORIE_KEY, v);
-    } catch {
-      /* simple confort d'affichage */
-    }
-  };
 
   const record = () => {
     const res = onRecord(avecSurplus);
@@ -194,33 +169,9 @@ export function CETPlanModal({ userData, onClose, onRecord }: CETPlanModalProps)
                       {maximum.rtc > apport.rtc && `Soit ${maximum.rtc} jours de RTC au total (${formatMinutes(maximum.rtc * RTC_COUT_PAR_JOUR_CET)}). `}
                       Mais votre CET ne peut en garder que {jours(capacite)} : les{' '}
                       <strong>{jours(indemnises)}</strong> de plus sont{' '}
-                      <strong>indemnisés</strong> ou versés à la <strong>RAFP</strong> (retraite
-                      additionnelle — d’office si vous ne choisissez pas). Ils ne reviennent pas en congés.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-700 mb-1.5">Votre catégorie</p>
-                    <div className="flex gap-1.5" role="radiogroup" aria-label="Catégorie">
-                      {(Object.keys(CET_INDEMNISATION_JOUR) as CategorieAgent[]).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          role="radio"
-                          aria-checked={categorie === k}
-                          onClick={() => choisirCategorie(k)}
-                          className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-colors ${
-                            categorie === k
-                              ? 'bg-amber-600 border-amber-600 text-white'
-                              : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-100'
-                          }`}
-                        >
-                          {k} · {CET_INDEMNISATION_JOUR[k]} €/j
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-600 mt-2">
-                      Indemnisation estimée : <strong>{montant.toLocaleString('fr-FR')} € brut</strong>{' '}
-                      pour {jours(indemnises)}.
+                      <strong>payés</strong> (indemnisation forfaitaire par jour, selon votre catégorie)
+                      ou versés à la <strong>RAFP</strong> (retraite additionnelle — d’office si vous ne
+                      choisissez pas). Ils ne reviennent pas en congés.
                     </p>
                   </div>
                   <p className="text-xs text-slate-600">

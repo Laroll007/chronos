@@ -168,7 +168,7 @@ export function calculateDeadlineNotifications(
     notifications.push({
       id: 'rtc-deadline',
       title: 'RTC libres à utiliser',
-      message: `${formatMinutes(rtcLibres)} de RTC libres seront perdus au 31/12 s'ils ne sont ni posés ni versés au CET.`,
+      message: `${formatMinutes(rtcLibres)} de RTC libres : à poser avant le 31/12, ou à verser au CET en janvier pour vous les faire payer. Sinon, ils sont perdus.`,
       priority: getPriority(daysUntilCA),
       daysRemaining: daysUntilCA,
       deadline: caDeadline,
