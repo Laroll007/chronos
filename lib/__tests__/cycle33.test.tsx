@@ -44,10 +44,9 @@ describe('Cycle 3/3 : rotation continue', () => {
     expect(isWorkingDay(jour, cfg2223)).toBe(a);
   });
 
-  it('quotas : 18 CA, RTC 188h09 brut (175h… de moins la journée de solidarité)', () => {
+  it('quotas : 18 CA, RTC 188h09 (sans déduction de journée de solidarité)', () => {
     expect(getCATotalForCycle(cfg33)).toBe(18);
     expect(getRTCAnnuel(cfg33)).toBe(188 * 60 + 9);
-    expect(getRTCAnnuel(cfg33, true)).toBe(188 * 60 + 9 - 728);
     expect(getRTCAnnuel(DEFAULT_CYCLE_CONFIG)).toBe(187 * 60 + 9);
   });
 });

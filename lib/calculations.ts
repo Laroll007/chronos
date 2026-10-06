@@ -384,10 +384,12 @@ export function countWorkingMinutes(
 /**
  * Retourne le nombre de CA selon le pattern de cycle
  */
-/** Dotation RTC annuelle du cycle, nette ou non de la journée de solidarité. */
-export function getRTCAnnuel(cycleConfig: CycleConfig | undefined, journeeSolidariteAppliquee?: boolean): number {
-  const brut = (cycleConfig?.pattern && RTC_BRUT_PAR_PATTERN[cycleConfig.pattern]) || RTC_BRUT_ANNUEL;
-  return journeeSolidariteAppliquee ? brut - JOURNEE_SOLIDARITE : brut;
+/**
+ * Dotation RTC annuelle du cycle. Plus de déduction de la journée de
+ * solidarité (2026-10) : aucun agent n'en voyait l'effet sur son relevé.
+ */
+export function getRTCAnnuel(cycleConfig: CycleConfig | undefined): number {
+  return (cycleConfig?.pattern && RTC_BRUT_PAR_PATTERN[cycleConfig.pattern]) || RTC_BRUT_ANNUEL;
 }
 
 export function getCAParCycle(pattern?: CyclePattern): number {

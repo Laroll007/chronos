@@ -221,8 +221,7 @@ export function migrateUserData(data: UserData): UserData {
     c.ca = getCATotalForCycle(data.cycleConfig);
     if (c.hasCF !== false) c.cf = CF_TOTAL_ANNUEL;
     if (c.hasRTC !== false) {
-      // Le drapeau dit si l'agent déduit la journée de solidarité de ses RTC.
-      c.rtc = getRTCAnnuel(data.cycleConfig, c.journeeSolidariteAppliquee);
+      c.rtc = getRTCAnnuel(data.cycleConfig);
     }
     if (c.hasARTT) c.artt = ARTT_QUOTA_ANNUEL;
     if (c.hasRTT) c.rtt = RTT_QUOTA_HEBDO;

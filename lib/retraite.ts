@@ -32,7 +32,7 @@ import {
   CET_SEUIL_OPTION,
   HEURES_PAR_JOUR,
 } from './constants';
-import { getCATotalForCycle, getJourMinutes, isWorkingDay } from './calculations';
+import { getCATotalForCycle, getJourMinutes, getRTCAnnuel, isWorkingDay } from './calculations';
 import { isDayBasedType } from './optimization';
 import { computeRPSCredit, toISODay } from './rps';
 
@@ -162,8 +162,7 @@ function dotationAnnuelle(
   if (counters.hasRTT) jours.rtt = arrondirDotation(RTT_QUOTA_HEBDO * prorata);
   if (counters.hasCF !== false) minutes.cf = Math.round(CF_TOTAL_ANNUEL * prorata);
   if (counters.hasRTC !== false) {
-    const base = counters.journeeSolidariteAppliquee ? RTC_NET_ANNUEL : RTC_BRUT_ANNUEL;
-    minutes.rtc = Math.round(base * prorata);
+    minutes.rtc = Math.round(getRTCAnnuel(cycleConfig) * prorata);
   }
   // Ni RPS ni HS : ils dépendent du travail réellement effectué, pas d'une
   // dotation. Les RPS acquis d'ici le départ sont ajoutés séparément.

@@ -62,12 +62,11 @@ describe('Bascule d’année', () => {
     expect(apres.rtt).toBe(RTT_QUOTA_HEBDO);
   });
 
-  it('respecte le drapeau journée de solidarité pour les RTC', () => {
-    const brut = migrateUserData(finDAnnee({ rtc: 0, hasRTC: true, journeeSolidariteAppliquee: false })).counters;
-    expect(brut.rtc).toBe(RTC_BRUT_ANNUEL);
-
-    const net = migrateUserData(finDAnnee({ rtc: 0, hasRTC: true, journeeSolidariteAppliquee: true })).counters;
-    expect(net.rtc).toBe(RTC_NET_ANNUEL);
+  it('recrédite la dotation RTC complète, sans journée de solidarité (même avec l’ancien drapeau)', () => {
+    const sans = migrateUserData(finDAnnee({ rtc: 0, hasRTC: true, journeeSolidariteAppliquee: false })).counters;
+    expect(sans.rtc).toBe(RTC_BRUT_ANNUEL);
+    const ancien = migrateUserData(finDAnnee({ rtc: 0, hasRTC: true, journeeSolidariteAppliquee: true })).counters;
+    expect(ancien.rtc).toBe(RTC_BRUT_ANNUEL);
   });
 
   it('ne recrédite pas un compteur désactivé', () => {

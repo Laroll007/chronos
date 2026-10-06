@@ -50,13 +50,13 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
   rtc: {
     title: 'Récupération Temps de Cycle (RTC)',
     bullets: [
-      'RTC brut annuel : 285h13 (soit 273h05 net après déduction de la Journée de Solidarité de 12h08).',
+      'Dotation annuelle : 187h09 en cycle 2/2/3/2/2/3, 188h09 en cycle 3/3.',
       'Conseil : gardez 83h30 (10 jours à 8h21) pour alimenter le CET en janvier.',
       'Le reste (RTC libres) peut être posé comme congé.',
       'Tous les RTC restants peuvent être versés au CET, mais au-delà de ce que le CET peut garder, ils sont indemnisés ou versés à la RAFP.',
       'Les RTC ni posés ni versés au CET sont perdus au 31 décembre.',
     ],
-    tip: 'La Journée de Solidarité déduit 12h08 de vos RTC. Cochez l\'option si elle s\'applique à votre cycle.',
+    tip: 'Un jour de RTC versé au CET ne coûte que 8h21 : gardez 10 jours (83h30) pour janvier plutôt que de les poser.',
   },
   rtt: {
     title: 'RTT (Réduction du Temps de Travail)',

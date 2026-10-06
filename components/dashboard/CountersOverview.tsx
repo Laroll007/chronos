@@ -140,11 +140,11 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         id: 'rtc',
         label: 'RTC',
         value: counters.rtc,
-        max: getRTCAnnuel(cycleConfig, true),
+        max: getRTCAnnuel(cycleConfig),
         unit: 'heures',
         deadline: new Date(year, 11, 31),
         status: getStatus(daysUntilYear, counters.rtc > 0),
-        description: counters.journeeSolidariteAppliquee ? 'Net après journée de solidarité' : 'Récupération Temps de Cycle',
+        description: 'Récupération Temps de Cycle',
       });
     }
 

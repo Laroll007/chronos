@@ -131,7 +131,7 @@ export default function Home() {
               </h2>
               <p className="text-sm text-slate-600">
                 Cycles 2/2/3/2/2/3 et 3/3, CA HP (4+4 → 2j bonus), CET (60j max, +10j/an au-delà de 15),
-                RTC réservés, CF lissé par semestre, journée de solidarité.
+                RTC réservés, CF lissé par semestre, RPS de nuit et du dimanche.
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-white border border-slate-200">

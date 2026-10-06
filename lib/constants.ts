@@ -53,7 +53,7 @@ export const RTC_BRUT_PAR_PATTERN: Partial<Record<string, number>> = {
 export const CYCLES_EXCLUS_ABONDEMENT_HS = ['2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'];
 
 // Pour compatibilité avec le code existant
-export const RTC_TOTAL_ANNUEL = RTC_NET_ANNUEL; // Utilise le net par défaut
+export const RTC_TOTAL_ANNUEL = RTC_BRUT_ANNUEL; // plus de déduction de la journée de solidarité (2026-10)
 export const RTC_JOURS_ANNUELS = 15; // 15 jours + 6h09 (brut)
 
 // Conversion RTC → CET (avantageuse)

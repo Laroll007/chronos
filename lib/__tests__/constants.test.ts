@@ -171,8 +171,8 @@ describe('RTC - Récupération Temps de Cycle', () => {
     expect(minutesToHoursMinutes(RTC_NET_ANNUEL)).toBe('175h01');
   });
 
-  it('RTC_TOTAL_ANNUEL = RTC_NET_ANNUEL (alias)', () => {
-    expect(RTC_TOTAL_ANNUEL).toBe(RTC_NET_ANNUEL);
+  it('RTC_TOTAL_ANNUEL = dotation brute (plus de journée de solidarité)', () => {
+    expect(RTC_TOTAL_ANNUEL).toBe(RTC_BRUT_ANNUEL);
   });
 
   it('RTC_JOURS_ANNUELS = 15 jours', () => {
