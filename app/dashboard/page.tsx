@@ -41,6 +41,8 @@ import { CETPlanModal } from '@/components/dashboard/CETPlanModal';
 import { DayEditSection } from '@/components/dashboard/DayEditSection';
 import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
 import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
+import { CommunauteBanner } from '@/components/dashboard/CommunauteBanner';
+import { ouvrirCommunaute } from '@/lib/communaute';
 import { HorairesPrompt } from '@/components/dashboard/HorairesPrompt';
 import { pendingReleaseNotes } from '@/lib/releaseNotes';
 import { planEpargneCET } from '@/lib/cet';
@@ -608,6 +610,10 @@ export default function DashboardPage() {
               <YearEndBanner counters={counters} cycleConfig={cycleConfig} onOpenCETPlan={openCETPlan} />
             )}
           </div>
+          {/* Invitation à la communauté Discord (masquable définitivement) */}
+          <div className="mb-3 empty:hidden">
+            <CommunauteBanner />
+          </div>
           <CalendarView
             cycleConfig={cycleConfig}
             counters={counters}
@@ -934,6 +940,8 @@ export default function DashboardPage() {
             if (target === 'cycle') {
               setSettingsOpenCycle(true);
               setShowSettings(true);
+            } else if (target === 'communaute') {
+              ouvrirCommunaute();
             } else {
               openCETPlan();
             }

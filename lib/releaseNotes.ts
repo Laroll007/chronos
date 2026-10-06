@@ -5,12 +5,14 @@
 
 import { APP_VERSION } from './constants';
 
-export type ReleaseAction = 'cycle' | 'cet';
+export type ReleaseAction = 'cycle' | 'cet' | 'communaute';
 
 export interface ReleaseItem {
   emoji: string;
   title: string;
   text: string;
+  /** Mise en garde affichée en petit sous le texte. */
+  note?: string;
   /** Raccourci vers l'écran concerné. */
   action?: { label: string; target: ReleaseAction };
 }
@@ -21,6 +23,29 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '1.15.0',
+    items: [
+      {
+        emoji: '💬',
+        title: 'La communauté My Chronos est ouverte !',
+        text: 'Vous aussi, participez au développement de My Chronos : vos retours, suggestions et bugs façonnent l’app. Rejoignez la toute nouvelle communauté sur Discord, où Marco, l’assistant qui connaît l’app par cœur, répond à vos questions.',
+        note: 'Ne partagez jamais d’information permettant de vous identifier : nom, matricule, grade, service, lieu de travail, photo de document… Le serveur est ouvert à tous, et les messages adressés à Marco sont traités par une IA.',
+        action: { label: 'Rejoindre le Discord', target: 'communaute' },
+      },
+      {
+        emoji: '🏦',
+        title: 'Gardez vos RTC et HS pour le CET',
+        text: 'Choisissez combien de jours de RTC (10 par défaut) et d’HS mettre de côté : ils ne vous sont plus proposés à la pose et passent en premier dans le versement de janvier.',
+        action: { label: 'Voir mon épargne CET', target: 'cet' },
+      },
+      {
+        emoji: '📋',
+        title: 'ASA, Art. 13, CFS, EXN, repos décalé',
+        text: 'Marquez ces absences sur votre planning, sans toucher à vos compteurs : touchez le jour, puis « Autre absence ».',
+      },
+    ],
+  },
   {
     version: '1.14.0',
     items: [

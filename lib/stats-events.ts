@@ -11,6 +11,8 @@ export const STATS_EVENTS = {
   onboarding_resume: { label: 'Onboarding : reprise après fermeture', group: 'Onboarding' },
   onboarding_skip_counters: { label: 'Onboarding : compteurs remis à plus tard', group: 'Onboarding' },
   counters_completed_later: { label: 'Compteurs complétés plus tard', group: 'Onboarding' },
+  communaute_ouverte: { label: 'Communauté Discord ouverte', group: 'À propos' },
+  communaute_encart_masque: { label: 'Encart communauté masqué', group: 'À propos' },
   absence_pose: { label: 'Absence sans compteur posée (ASA, Art. 13…)', group: 'Poses' },
   counters_manage_open: { label: 'Gérer mes compteurs', group: 'Outils' },
   counters_reminder_dismissed: { label: 'Rappel compteurs masqué', group: 'Onboarding' },

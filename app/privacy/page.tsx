@@ -33,7 +33,7 @@ export default function PrivacyPage() {
             Politique de confidentialité
           </h1>
           <p className="text-slate-500 text-sm">
-            Dernière mise à jour : 27 septembre 2026
+            Dernière mise à jour : 6 octobre 2026
           </p>
         </div>
 
@@ -161,6 +161,54 @@ export default function PrivacyPage() {
                 ) — hébergement du site et des statistiques anonymes, et
                 messagerie qui reçoit les messages du formulaire de retour.
                 Serveurs situés en France.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-slate-800 mb-2">
+              3 bis. Communauté Discord (facultative)
+            </h2>
+            <p className="mb-2">
+              L&apos;app propose de rejoindre la communauté My Chronos sur{" "}
+              <strong>Discord</strong>. C&apos;est entièrement facultatif, et
+              l&apos;app ne transmet <strong>aucune donnée</strong> à Discord :
+              le lien ouvre simplement le serveur dans votre navigateur ou
+              dans l&apos;application Discord.
+            </p>
+            <ul className="list-disc ml-5 space-y-2">
+              <li>
+                Discord est un service tiers (Discord Inc., États-Unis), soumis
+                à ses propres conditions et à sa{" "}
+                <a
+                  href="https://discord.com/privacy"
+                  className="text-blue-600 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  politique de confidentialité
+                </a>
+                . Les messages que vous y publiez sont visibles par les membres
+                du serveur.
+              </li>
+              <li>
+                Les messages adressés à <strong>Marco</strong>, l&apos;assistant
+                du serveur, sont transmis à un service d&apos;intelligence
+                artificielle (<strong>OpenAI</strong>, États-Unis) pour générer
+                une réponse. L&apos;historique d&apos;une conversation avec
+                Marco est gardé 30 jours au plus sur notre serveur, pour
+                qu&apos;il puisse suivre le fil.
+              </li>
+              <li>
+                Les idées et bugs signalés à Marco sont conservés sous forme de
+                résumé (sans votre nom ni pseudo, avec un lien vers le message
+                Discord) sur notre serveur (OVHcloud, France), pendant 12 mois
+                au plus, pour améliorer l&apos;app.
+              </li>
+              <li>
+                <strong>Ne partagez jamais</strong> d&apos;information permettant
+                de vous identifier (nom, matricule, grade, service, lieu de
+                travail, photo de document…).
               </li>
             </ul>
           </section>

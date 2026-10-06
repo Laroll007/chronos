@@ -18,6 +18,7 @@ import { APP_VERSION } from '@/lib/constants';
 import { CycleConfig, Counters, HistoryEntry } from '@/lib/types';
 import { downloadExport, importData, resetAllData } from '@/lib/storage';
 import { isStatsEnabled, setStatsEnabled, track } from '@/lib/analytics';
+import { ouvrirCommunaute } from '@/lib/communaute';
 import {
   Settings as SettingsIcon,
   Download,
@@ -35,6 +36,7 @@ import {
   Hourglass,
   BarChart3,
   X,
+  MessagesSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -254,6 +256,12 @@ export function Settings({
           <section className="space-y-2.5">
             <SectionLabel icon={<Heart className="w-3 h-3 text-pink-500" />} label="À propos" />
             <div className="space-y-1.5">
+              <ClickableRow
+                icon={<MessagesSquare className="w-4 h-4 text-indigo-500 shrink-0" />}
+                label="Rejoindre la communauté Discord"
+                sublabel="Idées, bugs, questions — avec Marco, l'assistant"
+                onClick={ouvrirCommunaute}
+              />
               <ClickableRow
                 icon={<MessageSquarePlus className="w-4 h-4 text-blue-500 shrink-0" />}
                 label="Donner mon avis / Signaler un bug"
