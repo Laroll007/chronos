@@ -6,13 +6,12 @@ import { track } from './analytics';
 export const LIEN_COMMUNAUTE = 'https://discord.gg/bhDaJRqEHx';
 
 export const AVERTISSEMENT_COMMUNAUTE =
-  'Ne partagez jamais d’information permettant de vous identifier : nom, matricule, grade, service, lieu de ' +
-  'travail, photo de document… Le serveur est ouvert à tous, et les messages adressés à Marco (l’assistant) ' +
-  'sont traités par une IA.';
+  'Reste anonyme : ne partage jamais ton nom, ton matricule, ton grade, ton service, ton lieu de travail ni de ' +
+  'photo de document. Le serveur est ouvert à tous, et les messages adressés à Marco sont traités par une IA.';
 
 /** Version courte, pour l'encart du planning. */
 export const AVERTISSEMENT_COURT =
-  'Ne partagez aucune information permettant de vous identifier (nom, matricule, service, lieu de travail…).';
+  'Reste anonyme : ni nom, ni matricule, ni service, ni lieu de travail.';
 
 const CLE_MASQUAGE = 'chronos_communaute_masquee';
 

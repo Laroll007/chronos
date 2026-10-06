@@ -38,9 +38,10 @@ export function CommunauteBanner() {
           <MessagesSquare className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="font-semibold text-slate-800">Rejoignez la communauté My Chronos</p>
+          <p className="font-semibold text-slate-800">Rejoins la communauté My Chronos</p>
           <p className="text-sm text-slate-600 mt-0.5">
-            Idées, bugs, questions : participez au développement de l&apos;app sur Discord, avec Marco, son assistant.
+            Une idée, un bug, une question ? Participe au développement de l&apos;app sur Discord, avec Marco, son
+            assistant.
           </p>
           <p className="text-xs text-slate-500 mt-1.5">⚠️ {AVERTISSEMENT_COURT}</p>
           <button

@@ -28,21 +28,21 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     items: [
       {
         emoji: '💬',
-        title: 'La communauté My Chronos est ouverte !',
-        text: 'Vous aussi, participez au développement de My Chronos : vos retours, suggestions et bugs façonnent l’app. Rejoignez la toute nouvelle communauté sur Discord, où Marco, l’assistant qui connaît l’app par cœur, répond à vos questions.',
-        note: 'Ne partagez jamais d’information permettant de vous identifier : nom, matricule, grade, service, lieu de travail, photo de document… Le serveur est ouvert à tous, et les messages adressés à Marco sont traités par une IA.',
-        action: { label: 'Rejoindre le Discord', target: 'communaute' },
+        title: 'Rejoins la communauté My Chronos !',
+        text: 'My Chronos est né d’un agent, pour les agents… et maintenant, il grandit avec toi. Une idée, un bug, une question ? Rejoins la toute nouvelle communauté sur Discord : tes retours orientent directement les prochaines versions. Et Marco, l’assistant qui connaît l’app par cœur, est là pour te répondre.',
+        note: 'Reste anonyme : ne partage jamais ton nom, ton matricule, ton grade, ton service, ton lieu de travail ni de photo de document. Le serveur est ouvert à tous, et les messages adressés à Marco sont traités par une IA.',
+        action: { label: 'Rejoindre la communauté', target: 'communaute' },
       },
       {
         emoji: '🏦',
-        title: 'Gardez vos RTC et HS pour le CET',
-        text: 'Choisissez combien de jours de RTC (10 par défaut) et d’HS mettre de côté : ils ne vous sont plus proposés à la pose et passent en premier dans le versement de janvier.',
+        title: 'Garde tes RTC et HS pour le CET',
+        text: 'Choisis combien de jours de RTC (10 par défaut) et d’HS mettre de côté : ils ne te sont plus proposés à la pose et passent en premier dans le versement de janvier.',
         action: { label: 'Voir mon épargne CET', target: 'cet' },
       },
       {
         emoji: '📋',
         title: 'ASA, Art. 13, CFS, EXN, repos décalé',
-        text: 'Marquez ces absences sur votre planning, sans toucher à vos compteurs : touchez le jour, puis « Autre absence ».',
+        text: 'Marque ces absences sur ton planning, sans toucher à tes compteurs : touche le jour, puis « Autre absence ».',
       },
     ],
   },
