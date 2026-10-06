@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MessagesSquare, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { DISCORD_BLURPLE, DiscordLogo } from '@/components/shared/DiscordLogo';
 import {
   AVERTISSEMENT_COURT,
   encartCommunauteMasque,
@@ -33,9 +34,9 @@ export function CommunauteBanner() {
       <div className="flex items-start gap-3">
         <div
           className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
+          style={{ background: DISCORD_BLURPLE }}
         >
-          <MessagesSquare className="w-5 h-5 text-white" />
+          <DiscordLogo className="w-6 h-6" couleur="#FFFFFF" />
         </div>
         <div className="min-w-0">
           <p className="font-semibold text-slate-800">Rejoins la communauté My Chronos</p>
@@ -47,9 +48,10 @@ export function CommunauteBanner() {
           <button
             type="button"
             onClick={ouvrirCommunaute}
-            className="mt-3 inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
-            style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)' }}
+            className="mt-3 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+            style={{ background: DISCORD_BLURPLE }}
           >
+            <DiscordLogo className="w-5 h-5" couleur="#FFFFFF" />
             Rejoindre le Discord
           </button>
         </div>

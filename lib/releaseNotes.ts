@@ -9,6 +9,8 @@ export type ReleaseAction = 'cycle' | 'cet' | 'communaute';
 
 export interface ReleaseItem {
   emoji: string;
+  /** Logo à la place de l'émoji (marque reconnaissable, ex. Discord). */
+  logo?: 'discord';
   title: string;
   text: string;
   /** Mise en garde affichée en petit sous le texte. */
@@ -28,6 +30,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     items: [
       {
         emoji: '💬',
+        logo: 'discord',
         title: 'Rejoins la communauté My Chronos !',
         text: 'My Chronos est né d’un agent, pour les agents… et maintenant, il grandit avec toi. Une idée, un bug, une question ? Rejoins la toute nouvelle communauté sur Discord : tes retours orientent directement les prochaines versions. Et Marco, l’assistant qui connaît l’app par cœur, est là pour te répondre.',
         note: 'Reste anonyme : ne partage jamais ton nom, ton matricule, ton grade, ton service, ton lieu de travail ni de photo de document. Le serveur est ouvert à tous, et les messages adressés à Marco sont traités par une IA.',

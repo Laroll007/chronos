@@ -10,6 +10,7 @@ import {
   type ReleaseItem,
 } from '@/lib/releaseNotes';
 import { track } from '@/lib/analytics';
+import { DiscordLogo } from '@/components/shared/DiscordLogo';
 
 interface WhatsNewModalProps {
   /** Raccourci depuis une nouveauté (ouvre l'écran concerné). */
@@ -74,7 +75,11 @@ export function WhatsNewModal({ onAction }: WhatsNewModalProps) {
         <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-5 bg-white space-y-4">
           {items.map((item) => (
             <div key={item.title} className="flex gap-3">
-              <span className="text-2xl leading-none shrink-0" aria-hidden="true">{item.emoji}</span>
+              {item.logo === 'discord' ? (
+                <DiscordLogo className="w-7 h-7 shrink-0" />
+              ) : (
+                <span className="text-2xl leading-none shrink-0" aria-hidden="true">{item.emoji}</span>
+              )}
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-800">{item.title}</p>
                 <p className="text-sm text-slate-600 leading-relaxed mt-0.5">{item.text}</p>
@@ -85,8 +90,9 @@ export function WhatsNewModal({ onAction }: WhatsNewModalProps) {
                   <button
                     type="button"
                     onClick={() => act(item.action!.target)}
-                    className="mt-2 text-sm font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-900"
+                    className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-900"
                   >
+                    {item.logo === 'discord' && <DiscordLogo className="w-4 h-4" />}
                     {item.action.label} →
                   </button>
                 )}
