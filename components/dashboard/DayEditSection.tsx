@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { GraduationCap, PencilLine, Undo2 } from 'lucide-react';
 import type { CycleConfig, JourModifie } from '@/lib/types';
+import { horairesDuJour } from '@/lib/horaires';
 import { effetJournee, heureDebutHabituelle, joursModifiesEntre, vacationPrevue, type EffetJournee } from '@/lib/journees';
 import { formatMinutes, isWorkingDay } from '@/lib/calculations';
 import { fromDayKey, toDayKey } from '@/lib/events';
@@ -106,7 +107,7 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
   // Pré-remplissage : la journée déjà saisie, sinon les horaires habituels de
   // l'agent (y compris sur un repos, s'il les a renseignés), sinon 08h–17h.
   const habituelle = cycleConfig.heureDebut !== undefined || prevue
-    ? { debut: heureDebutHabituelle(cycleConfig), duree: cycleConfig.heuresParJour }
+    ? { debut: heureDebutHabituelle(cycleConfig, start), duree: horairesDuJour(start, cycleConfig).duree }
     : null;
   const [debut, setDebut] = useState(existant?.debut ?? habituelle?.debut ?? 8 * 60);
   const [fin, setFin] = useState(

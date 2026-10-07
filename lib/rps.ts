@@ -13,6 +13,7 @@
 import { Counters, CycleConfig, HistoryEntry, WeekHours } from './types';
 import { RPS_PAR_DIMANCHE, HEURES_PAR_JOUR } from './constants';
 import { isWorkingDay, hasPostedLeaveOnDate, hasCMOOnDate, hasAbsenceOnDate } from './calculations';
+import { horairesDuJour, rotationValide } from './horaires';
 
 const JOURS: (keyof WeekHours)[] = [
   'dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi',
@@ -99,7 +100,20 @@ export function typeDeVacation(debut: number, duree: number): 'jour' | 'nuit' | 
 }
 
 /** Minutes de RPS créditées pour un jour travaillé donné. */
+const baremesRotation = new Map<string, WeekHours>();
+
 export function getRPSPourJour(date: Date, cycleConfig: CycleConfig): number {
+  // Horaires en rotation : barème des horaires du jour (soirée, matinée…).
+  if (cycleConfig.type === 'alterne' && rotationValide(cycleConfig.horairesRotation)) {
+    const { heureDebut, duree } = horairesDuJour(date, cycleConfig);
+    const cle = `${heureDebut}-${duree}`;
+    let b = baremesRotation.get(cle);
+    if (!b) {
+      b = baremeRPSDepuisHoraires(heureDebut ?? 7 * 60, duree);
+      baremesRotation.set(cle, b);
+    }
+    return Math.max(0, b[JOURS[date.getDay()]] ?? 0);
+  }
   const bareme = cycleConfig.rpsParJour;
   if (!bareme) {
     // Comportement historique : seuls les dimanches.

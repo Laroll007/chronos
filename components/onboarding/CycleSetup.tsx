@@ -6,6 +6,7 @@ import { JOURS_SEMAINE, HEURES_PAR_JOUR, CA_PAR_CYCLE } from '@/lib/constants';
 import { DEFAULT_CYCLE_ALTERNE_A, DEFAULT_CYCLE_ALTERNE_B, DEFAULT_HEBDO_HEURES } from '@/lib/types';
 import { baremeRPSDepuisHoraires, baremeRPSNuit, baremeRPSParDefaut, minutesDeNuit } from '@/lib/rps';
 import { aujourdhuiISO, getWeekType, lundiDeLaSemaine, positionDansRotation, ROTATIONS } from '@/lib/calculations';
+import { rangDansRotation } from '@/lib/horaires';
 import { Clock, ChevronRight, Copy } from 'lucide-react';
 import { TimeSelect } from '@/components/shared/TimeSelect';
 
@@ -126,8 +127,63 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const aujourdhuiTravaille =
     semaineActuelle !== null &&
     (semaineActuelle === 'A' ? semaineA : semaineB)[JOURS_CLES[new Date().getDay()]];
+  // ── Horaires qui changent selon les cycles (soirée / matinée…) ─────────────
+  const rotInit = initialConfig?.horairesRotation;
+  const [horairesAlternes, setHorairesAlternes] = useState<boolean>(Boolean(rotInit));
+  const [nom1, setNom1] = useState(rotInit?.jeux[0]?.nom ?? 'Soirée');
+  const [nom2, setNom2] = useState(rotInit?.jeux[1]?.nom ?? 'Matinée');
+  const [heureDebut2, setHeureDebut2] = useState<number>(rotInit?.jeux[1]?.heureDebut ?? 6 * 60 + 30);
+  const [heureFin2, setHeureFin2] = useState<number>(
+    rotInit?.jeux[1] ? (rotInit.jeux[1].heureDebut + rotInit.jeux[1].duree) % (24 * 60) : 18 * 60 + 38
+  );
+  const [nbCycles1, setNbCycles1] = useState<number>(rotInit ? rotInit.sequence.filter((i) => i === 0).length : 2);
+  const [nbCycles2, setNbCycles2] = useState<number>(rotInit ? rotInit.sequence.filter((i) => i === 1).length : 1);
+  const sequenceHoraires = [...Array(nbCycles1).fill(0), ...Array(nbCycles2).fill(1)] as number[];
+  const periodeJours = rotation ? rotation[0] + rotation[1] : 14;
+  // Rang du cycle en cours dans la séquence (choisi par l'agent).
+  const [rangHoraires, setRangHoraires] = useState<number | null>(() =>
+    rotInit && initialConfig ? rangDansRotation(new Date(), rotInit) : null
+  );
+  const duree2 = (heureFin2 - heureDebut2 + 24 * 60) % (24 * 60);
+  const horaires2Invalides = horairesAlternes && (duree2 < DUREE_MIN || duree2 > DUREE_MAX);
+  const rangHorairesManquant =
+    horairesAlternes && (rangHoraires === null || rangHoraires >= sequenceHoraires.length);
+
+  // 2/2/3/2/2/3 : le changement d'horaires tombe en début de semaine A ou B,
+  // selon les services. Repris de la rotation existante si on la modifie.
+  const [cycleCommence, setCycleCommence] = useState<WeekType>(() => {
+    if (!rotInit || !initialConfig) return 'A';
+    const [a, m, j] = rotInit.dateReference.split('-').map(Number);
+    return getWeekType(new Date(a, m - 1, j), initialConfig);
+  });
+
+  /** Premier jour du cycle en cours (2 semaines en 2/2/3/2/2/3, la série en 3/3). */
+  const debutCycleEnCours = (): string | null => {
+    if (rotation) return positionRotation === null ? null : decalerISO(aujourdhuiISO(), -positionRotation);
+    if (semaineActuelle === null) return null;
+    return semaineActuelle === cycleCommence ? lundiCourant : decalerISO(lundiCourant, -7);
+  };
+
+  /** Aperçu : prochain changement d'horaires, pour que l'agent vérifie. */
+  const prochainChangement = (() => {
+    const debutCycle = debutCycleEnCours();
+    if (!horairesAlternes || !debutCycle || rangHoraires === null || rangHorairesManquant) return null;
+    const ref = decalerISO(debutCycle, -rangHoraires * periodeJours);
+    const r = { jeux: [], sequence: sequenceHoraires, periodeJours, dateReference: ref };
+    const jeuDu = (d: Date) => sequenceHoraires[rangDansRotation(d, r)];
+    const aujourdHui = new Date();
+    const actuel = jeuDu(aujourdHui);
+    for (let k = 1; k <= periodeJours * sequenceHoraires.length; k++) {
+      const d = new Date(aujourdHui.getFullYear(), aujourdHui.getMonth(), aujourdHui.getDate() + k);
+      const jeu = jeuDu(d);
+      if (jeu !== actuel) return { date: d, nom: (jeu === 0 ? nom1 : nom2) || `Horaires ${jeu + 1}` };
+    }
+    return null;
+  })();
+
   const choixManquant =
-    cycleType === 'alterne' && (rotation ? positionRotation === null : semaineActuelle === null);
+    cycleType === 'alterne' &&
+    ((rotation ? positionRotation === null : semaineActuelle === null) || rangHorairesManquant);
 
   // Service de jour ou de nuit — détermine le barème de crédit des RPS.
   // L'APORTT accorde 0,4 le dimanche et 0,1 pour le travail de nuit (21h–6h) :
@@ -154,7 +210,20 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const hebdoTotal = HEBDO_DAYS.reduce((sum, d) => sum + (heuresSemaine[d.key] || 0), 0);
 
   const handleSubmit = () => {
-    if (choixManquant || horaireInvalide) return;
+    if (choixManquant || horaireInvalide || horaires2Invalides) return;
+    const debutCycle = debutCycleEnCours();
+    const horairesRotation =
+      cycleType === 'alterne' && horairesAlternes && debutCycle && rangHoraires !== null
+        ? {
+            jeux: [
+              { nom: nom1.trim() || 'Horaires 1', heureDebut, duree: dureeVacation },
+              { nom: nom2.trim() || 'Horaires 2', heureDebut: heureDebut2, duree: duree2 },
+            ],
+            sequence: sequenceHoraires,
+            periodeJours,
+            dateReference: decalerISO(debutCycle, -rangHoraires * periodeJours),
+          }
+        : undefined;
     const isHebdo = cycleType === 'hebdo';
     // En hebdo, un jour est "travaillé" s'il a des heures > 0 (samedi/dimanche = repos)
     const hebdoSchedule: WeekSchedule = {
@@ -171,6 +240,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       pattern: isHebdo ? undefined : cyclePattern,
       heuresParJour: isHebdo ? (heuresSemaine.lundi || HEURES_PAR_JOUR) : dureeVacation,
       heureDebut: isHebdo ? undefined : heureDebut,
+      horairesRotation,
       heuresJourCourt: undefined,
       heuresSemaine: isHebdo ? { ...heuresSemaine, samedi: 0, dimanche: 0 } : undefined,
       // Hebdo : on force une semaine de référence stable (lundi du jour J),
@@ -369,6 +439,117 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                     </p>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* Horaires qui changent selon les cycles */}
+            <label className="flex items-start gap-2 pt-1 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={horairesAlternes}
+                onChange={(e) => setHorairesAlternes(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-blue-600"
+              />
+              <span>
+                <strong>Mes horaires changent selon les cycles</strong>
+                <span className="block text-xs text-slate-500">Ex. 2 cycles de soirée, puis 1 cycle de matinée</span>
+              </span>
+            </label>
+
+            {horairesAlternes && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+                <div>
+                  <label htmlFor="nom-horaires-1" className="text-xs font-medium text-slate-600">Nom des horaires ci-dessus</label>
+                  <input id="nom-horaires-1" value={nom1} onChange={(e) => setNom1(e.target.value.slice(0, 20))}
+                    className={`mt-1 w-full h-10 ${inputClass}`} />
+                </div>
+                <div>
+                  <label htmlFor="nom-horaires-2" className="text-xs font-medium text-slate-600">Deuxièmes horaires</label>
+                  <input id="nom-horaires-2" value={nom2} onChange={(e) => setNom2(e.target.value.slice(0, 20))}
+                    className={`mt-1 w-full h-10 ${inputClass}`} />
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                      <label htmlFor="heure-debut-2" className="text-xs text-slate-600">{`Prise de service (${nom2 || 'horaires 2'})`}</label>
+                      <div className="mt-1">
+                        <TimeSelect id="heure-debut-2" label={`Prise de service (${nom2 || 'horaires 2'})`} value={toHHMM(heureDebut2)}
+                          onChange={(val) => { const v = fromHHMM(val); if (v !== null) setHeureDebut2(v); }} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="heure-fin-2" className="text-xs text-slate-600">{`Fin de service (${nom2 || 'horaires 2'})`}</label>
+                      <div className="mt-1">
+                        <TimeSelect id="heure-fin-2" label={`Fin de service (${nom2 || 'horaires 2'})`} value={toHHMM(heureFin2)}
+                          onChange={(val) => { const v = fromHHMM(val); if (v !== null) setHeureFin2(v); }} />
+                      </div>
+                    </div>
+                  </div>
+                  {horaires2Invalides ? (
+                    <p className="text-xs text-rose-600 mt-1">Vérifiez ces horaires : une vacation dure entre 1 h et 16 h.</p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">Durée : {formatHeures(duree2)}{heureFin2 <= heureDebut2 && ' (fin le lendemain)'}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-600">
+                    Rotation (un cycle = {rotation ? `${periodeJours} jours` : '2 semaines, A puis B'})
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-slate-700">
+                    <select aria-label={`Nombre de cycles de ${nom1}`} value={nbCycles1}
+                      onChange={(e) => { setNbCycles1(Number(e.target.value)); setRangHoraires(null); }}
+                      className="h-9 rounded-md border border-slate-200 bg-white px-2">
+                      {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                    <span>cycle(s) de {nom1 || 'horaires 1'}, puis</span>
+                    <select aria-label={`Nombre de cycles de ${nom2}`} value={nbCycles2}
+                      onChange={(e) => { setNbCycles2(Number(e.target.value)); setRangHoraires(null); }}
+                      className="h-9 rounded-md border border-slate-200 bg-white px-2">
+                      {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                    <span>de {nom2 || 'horaires 2'}</span>
+                  </div>
+                </div>
+                {!rotation && (
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-1.5">Les horaires changent en début de :</p>
+                    <div className="flex gap-2" role="radiogroup" aria-label="Début de cycle">
+                      {(['A', 'B'] as WeekType[]).map((w) => (
+                        <button key={w} type="button" role="radio" aria-checked={cycleCommence === w}
+                          onClick={() => setCycleCommence(w)}
+                          className={`px-3 py-2 rounded-lg border-2 text-sm font-medium ${
+                            cycleCommence === w ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+                          }`}>
+                          semaine {w}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-1.5">Le cycle en cours, vous êtes en :</p>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cycle en cours">
+                    {sequenceHoraires.map((jeu, i) => {
+                      const rangDansJeu = sequenceHoraires.slice(0, i + 1).filter((x) => x === jeu).length;
+                      const nom = (jeu === 0 ? nom1 : nom2) || `Horaires ${jeu + 1}`;
+                      const total = jeu === 0 ? nbCycles1 : nbCycles2;
+                      return (
+                        <button key={i} type="button" role="radio" aria-checked={rangHoraires === i}
+                          onClick={() => setRangHoraires(i)}
+                          className={`px-3 py-2 rounded-lg border-2 text-sm font-medium ${
+                            rangHoraires === i ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+                          }`}>
+                          {nom}{total > 1 ? ` · ${rangDansJeu}${rangDansJeu === 1 ? 'er' : 'e'} cycle` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {prochainChangement && (
+                    <p className="text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2 mt-2">
+                      Prochain changement : <strong>{prochainChangement.nom}</strong> à partir du{' '}
+                      {prochainChangement.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}.
+                      Si ce n&apos;est pas le cas, ajustez vos choix.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -653,14 +834,14 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={choixManquant || horaireInvalide}
+        disabled={choixManquant || horaireInvalide || horaires2Invalides}
         className="inline-flex items-center justify-center gap-2 w-full h-14 text-lg font-semibold rounded-xl text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:pointer-events-none"
         style={{
           background: 'linear-gradient(135deg, #0055A4 0%, #1a7de8 45%, #EF4135 100%)',
           boxShadow: '0 8px 24px rgba(0,85,164,0.25)',
         }}
       >
-        {choixManquant ? (rotation ? 'Indiquez où vous en êtes' : 'Choisissez la semaine en cours') : horaireInvalide ? 'Vérifiez vos horaires' : 'Continuer'}
+        {choixManquant ? (rangHorairesManquant ? 'Indiquez le cycle d’horaires en cours' : rotation ? 'Indiquez où vous en êtes' : 'Choisissez la semaine en cours') : horaires2Invalides ? 'Vérifiez vos horaires' : horaireInvalide ? 'Vérifiez vos horaires' : 'Continuer'}
         <ChevronRight className="w-5 h-5" />
       </button>
     </div>

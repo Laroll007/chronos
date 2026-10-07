@@ -36,6 +36,7 @@ import {
   RTC_JOURS_CET_CONSEILLES,
 } from './constants';
 import { estFerie } from './feries';
+import { horairesDuJour } from './horaires';
 
 // ============================================
 // HELPERS DATE (sans problèmes de DST)
@@ -339,7 +340,7 @@ export function getJourMinutes(date: Date, cycleConfig: CycleConfig): number {
     return cycleConfig.heuresSemaine[dayKeys[date.getDay()]] || 0;
   }
 
-  return cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+  return horairesDuJour(date, cycleConfig).duree;
 }
 
 /**

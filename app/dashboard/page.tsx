@@ -43,6 +43,7 @@ import { CETJanvierBanner } from '@/components/dashboard/CETJanvierBanner';
 import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
 import { CommunauteBanner } from '@/components/dashboard/CommunauteBanner';
 import { ouvrirCommunaute } from '@/lib/communaute';
+import { horairesDuJour } from '@/lib/horaires';
 import { HorairesPrompt } from '@/components/dashboard/HorairesPrompt';
 import { pendingReleaseNotes } from '@/lib/releaseNotes';
 import { planEpargneCET } from '@/lib/cet';
@@ -841,6 +842,11 @@ export default function DashboardPage() {
                         ? `${formatMinutes(cycleConfig.heureDebut)} → ${formatMinutes((cycleConfig.heureDebut + cycleConfig.heuresParJour) % 1440)} (${formatMinutes(cycleConfig.heuresParJour)})`
                         : `${Math.floor(cycleConfig.heuresParJour / 60)}h${(cycleConfig.heuresParJour % 60).toString().padStart(2, '0')} par jour`}
                   </p>
+                  {cycleConfig.horairesRotation && (
+                    <p className="text-sm text-slate-600 mt-1">
+                      Horaires en rotation · cycle en cours : <strong>{horairesDuJour(new Date(), cycleConfig).nom}</strong>
+                    </p>
+                  )}
                 </div>
 
                 {cetProjection && (

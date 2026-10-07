@@ -55,6 +55,26 @@ export interface CycleConfig {
   // calculer le barème RPS exact (nuit 21h–6h, dimanche). Absent chez les
   // agents inscrits avant l'ajout des horaires : leur barème reste inchangé.
   heureDebut?: number;
+  // Horaires qui changent au fil des cycles (soirée / matinée…). Absent = les
+  // horaires ci-dessus valent tous les jours. Cf. lib/horaires.ts.
+  horairesRotation?: RotationHoraires;
+}
+
+/** Un jeu d'horaires de vacation (minutes après minuit, durée en minutes). */
+export interface JeuHoraires {
+  nom: string;
+  heureDebut: number;
+  duree: number;
+}
+
+export interface RotationHoraires {
+  jeux: JeuHoraires[];
+  /** Indices dans `jeux`, un par cycle : [0, 0, 1] = 2 cycles du jeu 0, puis 1 du jeu 1. */
+  sequence: number[];
+  /** Durée d'un cycle en jours (14 en 2/2/3/2/2/3, 6 en 3/3). */
+  periodeJours: number;
+  /** Premier jour d'un cycle au rang 0 de la séquence (YYYY-MM-DD). */
+  dateReference: string;
 }
 
 export interface Counters {

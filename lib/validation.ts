@@ -107,6 +107,23 @@ function checkCycleConfig(v: unknown): string[] {
   }
   if (v.heureDebut !== undefined && !isNum(v.heureDebut, 0, 1439))
     errors.push('heureDebut: 0-1439 attendu');
+  if (v.horairesRotation !== undefined) {
+    const r = v.horairesRotation;
+    if (!isObj(r) || !Array.isArray(r.jeux) || !Array.isArray(r.sequence)) {
+      errors.push('horairesRotation: objet { jeux, sequence } attendu');
+    } else {
+      (r.jeux as unknown[]).forEach((j, i) => {
+        if (!isObj(j) || !isStr(j.nom) || !isNum(j.heureDebut, 0, 1439) || !isNum(j.duree, 1, 1440))
+          errors.push(`horairesRotation.jeux[${i}]: { nom, heureDebut, duree } attendu`);
+      });
+      const nbJeux = (r.jeux as unknown[]).length;
+      if (!(r.sequence as unknown[]).every((i) => Number.isInteger(i) && (i as number) >= 0 && (i as number) < nbJeux))
+        errors.push('horairesRotation.sequence: indices de jeux attendus');
+      if (!isNum(r.periodeJours, 1, 56)) errors.push('horairesRotation.periodeJours: 1-56 attendu');
+      if (!isStr(r.dateReference) || !DATE_RE.test(r.dateReference as string))
+        errors.push('horairesRotation.dateReference: YYYY-MM-DD attendu');
+    }
+  }
   if (!isStr(v.dateDebutCycle) || !DATE_RE.test(v.dateDebutCycle as string))
     errors.push('dateDebutCycle: YYYY-MM-DD attendu');
   if (!(WEEK_TYPES as readonly unknown[]).includes(v.semaineActuelle))
