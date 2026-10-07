@@ -89,7 +89,7 @@ describe('Écran du cycle : horaires en rotation', () => {
     choisir('Prise de service', '10:30');
     choisir('Fin de service', '22:38');
     fireEvent.click(screen.getByRole('radio', { name: 'Semaine A' }));
-    fireEvent.click(screen.getByText('Mes horaires changent selon les cycles'));
+    fireEvent.click(screen.getByText('Mes horaires changent'));
     choisir('Prise de service (Matinée)', '06:30');
     choisir('Fin de service (Matinée)', '18:38');
     fireEvent.click(screen.getByText('Soirée · 2e cycle'));
@@ -121,7 +121,7 @@ describe('Écran du cycle : changement en début de semaine B', () => {
     const onNext = vi.fn();
     render(<CycleSetup onNext={onNext} />);
     fireEvent.click(screen.getByRole('radio', { name: 'Semaine A' }));
-    fireEvent.click(screen.getByText('Mes horaires changent selon les cycles'));
+    fireEvent.click(screen.getByText('Mes horaires changent'));
     fireEvent.click(screen.getByRole('radio', { name: 'semaine B' }));
     fireEvent.click(screen.getByText('Soirée · 1er cycle'));
     expect(screen.getByText(/Prochain changement/)).toBeTruthy();

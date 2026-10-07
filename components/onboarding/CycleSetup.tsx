@@ -48,7 +48,7 @@ const decalerISO = (iso: string, jours: number): string => {
 const ORDINAUX = ['1er', '2e', '3e', '4e', '5e', '6e'];
 
 // Cycles proposés à l'inscription. Les autres restent « Prochainement ».
-const PATTERNS_DISPONIBLES: CyclePattern[] = ['2/2/3/2/2/3', '3/3'];
+const PATTERNS_DISPONIBLES: CyclePattern[] = ['2/2/3/2/2/3', '3/3', '4/2', '2/2'];
 
 const DUREE_MIN = 60;
 const DUREE_MAX = 16 * 60;
@@ -140,6 +140,23 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const [nbCycles2, setNbCycles2] = useState<number>(rotInit ? rotInit.sequence.filter((i) => i === 1).length : 1);
   const sequenceHoraires = [...Array(nbCycles1).fill(0), ...Array(nbCycles2).fill(1)] as number[];
   const periodeJours = rotation ? rotation[0] + rotation[1] : 14;
+  // Cycles en rotation (3/3, 4/2, 2/2) : les horaires peuvent aussi changer
+  // d'un jour à l'autre DANS le cycle (4/2 classique : 2 soirées, 2 matinées).
+  // Stocké comme une rotation d'un jour (periodeJours = 1) calée sur le 1er jour
+  // travaillé de la série.
+  const [modeHoraires, setModeHoraires] = useState<'cycle' | 'jour'>(
+    rotInit?.periodeJours === 1 ? 'jour' : 'cycle'
+  );
+  const modeJour = Boolean(rotation) && modeHoraires === 'jour';
+  const [jeuxParJourChoisis, setJeuxParJourChoisis] = useState<number[]>(() =>
+    rotInit?.periodeJours === 1 ? rotInit.sequence : []
+  );
+  // Par défaut : première moitié de la série sur les 1ers horaires, le reste sur les 2es.
+  const jeuxParJour = Array.from({ length: rotation?.[0] ?? 0 }, (_, i) =>
+    jeuxParJourChoisis[i] ?? (i < Math.ceil((rotation?.[0] ?? 0) / 2) ? 0 : 1)
+  );
+  const choisirJeuDuJour = (jour: number, jeu: number) =>
+    setJeuxParJourChoisis(jeuxParJour.map((j, i) => (i === jour ? jeu : j)));
   // Rang du cycle en cours dans la séquence (choisi par l'agent).
   const [rangHoraires, setRangHoraires] = useState<number | null>(() =>
     rotInit && initialConfig ? rangDansRotation(new Date(), rotInit) : null
@@ -147,7 +164,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const duree2 = (heureFin2 - heureDebut2 + 24 * 60) % (24 * 60);
   const horaires2Invalides = horairesAlternes && (duree2 < DUREE_MIN || duree2 > DUREE_MAX);
   const rangHorairesManquant =
-    horairesAlternes && (rangHoraires === null || rangHoraires >= sequenceHoraires.length);
+    horairesAlternes && !modeJour && (rangHoraires === null || rangHoraires >= sequenceHoraires.length);
 
   // 2/2/3/2/2/3 : le changement d'horaires tombe en début de semaine A ou B,
   // selon les services. Repris de la rotation existante si on la modifie.
@@ -167,7 +184,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   /** Aperçu : prochain changement d'horaires, pour que l'agent vérifie. */
   const prochainChangement = (() => {
     const debutCycle = debutCycleEnCours();
-    if (!horairesAlternes || !debutCycle || rangHoraires === null || rangHorairesManquant) return null;
+    if (!horairesAlternes || modeJour || !debutCycle || rangHoraires === null || rangHorairesManquant) return null;
     const ref = decalerISO(debutCycle, -rangHoraires * periodeJours);
     const r = { jeux: [], sequence: sequenceHoraires, periodeJours, dateReference: ref };
     const jeuDu = (d: Date) => sequenceHoraires[rangDansRotation(d, r)];
@@ -212,8 +229,20 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
   const handleSubmit = () => {
     if (choixManquant || horaireInvalide || horaires2Invalides) return;
     const debutCycle = debutCycleEnCours();
+    const jeuxRotation = [
+      { nom: nom1.trim() || 'Horaires 1', heureDebut, duree: dureeVacation },
+      { nom: nom2.trim() || 'Horaires 2', heureDebut: heureDebut2, duree: duree2 },
+    ];
     const horairesRotation =
-      cycleType === 'alterne' && horairesAlternes && debutCycle && rangHoraires !== null
+      cycleType === 'alterne' && horairesAlternes && modeJour && rotation && debutCycle
+        ? {
+            jeux: jeuxRotation,
+            // Jours de repos : sans effet (aucune vacation), on garde les 1ers horaires.
+            sequence: [...jeuxParJour, ...Array(rotation[1]).fill(0)],
+            periodeJours: 1,
+            dateReference: debutCycle,
+          }
+        : cycleType === 'alterne' && horairesAlternes && debutCycle && rangHoraires !== null
         ? {
             jeux: [
               { nom: nom1.trim() || 'Horaires 1', heureDebut, duree: dureeVacation },
@@ -328,6 +357,8 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
               {([
                 { value: '2/2/3/2/2/3', label: 'Cycle 2/2/3/2/2/3', detail: 'Semaines A/B' },
                 { value: '3/3', label: 'Cycle 3/3', detail: '3 jours travaillés, 3 jours de repos' },
+                { value: '4/2', label: 'Cycle 4/2', detail: '4 jours travaillés, 2 jours de repos' },
+                { value: '2/2', label: 'Cycle 2/2', detail: '2 jours travaillés, 2 jours de repos' },
               ] as { value: CyclePattern; label: string; detail: string }[]).map((cycle) => (
                 <button
                   key={cycle.value}
@@ -346,8 +377,6 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                 </button>
               ))}
               {([
-                { value: '4/2', label: 'Cycle 4/2', ca: CA_PAR_CYCLE['4/2'] },
-                { value: '2/2', label: 'Cycle 2/2', ca: CA_PAR_CYCLE['2/2'] },
                 { value: 'vacation_forte', label: 'Vacation Forte', ca: CA_PAR_CYCLE['vacation_forte'] },
               ] as { value: CyclePattern; label: string; ca: number }[]).map((cycle) => (
                 <div key={cycle.value} className="relative">
@@ -414,11 +443,14 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                 </div>
               </div>
             </div>
-            {!horaireInvalide && dureeVacation !== 11 * 60 + 8 && dureeVacation !== 12 * 60 + 8 && (
+            {!horaireInvalide && cyclePattern !== '4/2' && dureeVacation !== 11 * 60 + 8 && dureeVacation !== 12 * 60 + 8 && (
               <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
                 Les cycles APORTT sont en 11h08 ou 12h08 : vérifiez vos horaires. Votre dotation de RTC en dépend
                 (188h09 à 12h08, 53h27 à 11h08).
               </p>
+            )}
+            {cyclePattern === '4/2' && (
+              <p className="text-xs text-slate-500">En 4/2, la dotation annuelle de RTC est de 41h45, quelle que soit la durée des vacations.</p>
             )}
             {horaireInvalide ? (
               <p className="text-sm text-rose-600">Vérifiez vos horaires : une vacation dure entre 1 h et 16 h.</p>
@@ -451,8 +483,10 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                 className="mt-0.5 h-4 w-4 accent-blue-600"
               />
               <span>
-                <strong>Mes horaires changent selon les cycles</strong>
-                <span className="block text-xs text-slate-500">Ex. 2 cycles de soirée, puis 1 cycle de matinée</span>
+                <strong>Mes horaires changent</strong>
+                <span className="block text-xs text-slate-500">
+                  Ex. 2 cycles de soirée puis 1 de matinée{rotation ? ', ou 2 soirées puis 2 matinées dans le même cycle' : ''}
+                </span>
               </span>
             </label>
 
@@ -489,6 +523,49 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                     <p className="text-xs text-slate-500 mt-1">Durée : {formatHeures(duree2)}{heureFin2 <= heureDebut2 && ' (fin le lendemain)'}</p>
                   )}
                 </div>
+                {rotation && (
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-1.5">Les horaires changent :</p>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Rythme du changement d'horaires">
+                      {([['cycle', 'd’un cycle à l’autre'], ['jour', 'd’un jour à l’autre']] as const).map(([m, label]) => (
+                        <button key={m} type="button" role="radio" aria-checked={modeHoraires === m}
+                          onClick={() => setModeHoraires(m)}
+                          className={`px-3 py-2 rounded-lg border-2 text-sm font-medium ${
+                            modeHoraires === m ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+                          }`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {modeJour && rotation ? (
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-1.5">Horaires de chaque jour travaillé du cycle :</p>
+                    <div className="space-y-1.5">
+                      {jeuxParJour.map((jeu, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm">
+                          <span className="w-24 shrink-0 text-slate-700">{ORDINAUX[i]} jour</span>
+                          <div className="flex gap-1.5" role="radiogroup" aria-label={`Horaires du ${ORDINAUX[i]} jour`}>
+                            {[nom1 || 'Horaires 1', nom2 || 'Horaires 2'].map((nom, j) => (
+                              <button key={j} type="button" role="radio" aria-checked={jeu === j}
+                                onClick={() => choisirJeuDuJour(i, j)}
+                                className={`px-2.5 py-1.5 rounded-lg border-2 text-xs font-medium ${
+                                  jeu === j ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+                                }`}>
+                                {nom}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1.5">
+                      Le 1er jour est le premier jour travaillé de la série (voir « Où en êtes-vous aujourd&apos;hui ? »).
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 <div>
                   <p className="text-xs font-medium text-slate-600">
                     Rotation (un cycle = {rotation ? `${periodeJours} jours` : '2 semaines, A puis B'})
@@ -550,6 +627,8 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                     </p>
                   )}
                 </div>
+                  </>
+                )}
               </div>
             )}
           </div>

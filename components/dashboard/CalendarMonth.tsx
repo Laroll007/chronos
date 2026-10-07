@@ -19,6 +19,8 @@ import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
+import { jeuHorairesDuJour } from '@/lib/horaires';
+import { BadgeHoraires, LegendeHoraires, libelleJeu } from './HorairesBadge';
 
 interface CalendarMonthProps {
   cycleConfig: CycleConfig;
@@ -321,6 +323,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             // Hebdo : un jour férié n'est pas travaillé → case grisée, mais
             // toujours sélectionnable (rappel, astreinte, événement…).
             const isFerie = cycleConfig.type === 'hebdo' && estFerie(day.date);
+            // Horaires qui changent (soirée / matinée…) : pastille sur les jours travaillés.
+            const jeu = day.isWorking && !isPosted && !isCMO && !isAbsence ? jeuHorairesDuJour(day.date, cycleConfig) : null;
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -331,7 +335,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             });
             const statusParts: string[] = [];
             if (day.isToday) statusParts.push("aujourd'hui");
-            if (day.isWorking) statusParts.push('jour travaillé');
+            if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
             else statusParts.push(isFerie ? 'jour férié' : 'jour de repos');
             if (isPosted) statusParts.push('congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
@@ -383,6 +387,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                                   : 'bg-white hover:bg-slate-50'
                 )}
               >
+                {/* Numéro du jour, et à côté la pastille des horaires (soirée / matinée…) */}
+                <div className="mt-0.5 flex items-center justify-center gap-0.5">
                 <button
                   ref={(el) => { dayButtonsRef.current[index] = el; }}
                   onKeyDown={(e) => handleKeyDown(e, index)}
@@ -392,7 +398,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   aria-selected={isSelected}
                   aria-current={day.isToday ? 'date' : undefined}
                   className={cn(
-                    'relative mx-auto mt-0.5 h-6 min-w-6 px-1 md:h-7 md:min-w-7 shrink-0 flex items-center justify-center text-xs md:text-sm rounded-md',
+                    'relative h-6 min-w-6 px-1 md:h-7 md:min-w-7 shrink-0 flex items-center justify-center text-xs md:text-sm rounded-md',
                     'transition-colors duration-150',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:z-10',
                     // Aujourd'hui : numéro dans un carré bleu plein
@@ -428,6 +434,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                     />
                   )}
                 </button>
+                {jeu && isCurrentMonth && <BadgeHoraires jeu={jeu} />}
+                </div>
 
                 {/* Événements : lignes alignées sur la semaine, 2 au plus puis « +N » */}
                 {layout && isCurrentMonth && (
@@ -463,6 +471,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         {/* Légende : uniquement ce qui apparaît ce mois-ci (pastilles carrées,
             comme les cases) */}
         <CalendarLegend flags={legendFlags} shape="square" />
+        <LegendeHoraires
+          cycleConfig={cycleConfig}
+          dates={days.filter((d) => d.isWorking && d.date.getMonth() === month).map((d) => d.date)}
+        />
       </CardContent>
     </Card>
   );

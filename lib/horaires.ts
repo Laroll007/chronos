@@ -53,3 +53,39 @@ export function horairesDuJour(date: Date, cfg: CycleConfig): HorairesJour {
   }
   return { heureDebut: cfg.heureDebut, duree: cfg.heuresParJour || HEURES_PAR_JOUR };
 }
+
+export interface JeuDuJour {
+  /** Indice du jeu d'horaires (0 = premier jeu). */
+  indice: number;
+  nom: string;
+  /** Abréviation affichée sur le planning (« S », « M »…). */
+  court: string;
+  heureDebut: number;
+  duree: number;
+}
+
+/**
+ * Abréviations distinctes des noms de jeux : l'initiale, ou les deux premières
+ * lettres si deux noms commencent pareil (« Matin » / « Matinée tardive »…).
+ */
+export function abregerNomsJeux(noms: string[]): string[] {
+  const initiale = (n: string, k: number) => {
+    const t = n.trim() || '?';
+    return t.charAt(0).toUpperCase() + t.slice(1, k).toLowerCase();
+  };
+  const une = noms.map((n) => initiale(n, 1));
+  return noms.map((n, i) => (une.filter((x) => x === une[i]).length > 1 ? initiale(n, 2) : une[i]));
+}
+
+/**
+ * Jeu d'horaires prévu ce jour-là, quand les horaires changent selon les cycles
+ * ou d'un jour à l'autre (null sinon : un seul jeu, rien à signaler).
+ */
+export function jeuHorairesDuJour(date: Date, cfg: CycleConfig): JeuDuJour | null {
+  const r = cfg.type === 'alterne' ? cfg.horairesRotation : undefined;
+  if (!rotationValide(r)) return null;
+  const indice = r.sequence[rangDansRotation(date, r)];
+  const jeu = r.jeux[indice];
+  const courts = abregerNomsJeux(r.jeux.map((j) => j.nom));
+  return { indice, nom: jeu.nom, court: courts[indice], heureDebut: jeu.heureDebut, duree: jeu.duree };
+}

@@ -68,9 +68,12 @@ hooks/useCounters.ts        Toutes les actions sur les données (poser, supprime
 
 ## Règles métier (guide DNPAF / APORTT)
 
-Régimes : cycles alternés **2/2/3/2/2/3** et **3/3** proposés à l'inscription,
-plus le **régime hebdomadaire**. 4/2, 2/2 et vacation forte existent dans le
-moteur mais restent « Prochainement » (`PATTERNS_DISPONIBLES`, CycleSetup).
+Régimes : cycles alternés **2/2/3/2/2/3**, **3/3**, **4/2** et **2/2** proposés à
+l'inscription (les trois derniers en rotation continue, `ROTATIONS`), plus le
+**régime hebdomadaire**. La vacation forte reste « Prochainement ».
+Horaires qui changent (`horairesRotation`) : d'un cycle à l'autre, ou d'un jour
+à l'autre dans le cycle (rotation d'un jour, `periodeJours = 1`) ; le planning
+affiche une pastille par jour travaillé (`HorairesBadge`).
 
 | Cycle | CA | Dotation RTC | Réserve CET conseillée |
 |---|---|---|---|

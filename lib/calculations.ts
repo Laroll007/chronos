@@ -192,6 +192,8 @@ function getWorkingDayConfigHash(cycleConfig: CycleConfig): string {
  */
 export const ROTATIONS: Partial<Record<CyclePattern, readonly [number, number]>> = {
   '3/3': [3, 3],
+  '4/2': [4, 2],
+  '2/2': [2, 2],
 };
 
 export function getRotation(cycleConfig: CycleConfig): readonly [number, number] | undefined {

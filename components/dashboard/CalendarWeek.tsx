@@ -17,6 +17,8 @@ import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
+import { jeuHorairesDuJour } from '@/lib/horaires';
+import { LegendeHoraires, libelleJeu, styleJeu } from './HorairesBadge';
 import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 
 interface CalendarWeekProps {
@@ -247,6 +249,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isSingleDay = isStart && isEnd;
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
+            // Horaires qui changent (soirée / matinée…) : remplace le « T » du jour travaillé.
+            const jeu = day.isWorking && !isPosted && !isCMO && !isAbsence ? jeuHorairesDuJour(day.date, cycleConfig) : null;
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -257,7 +261,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             });
             const statusParts: string[] = [];
             if (day.isToday) statusParts.push("aujourd'hui");
-            if (day.isWorking) statusParts.push('jour travaillé');
+            if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
             else if (cycleConfig.type === 'hebdo' && estFerie(day.date)) statusParts.push('jour férié');
             else statusParts.push('jour de repos');
             if (isPosted) statusParts.push('congé posé');
@@ -371,11 +375,20 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                       variant="secondary"
                       className={cn(
                         'mt-1 text-[10px] px-1.5 py-0',
-                        (isInRange || isInPreview) ? 'bg-emerald-200 text-emerald-700' : 'bg-blue-100 text-blue-600'
+                        jeu
+                          ? styleJeu(jeu.indice)
+                          : (isInRange || isInPreview) ? 'bg-emerald-200 text-emerald-700' : 'bg-blue-100 text-blue-600'
                       )}
                       aria-hidden="true"
                     >
-                      T
+                      {jeu ? (
+                        <>
+                          <span className="md:hidden">{jeu.court}</span>
+                          <span className="hidden md:inline">{jeu.nom}</span>
+                        </>
+                      ) : (
+                        'T'
+                      )}
                     </Badge>
                   )}
                   {jourModifie && (
@@ -403,6 +416,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
 
         {/* Légende : uniquement ce qui apparaît cette semaine */}
         <CalendarLegend flags={legendFlags} shape="square" />
+        <LegendeHoraires cycleConfig={cycleConfig} dates={weekDays.filter((d) => d.isWorking).map((d) => d.date)} />
       </CardContent>
     </Card>
   );
