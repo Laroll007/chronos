@@ -44,7 +44,8 @@ import { WhatsNewModal } from '@/components/dashboard/WhatsNewModal';
 import { CommunauteBanner } from '@/components/dashboard/CommunauteBanner';
 import { ouvrirCommunaute } from '@/lib/communaute';
 import { horairesDuJour } from '@/lib/horaires';
-import { HorairesPrompt } from '@/components/dashboard/HorairesPrompt';
+import { HorairesPrompt, rappelHorairesDu } from '@/components/dashboard/HorairesPrompt';
+import { ArttCyclePrompt } from '@/components/dashboard/ArttCyclePrompt';
 import { pendingReleaseNotes } from '@/lib/releaseNotes';
 import { planEpargneCET } from '@/lib/cet';
 import { eventsInRange, toDayKey } from '@/lib/events';
@@ -118,6 +119,8 @@ export default function DashboardPage() {
   // Figé à l'ouverture : si « Quoi de neuf ? » s'affiche, le rappel des horaires
   // attend l'ouverture suivante (pas deux fenêtres d'affilée).
   const [nouveautesAuDemarrage] = useState(() => pendingReleaseNotes().length > 0);
+  // Idem pour le rappel des horaires : le message ARTT attend l'ouverture suivante.
+  const [rappelHorairesAuDemarrage] = useState(() => rappelHorairesDu());
 
   const {
     userData,
@@ -966,6 +969,22 @@ export default function DashboardPage() {
             onRenseigner={() => {
               setSettingsOpenCycle(true);
               setShowSettings(true);
+            }}
+          />
+        )}
+
+      {/* Compteur ARTT coché par un agent en cycle (souvent ses RTC, saisis deux
+          fois). Une seule fois, et jamais en même temps que les autres fenêtres. */}
+      {!showWelcome &&
+        hasSeenWelcome() &&
+        !nouveautesAuDemarrage &&
+        cycleConfig.type === 'alterne' &&
+        counters.hasARTT &&
+        !(cycleConfig.heureDebut === undefined && rappelHorairesAuDemarrage) && (
+          <ArttCyclePrompt
+            onGerer={() => {
+              setGestionCompteurs(true);
+              setShowCompleteCounters(true);
             }}
           />
         )}

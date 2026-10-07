@@ -16,6 +16,9 @@ export const STATS_EVENTS = {
   absence_pose: { label: 'Absence sans compteur posée (ASA, Art. 13…)', group: 'Poses' },
   counters_manage_open: { label: 'Gérer mes compteurs', group: 'Outils' },
   counters_reminder_dismissed: { label: 'Rappel compteurs masqué', group: 'Onboarding' },
+  artt_prompt_seen: { label: 'Message « ARTT en cycle » affiché', group: 'Écrans' },
+  artt_prompt_gerer: { label: 'Message ARTT : ouvre « Gérer mes compteurs »', group: 'Écrans' },
+  artt_prompt_garde: { label: 'Message ARTT : garde le compteur', group: 'Écrans' },
 
   // Calendrier
   view_week: { label: 'Vue Semaine', group: 'Calendrier' },
