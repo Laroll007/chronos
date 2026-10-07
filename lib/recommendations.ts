@@ -5,7 +5,6 @@ import {
   CF_PAR_SEMESTRE,
   CA_REQUIS_POUR_HP,
   RTC_RESERVES_CET,
-  RTC_LIBRES,
   HS_MAX_STOCKABLES,
   HEURES_PAR_JOUR,
   CONGES_BONIFIES_EXPIRATION_MOIS,
@@ -244,7 +243,7 @@ function checkRTCLibres(
       id: generateId(),
       priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
       action: `Consommer ${formatMinutes(rtcLibres)} de RTC libres`,
-      reason: `À poser avant le 31/12, ou à verser au CET en janvier pour vous les faire payer. Sinon, perdus (83h30 conseillés à garder pour le CET)`,
+      reason: `À poser avant le 31/12, ou à verser au CET en janvier pour vous les faire payer. Sinon, perdus (${formatMinutes(reserveRTC(counters))} conseillés à garder pour le CET)`,
       deadline: `${year}-12-31`,
       counterType: 'rtc',
       amountToConsume: rtcLibres,
@@ -264,7 +263,7 @@ function checkRTCReserves(counters: Counters): Recommendation[] {
       id: generateId(),
       priority: 'high',
       action: `ATTENTION : RTC réservés CET entamés de ${formatMinutes(manque)}`,
-      reason: `Vous perdez le gain de 37h50 de la conversion avantageuse RTC → CET`,
+      reason: `Ces jours de RTC ne pourront plus aller au CET à 8h21 le jour : la conversion la plus avantageuse`,
       counterType: 'rtc',
     });
   }

@@ -16,18 +16,12 @@ import {
   CF_PAR_SEMESTRE,
   // RTC
   RTC_BRUT_ANNUEL,
-  JOURNEE_SOLIDARITE,
-  RTC_NET_ANNUEL,
   RTC_TOTAL_ANNUEL,
-  RTC_JOURS_ANNUELS,
   RTC_COUT_PAR_JOUR_CET,
   RTC_VALEUR_REELLE_JOUR,
   RTC_GAIN_PAR_JOUR,
   RTC_JOURS_CET_CONSEILLES,
   RTC_RESERVES_CET,
-  RTC_GAIN_ANNUEL_TOTAL,
-  RTC_LIBRES,
-  CYCLES_EXCLUS_ABONDEMENT_HS,
   // RPS
   RPS_PAR_DIMANCHE,
   RPS_DIMANCHES_ANNUELS_ALTERNE,
@@ -160,19 +154,12 @@ describe('RTC - Récupération Temps de Cycle', () => {
     expect(minutesToHoursMinutes(RTC_BRUT_ANNUEL)).toBe('188h09');
   });
 
-  it('JOURNEE_SOLIDARITE = 12h08 = HEURES_PAR_JOUR', () => {
-    expect(JOURNEE_SOLIDARITE).toBe(HEURES_PAR_JOUR);
-    expect(JOURNEE_SOLIDARITE).toBe(728);
-  });
 
 
   it('RTC_TOTAL_ANNUEL = dotation brute (plus de journée de solidarité)', () => {
     expect(RTC_TOTAL_ANNUEL).toBe(RTC_BRUT_ANNUEL);
   });
 
-  it('RTC_JOURS_ANNUELS = 15 jours', () => {
-    expect(RTC_JOURS_ANNUELS).toBe(15);
-  });
 
   describe('Conversion RTC → CET', () => {
     it('RTC_COUT_PAR_JOUR_CET = 8h21 (501 minutes)', () => {
@@ -201,24 +188,9 @@ describe('RTC - Récupération Temps de Cycle', () => {
       expect(minutesToHoursMinutes(RTC_RESERVES_CET)).toBe('83h30');
     });
 
-    it('RTC_GAIN_ANNUEL_TOTAL = 10 × 3h47 = 37h50 (2270 minutes)', () => {
-      expect(RTC_GAIN_ANNUEL_TOTAL).toBe(RTC_GAIN_PAR_JOUR * RTC_JOURS_CET_CONSEILLES);
-      expect(RTC_GAIN_ANNUEL_TOTAL).toBe(2270);
-      expect(minutesToHoursMinutes(RTC_GAIN_ANNUEL_TOTAL)).toBe('37h50');
-    });
 
-    it('RTC_LIBRES = total - réservés', () => {
-      expect(RTC_LIBRES).toBe(RTC_TOTAL_ANNUEL - RTC_RESERVES_CET);
-    });
   });
 
-  it('CYCLES_EXCLUS_ABONDEMENT_HS contient les bons cycles', () => {
-    expect(CYCLES_EXCLUS_ABONDEMENT_HS).toContain('2/2');
-    expect(CYCLES_EXCLUS_ABONDEMENT_HS).toContain('3/3');
-    expect(CYCLES_EXCLUS_ABONDEMENT_HS).toContain('2/2/3/2/2/3');
-    expect(CYCLES_EXCLUS_ABONDEMENT_HS).toContain('vacation_forte');
-    expect(CYCLES_EXCLUS_ABONDEMENT_HS).not.toContain('4/2');
-  });
 });
 
 // ============================================
@@ -478,20 +450,6 @@ describe('Constantes App', () => {
 // ============================================
 
 describe('Cohérence entre constantes', () => {
-  it('RTC libres + réservés = RTC total', () => {
-    expect(RTC_LIBRES + RTC_RESERVES_CET).toBe(RTC_TOTAL_ANNUEL);
-  });
-
-  it('RTC net = brut - journée solidarité', () => {
-    expect(RTC_NET_ANNUEL).toBe(RTC_BRUT_ANNUEL - JOURNEE_SOLIDARITE);
-  });
-
-  it('gain CET = (valeur réelle - coût) × max jours', () => {
-    expect(RTC_GAIN_ANNUEL_TOTAL).toBe(
-      (RTC_VALEUR_REELLE_JOUR - RTC_COUT_PAR_JOUR_CET) * RTC_JOURS_CET_CONSEILLES
-    );
-  });
-
   it('CF total = 2 × CF semestre', () => {
     expect(CF_TOTAL_ANNUEL).toBe(2 * CF_PAR_SEMESTRE);
   });

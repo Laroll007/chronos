@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Counters, CycleConfig } from '@/lib/types';
-import { COUNTER_LABELS, COUNTER_COLORS } from '@/lib/constants';
-import { getCATotalForCycle, checkCAHPCondition, ajusterSoldeCAHP, getCAHPUtilises } from '@/lib/calculations';
+import { Counters, CycleConfig, CycleType } from '@/lib/types';
+import { COUNTER_LABELS, COUNTER_COLORS, RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
+import { getCATotalForCycle, checkCAHPCondition, ajusterSoldeCAHP, getCAHPUtilises, conseilRTCCET, formatMinutes } from '@/lib/calculations';
 import { DEFAULT_COUNTERS } from '@/lib/storage';
-import { ChevronRight, ChevronLeft, Sparkles, ShieldCheck, ListChecks } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ChevronDown, Sparkles, ShieldCheck, ListChecks } from 'lucide-react';
 import { CounterHelpButton as HelpButton, CounterHelpModal as HelpModal } from '@/components/shared/CounterHelpModal';
 
 const formatMinutesToInput = (minutes: number): { h: number; m: number } => ({
@@ -87,6 +87,8 @@ interface CounterOption {
   name: string;
   short: string;
   helpKey?: string;
+  /** Régimes concernés (absent = tous). Les autres compteurs restent accessibles, repliés. */
+  regimes?: CycleType[];
 }
 
 const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] }[] = [
@@ -95,10 +97,10 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
     subtitle: 'Compteurs principaux gérés tout au long de l\'année',
     items: [
       { key: 'ca', name: 'Congés Annuels (CA)', short: 'Perdus au 31/12 si non utilisés', helpKey: 'ca' },
-      { key: 'cf', name: 'Crédits Fériés (CF)', short: '109h12/an, à lisser sur l\'année', helpKey: 'cf' },
-      { key: 'rtc', name: 'RTC', short: 'Récupération Temps de Cycle, 83h30 conseillés pour le CET', helpKey: 'rtc' },
-      { key: 'rtt', name: 'RTT (cycle hebdo)', short: 'Récupération Temps de Travail, perdus au 31/12', helpKey: 'rtt' },
-      { key: 'artt', name: 'ARTT', short: '20j/an, perdus au 31/12 (arrêté 3 mai 2002)', helpKey: 'artt' },
+      { key: 'cf', name: 'Crédits Fériés (CF)', short: '109h12/an, à lisser sur l\'année', helpKey: 'cf', regimes: ['alterne'] },
+      { key: 'rtc', name: 'RTC', short: 'Récupération Temps de Cycle, à garder en partie pour le CET', helpKey: 'rtc', regimes: ['alterne'] },
+      { key: 'rtt', name: 'RTT (cycle hebdo)', short: 'Récupération Temps de Travail, perdus au 31/12', helpKey: 'rtt', regimes: ['hebdo'] },
+      { key: 'artt', name: 'ARTT', short: '20j/an, perdus au 31/12 (arrêté 3 mai 2002)', helpKey: 'artt', regimes: ['hebdo'] },
       { key: 'rps', name: 'RPS', short: 'Récupération dimanche, gardés indéfiniment', helpKey: 'rps' },
       { key: 'hs', name: 'Heures Supplémentaires (HS)', short: 'Max 160h stockables', helpKey: 'hs' },
       { key: 'cet', name: 'Compte Épargne Temps (CET)', short: 'Plafond 60 jours', helpKey: 'cet' },
@@ -122,6 +124,11 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
     ],
   },
 ];
+
+/** Le compteur concerne-t-il ce régime (cycle ou hebdomadaire) ? */
+function pourRegime(item: CounterOption, regime: CycleType): boolean {
+  return !item.regimes || item.regimes.includes(regime);
+}
 
 // Rien n'est pré-coché : l'utilisateur sélectionne lui-même les compteurs qu'il possède.
 const DEFAULT_SELECTED: CounterKey[] = [];
@@ -210,6 +217,8 @@ export function CountersSetup({
     initialDraft?.counters ?? initialCounters ?? EMPTY_COUNTERS
   );
   const [helpKey, setHelpKey] = useState<string | null>(null);
+  const [autresOuverts, setAutresOuverts] = useState(false);
+  const conseilRTC = conseilRTCCET(cycleConfig);
 
   // Nombre de CA annuels selon le cycle (hebdo = 25, sinon 18/23)
   const caTotal = getCATotalForCycle(cycleConfig);
@@ -394,6 +403,38 @@ export function CountersSetup({
   // Sous-étape 2 : Sélection des compteurs
   // ───────────────────────────────────────────────────────────
   if (subStep === 'selection') {
+    const renderOption = (item: CounterOption) => {
+      const checked = selectedKeys.has(item.key);
+      return (
+        <label
+          key={item.key}
+          htmlFor={`counter-${item.key}`}
+          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+            checked
+              ? 'border-blue-300 bg-blue-50/50'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <input
+            id={`counter-${item.key}`}
+            type="checkbox"
+            checked={checked}
+            onChange={() => toggleCounter(item.key)}
+            className="mt-0.5 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-slate-800">{item.name}</span>
+              {item.helpKey && <HelpButton onClick={() => setHelpKey(item.helpKey!)} />}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">{item.short}</p>
+          </div>
+        </label>
+      );
+    };
+    const autresRegime = COUNTER_GROUPS.flatMap((g) => g.items).filter((item) => !pourRegime(item, cycleConfig.type));
+    // Toujours déplié si l'un d'eux est déjà coché (sinon il serait invisible).
+    const autresVisibles = autresOuverts || autresRegime.some((item) => selectedKeys.has(item.key));
     return (
       <>
         <div className="space-y-5">
@@ -402,48 +443,44 @@ export function CountersSetup({
             <p className={subClass}>Cochez tous ceux qui figurent sur votre relevé (GesTT ou autre)</p>
           </div>
 
-          {COUNTER_GROUPS.map((group) => (
-            <div key={group.title} className={cardClass}>
-              <div className="px-6 mb-4">
-                <div className="flex items-center">
-                  <ListChecks className="w-5 h-5 text-blue-600 mr-2" />
-                  <span className={titleClass}>{group.title}</span>
+          {COUNTER_GROUPS.map((group) => {
+            const items = group.items.filter((item) => pourRegime(item, cycleConfig.type));
+            if (items.length === 0) return null;
+            return (
+              <div key={group.title} className={cardClass}>
+                <div className="px-6 mb-4">
+                  <div className="flex items-center">
+                    <ListChecks className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className={titleClass}>{group.title}</span>
+                  </div>
+                  <p className={`${subClass} mt-1`}>{group.subtitle}</p>
                 </div>
-                <p className={`${subClass} mt-1`}>{group.subtitle}</p>
+                <div className="px-6 space-y-2">{items.map(renderOption)}</div>
               </div>
-              <div className="px-6 space-y-2">
-                {group.items.map((item) => {
-                  const checked = selectedKeys.has(item.key);
-                  return (
-                    <label
-                      key={item.key}
-                      htmlFor={`counter-${item.key}`}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        checked
-                          ? 'border-blue-300 bg-blue-50/50'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        id={`counter-${item.key}`}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleCounter(item.key)}
-                        className="mt-0.5 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-slate-800">{item.name}</span>
-                          {item.helpKey && <HelpButton onClick={() => setHelpKey(item.helpKey!)} />}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{item.short}</p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+            );
+          })}
+
+          {/* Compteurs de l'autre régime : repliés, mais accessibles (cas particuliers) */}
+          {autresRegime.length > 0 && (
+            <div className={cardClass}>
+              <button
+                type="button"
+                onClick={() => setAutresOuverts((o) => !o)}
+                aria-expanded={autresVisibles}
+                className="w-full px-6 flex items-center justify-between gap-3 text-left"
+              >
+                <div>
+                  <span className={titleClass}>Autres compteurs</span>
+                  <p className={`${subClass} mt-1`}>
+                    Propres au {cycleConfig.type === 'hebdo' ? 'travail en cycle' : 'régime hebdomadaire'} : à cocher seulement
+                    s&apos;ils figurent sur votre relevé
+                  </p>
+                </div>
+                <ChevronDown className={`w-5 h-5 shrink-0 text-slate-500 transition-transform ${autresVisibles ? 'rotate-180' : ''}`} />
+              </button>
+              {autresVisibles && <div className="px-6 mt-4 space-y-2">{autresRegime.map(renderOption)}</div>}
             </div>
-          ))}
+          )}
 
           <div className="flex gap-4">
             <button type="button" onClick={handleBack}
@@ -464,7 +501,7 @@ export function CountersSetup({
           {skipButton}
         </div>
 
-        {helpKey && <HelpModal helpKey={helpKey} onClose={() => setHelpKey(null)} />}
+        {helpKey && <HelpModal helpKey={helpKey} cycleConfig={cycleConfig} onClose={() => setHelpKey(null)} />}
       </>
     );
   }
@@ -609,16 +646,21 @@ export function CountersSetup({
             <div className="px-6 mb-4">
               <div className="flex items-center">
                 <span className={titleClass}>RTC</span>
-                <span className="ml-2 text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Gain CET +37h50/an</span>
+                {conseilRTC.gainTotal > 0 && (
+                  <span className="ml-2 text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Gain CET +{formatMinutes(conseilRTC.gainTotal)}/an</span>
+                )}
                 <HelpButton onClick={() => setHelpKey('rtc')} />
               </div>
-              <div className={`${subClass} mt-1`}>83h30 conseillés pour le CET</div>
+              <div className={`${subClass} mt-1`}>{formatMinutes(conseilRTC.minutes)} conseillés pour le CET</div>
             </div>
             <div className="px-6 space-y-4">
               <TimeInput label="RTC restant" value={counters.rtc} onChange={(v) => updateCounter('rtc', v)} hint="Perdus au 31/12 s'ils ne sont ni posés ni versés au CET" colorKey="rtc" />
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-sm text-blue-700">
-                  <strong>Astuce CET :</strong> Gardez 83h30 de RTC pour les verser au CET en janvier : 10 jours à 8h21 au lieu de 12h08, soit 37h50 gagnées.
+                  <strong>Astuce CET :</strong> Gardez {formatMinutes(conseilRTC.minutes)} de RTC pour les verser au CET en janvier
+                  {conseilRTC.gainTotal > 0
+                    ? ` : ${conseilRTC.jours} jours à 8h21 au lieu de ${formatMinutes(conseilRTC.gainParJour + RTC_COUT_PAR_JOUR_CET)}, soit ${formatMinutes(conseilRTC.gainTotal)} gagnées.`
+                    : ` (${conseilRTC.jours} jours à 8h21).`}
                 </p>
               </div>
             </div>
@@ -756,7 +798,7 @@ export function CountersSetup({
       </div>
 
       {/* Modal d'aide */}
-      {helpKey && <HelpModal helpKey={helpKey} onClose={() => setHelpKey(null)} />}
+      {helpKey && <HelpModal helpKey={helpKey} cycleConfig={cycleConfig} onClose={() => setHelpKey(null)} />}
     </>
   );
 }

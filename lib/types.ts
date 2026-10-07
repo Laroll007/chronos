@@ -349,25 +349,6 @@ export interface Combination {
   repartition?: { type: CounterType; amount: number; debut: number; fin: number }[];
 }
 
-// ============================================
-// PLANNINGS COLLÈGUES
-// ============================================
-
-export interface ColleagueLeave {
-  id: string;
-  start: string; // 'YYYY-MM-DD'
-  end: string;   // 'YYYY-MM-DD'
-  label?: string;
-}
-
-export interface Colleague {
-  id: string;
-  name: string;
-  color: string; // hex '#rrggbb'
-  visible: boolean;
-  leaves: ColleagueLeave[];
-}
-
 // Constantes pour les valeurs par défaut
 export const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
   lundi: false,

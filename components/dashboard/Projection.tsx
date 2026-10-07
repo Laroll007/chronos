@@ -3,11 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CETProjection, Counters } from '@/lib/types';
-import { formatMinutes } from '@/lib/calculations';
+import { formatMinutes, reserveRTC } from '@/lib/calculations';
 import {
   CET_PLAFOND,
   RTC_COUT_PAR_JOUR_CET,
-  RTC_JOURS_CET_CONSEILLES,
   CA_MAX_VERS_CET,
   HS_MAX_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
@@ -219,10 +218,10 @@ export function Projection({ currentCET, counters, projection, onOpenPlan, onUpd
           {/* RTC */}
           <SourceRow
             label="RTC (Récupération Temps de Cycle)"
-            sublabel={`Tous versables (8h21/j) · ${RTC_JOURS_CET_CONSEILLES}j conseillés`}
+            sublabel={`Tous versables (8h21/j) · ${Math.round(reserveRTC(counters) / RTC_COUT_PAR_JOUR_CET)}j conseillés`}
             balance={`${formatMinutes(counters.rtc)} (≈ ${rtcJoursDisponibles}j)`}
             towardsCET={projection.apportCET.rtc}
-            note={projection.apportCET.rtc > 0 ? `Coût : ${formatMinutes(projection.apportCET.rtc * RTC_COUT_PAR_JOUR_CET)} (8h21/j au lieu de 12h08)` : undefined}
+            note={projection.apportCET.rtc > 0 ? `Coût : ${formatMinutes(projection.apportCET.rtc * RTC_COUT_PAR_JOUR_CET)} (8h21 le jour)` : undefined}
             gain={projection.apportCET.rtc > 0 ? `Gain +${formatMinutes(projection.gainNetRTC)}` : undefined}
             color="emerald"
             disabled={rtcDisabled}

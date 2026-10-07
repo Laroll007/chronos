@@ -7,7 +7,6 @@ import {
   isSundayWorked,
   countWorkingDays,
   getCAParCycle,
-  calculerRTCNet,
   isInCAHPPeriod,
   checkCAHPCondition,
   getCANeededForHP,
@@ -27,7 +26,6 @@ import {
 import { DEFAULT_CYCLE_CONFIG } from '../storage';
 import {
   RTC_RESERVES_CET,
-  JOURNEE_SOLIDARITE,
   CF_PAR_SEMESTRE,
   CET_PLAFOND,
   CA_REQUIS_POUR_HP,
@@ -157,38 +155,6 @@ describe('Calculs CA APORTT', () => {
 
     it('retourne 18 CA par défaut si pattern undefined', () => {
       expect(getCAParCycle(undefined)).toBe(18);
-    });
-  });
-});
-
-describe('Calculs RTC et Journée Solidarité', () => {
-  describe('calculerRTCNet', () => {
-    it('déduit la journée de solidarité du RTC brut', () => {
-      const rtcBrut = 11229; // 187h09
-      const result = calculerRTCNet(rtcBrut, '2/2/3/2/2/3', true);
-
-      expect(result.rtcNet).toBe(rtcBrut - JOURNEE_SOLIDARITE);
-      expect(result.deductionJS).toBe(JOURNEE_SOLIDARITE);
-    });
-
-    it('ne déduit rien si JS pas appliquée', () => {
-      const rtcBrut = 11229;
-      const result = calculerRTCNet(rtcBrut, '2/2/3/2/2/3', false);
-
-      expect(result.rtcNet).toBe(rtcBrut);
-      expect(result.deductionJS).toBe(0);
-    });
-
-    it('identifie les cycles exclus de compensation HS', () => {
-      expect(calculerRTCNet(11229, '2/2/3/2/2/3', true).estExcluCompensationHS).toBe(true);
-      expect(calculerRTCNet(11229, '2/2', true).estExcluCompensationHS).toBe(true);
-      expect(calculerRTCNet(11229, '3/3', true).estExcluCompensationHS).toBe(true);
-      expect(calculerRTCNet(11229, 'vacation_forte', true).estExcluCompensationHS).toBe(true);
-    });
-
-    it('ne retourne jamais un RTC négatif', () => {
-      const result = calculerRTCNet(100, '2/2/3/2/2/3', true);
-      expect(result.rtcNet).toBe(0);
     });
   });
 });

@@ -10,10 +10,8 @@ import {
   CF_TOTAL_ANNUEL,
   CF_PAR_SEMESTRE,
   RTC_TOTAL_ANNUEL,
-  RTC_NET_ANNUEL,
   RTC_BRUT_ANNUEL,
   RTC_RESERVES_CET,
-  RTC_LIBRES,
   HS_MAX_STOCKABLES,
   CET_PLAFOND,
   ARTT_QUOTA_ANNUEL,
@@ -305,7 +303,7 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         onClose={() => setDetailsId(null)}
         onUpdate={onUpdateCounters}
       />
-      {helpKey && <CounterHelpModal helpKey={helpKey} onClose={() => setHelpKey(null)} />}
+      {helpKey && <CounterHelpModal helpKey={helpKey} cycleConfig={cycleConfig} onClose={() => setHelpKey(null)} />}
     </>
   );
 }

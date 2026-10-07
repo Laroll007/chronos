@@ -28,8 +28,6 @@ import {
   CET_PLAFOND,
   CET_PROGRESSION_ANNUELLE_MAX,
   CET_SEUIL_OPTION,
-  JOURNEE_SOLIDARITE,
-  CYCLES_EXCLUS_ABONDEMENT_HS,
   RTC_DOTATION,
   RTC_BRUT_ANNUEL,
   HS_COUT_PAR_JOUR_CET,
@@ -428,37 +426,6 @@ export function getWeeklyMinutes(cycleConfig: CycleConfig): number {
 }
 
 // ============================================
-// CALCULS RTC ET JOURNÉE DE SOLIDARITÉ (APORTT)
-// ============================================
-
-/**
- * Calcule le RTC net après déduction de la journée de solidarité
- * La JS déduit toujours 12h08 des RTC pour les cycles binaires
- */
-export function calculerRTCNet(
-  rtcBrut: number,
-  cyclePattern?: CyclePattern,
-  journeeSolidariteAppliquee: boolean = false
-): { rtcNet: number; deductionJS: number; estExcluCompensationHS: boolean } {
-  if (!journeeSolidariteAppliquee) {
-    return { rtcNet: rtcBrut, deductionJS: 0, estExcluCompensationHS: false };
-  }
-
-  const deductionJS = JOURNEE_SOLIDARITE; // 728 min (12h08)
-
-  // Les cycles binaires 12h08 et VF sont exclus de la compensation HS
-  const estExcluCompensationHS = cyclePattern
-    ? CYCLES_EXCLUS_ABONDEMENT_HS.includes(cyclePattern)
-    : true; // Par défaut, considérer exclu
-
-  return {
-    rtcNet: Math.max(0, rtcBrut - deductionJS),
-    deductionJS,
-    estExcluCompensationHS,
-  };
-}
-
-// ============================================
 // CALCULS CA HP
 // ============================================
 
@@ -669,6 +636,28 @@ export function reserveRTC(c: Pick<Counters, 'rtcJoursCET' | 'rtcReservesCET'>):
 export function reserveRTCConseillee(cycleConfig: CycleConfig | undefined): number {
   const versables = Math.floor(getRTCAnnuel(cycleConfig) / RTC_COUT_PAR_JOUR_CET);
   return Math.min(RTC_JOURS_CET_CONSEILLES, versables) * RTC_COUT_PAR_JOUR_CET;
+}
+
+export interface ConseilRTCCET {
+  /** Jours de RTC conseillés à garder pour le CET. */
+  jours: number;
+  /** Les mêmes, en minutes (8h21 le jour). */
+  minutes: number;
+  /** Gain d'un jour versé au CET plutôt que posé (0 si la vacation dure moins de 8h21). */
+  gainParJour: number;
+  gainTotal: number;
+}
+
+/**
+ * Conseil RTC → CET propre au cycle, pour les textes : 10 jours (83h30) à
+ * 12h08, 6 à 11h08, 5 en 4/2… Le gain dépend de la durée de la vacation.
+ */
+export function conseilRTCCET(cycleConfig: CycleConfig | undefined): ConseilRTCCET {
+  const minutes = reserveRTCConseillee(cycleConfig);
+  const jours = minutes / RTC_COUT_PAR_JOUR_CET;
+  const journee = cycleConfig?.type === 'alterne' ? cycleConfig.heuresParJour || HEURES_PAR_JOUR : HEURES_PAR_JOUR;
+  const gainParJour = Math.max(0, journee - RTC_COUT_PAR_JOUR_CET);
+  return { jours, minutes, gainParJour, gainTotal: gainParJour * jours };
 }
 
 /** Minutes d'HS gardées pour le CET (0 sans choix de l'agent). */

@@ -55,7 +55,6 @@ const CountersSetup = lazy(() =>
   }))
 );
 import { useCounters } from '@/hooks/useCounters';
-// ColleaguesDrawer & useColleagues — désactivé v1, réactiver pour la v2
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';

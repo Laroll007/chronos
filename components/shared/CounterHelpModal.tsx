@@ -4,8 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpCircle, X } from 'lucide-react';
 import { track } from '@/lib/analytics';
+import { conseilRTCCET, formatMinutes, getCATotalForCycle } from '@/lib/calculations';
+import { RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
+import type { CycleConfig } from '@/lib/types';
 
-export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; warning?: string; tip?: string }> = {
+type HelpEntry = { title: string; bullets: string[]; warning?: string; tip?: string };
+
+export const HELP_CONTENT: Record<string, HelpEntry> = {
   cet: {
     title: 'Compte Épargne Temps (CET)',
     bullets: [
@@ -15,7 +20,7 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
       'Au-delà, les jours versés sont payés (forfait par jour selon votre catégorie) ou versés à la RAFP — d\'office sans choix de votre part.',
       'CET au-delà de 60 jours (relèvements COVID/JOP, jusqu\'à 80) : jours conservés, mais compte gelé.',
     ],
-    tip: 'Conseil : versez 10 jours de RTC (83h30). Un jour de RTC ne coûte que 8h21 au lieu d\'une journée entière, et vous ne perdez aucune heure en indemnisation.',
+    tip: 'Conseil : versez en priorité vos RTC. Un jour de RTC ne coûte que 8h21 au lieu d\'une journée entière.',
   },
   ca: {
     title: 'Congés Annuels (CA)',
@@ -51,12 +56,12 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     title: 'Récupération Temps de Cycle (RTC)',
     bullets: [
       'Dotation annuelle : 188h09 en vacations de 12h08 (2/2, 3/3, 2/2/3), 53h27 en vacations de 11h08, 41h45 en 4/2.',
-      'Conseil : gardez 83h30 (10 jours à 8h21) pour alimenter le CET en janvier ; à 11h08, tout ce qui est versable (50h06, 6 jours).',
+      'Conseil : gardez quelques jours de RTC (8h21 le jour) pour alimenter le CET en janvier.',
       'Le reste (RTC libres) peut être posé comme congé.',
       'Tous les RTC restants peuvent être versés au CET, mais au-delà de ce que le CET peut garder, ils sont indemnisés ou versés à la RAFP.',
       'Les RTC ni posés ni versés au CET sont perdus au 31 décembre.',
     ],
-    tip: 'Un jour de RTC versé au CET ne coûte que 8h21 : gardez 10 jours (83h30) pour janvier plutôt que de les poser.',
+    tip: 'Un jour de RTC versé au CET ne coûte que 8h21 : gardez-en pour janvier plutôt que de tous les poser.',
   },
   rtt: {
     title: 'RTT (Réduction du Temps de Travail)',
@@ -146,6 +151,40 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
   },
 };
 
+/**
+ * Aide adaptée au cycle de l'agent : nombre de CA, réserve de RTC conseillée
+ * (10 jours à 12h08, 6 à 11h08, 5 en 4/2…) et gain réel d'un versement.
+ */
+export function helpContent(helpKey: string, cycleConfig?: CycleConfig): HelpEntry | undefined {
+  const base = HELP_CONTENT[helpKey];
+  if (!base || !cycleConfig) return base;
+  const conseil = conseilRTCCET(cycleConfig);
+  const reserve = `${conseil.jours} jour${conseil.jours > 1 ? 's' : ''} de RTC (${formatMinutes(conseil.minutes)})`;
+  const gain = conseil.gainParJour > 0
+    ? `Un jour de RTC versé au CET ne coûte que 8h21 au lieu de ${formatMinutes(conseil.gainParJour + RTC_COUT_PAR_JOUR_CET)} : ${formatMinutes(conseil.gainTotal)} gagnées sur ${conseil.jours} jours.`
+    : 'Avec vos vacations, un jour de RTC versé au CET coûte 8h21 : vous ne gagnez pas d\'heures, mais vous épargnez.';
+  switch (helpKey) {
+    case 'cet':
+      return { ...base, tip: `Conseil : versez ${reserve}. ${gain}` };
+    case 'rtc':
+      return {
+        ...base,
+        bullets: base.bullets.map((b) =>
+          b.startsWith('Conseil') ? `Conseil pour votre cycle : gardez ${reserve} pour alimenter le CET en janvier.` : b
+        ),
+        tip: gain,
+      };
+    case 'ca':
+      if (cycleConfig.type !== 'alterne') return base;
+      return {
+        ...base,
+        bullets: base.bullets.map((b, i) => (i === 0 ? `${getCATotalForCycle(cycleConfig)} jours par an pour votre cycle.` : b)),
+      };
+    default:
+      return base;
+  }
+}
+
 export function CounterHelpButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
     <button
@@ -160,8 +199,17 @@ export function CounterHelpButton({ onClick, className }: { onClick: () => void;
   );
 }
 
-export function CounterHelpModal({ helpKey, onClose }: { helpKey: string; onClose: () => void }) {
-  const content = HELP_CONTENT[helpKey];
+export function CounterHelpModal({
+  helpKey,
+  onClose,
+  cycleConfig,
+}: {
+  helpKey: string;
+  onClose: () => void;
+  /** Cycle de l'agent : adapte les conseils (CA, réserve RTC pour le CET). */
+  cycleConfig?: CycleConfig;
+}) {
+  const content = helpContent(helpKey, cycleConfig);
   const mountRef = useRef<Element | null>(null);
   const [mounted, setMounted] = useState(false);
 

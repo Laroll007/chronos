@@ -1,7 +1,7 @@
 // LocalStorage helpers pour Chronos
 
 import { UserData, Counters, CycleConfig, HistoryEntry, ExportData } from './types';
-import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_NET_ANNUEL, RTC_BRUT_ANNUEL, CF_TOTAL_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_BRUT_ANNUEL, CF_TOTAL_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
 import {
   DEFAULT_WEEK_SCHEDULE,
   DEFAULT_CYCLE_ALTERNE_A,

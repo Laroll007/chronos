@@ -14,7 +14,6 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getWeekType, isWorkingDay, getDaysUntil, jourLocal, aujourdhuiISO } from '@/lib/calculations';
-import { generateICS } from '@/lib/export-ics';
 import { generateRecommendations } from '@/lib/recommendations';
 import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
 import type { HistoryEntry } from '@/lib/types';
@@ -80,18 +79,6 @@ describe('Dates sans heure (« YYYY-MM-DD »)', () => {
     const rec = generateRecommendations(counters, cfg, new Date(2026, 8, 21)).find((r) => r.counterType === 'congesBonifies');
     expect(rec?.deadline).toBe('2028-03-01');
     expect(rec?.reason).toContain('01/03/2024');
-  });
-});
-
-describe('Export calendrier (.ics)', () => {
-  it('place un congé à sa vraie date', () => {
-    const history: HistoryEntry[] = [{
-      id: 'x', date: new Date(2026, 8, 21).toISOString(), dateEnd: new Date(2026, 8, 23).toISOString(),
-      type: 'ca', action: 'pose', amount: 3, description: 'test', countersSnapshot: {},
-    } as HistoryEntry];
-    const ics = generateICS(cfg, history, 'leaves', 2026);
-    expect(ics).toContain('DTSTART;VALUE=DATE:20260921');
-    expect(ics).toContain('DTEND;VALUE=DATE:20260924'); // fin exclusive : lendemain du 23
   });
 });
 

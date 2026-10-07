@@ -13,14 +13,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Counters, CycleConfig, WeekHours } from '@/lib/types';
 import { RPSBaremeEditor } from './RPSBaremeEditor';
-import { formatMinutes, getDaysUntil, jourLocal, reserveRTC } from '@/lib/calculations';
+import { conseilRTCCET, formatMinutes, getDaysUntil, jourLocal, reserveRTC } from '@/lib/calculations';
 import {
   CA_TOTAL_ANNUEL,
   CA_HP_BONUS,
   CA_HP_PALIER_1,
   CA_REQUIS_POUR_HP,
   CF_TOTAL_ANNUEL,
-  RTC_RESERVES_CET,
+  RTC_COUT_PAR_JOUR_CET,
   CET_PLAFOND,
   ARTT_QUOTA_ANNUEL,
   RTT_QUOTA_HEBDO,
@@ -90,6 +90,13 @@ function Alert({ text, type }: { text: string; type: 'warning' | 'error' | 'info
 }
 
 const TIME_COUNTERS = ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique'];
+
+/** « RTC : tous versables, 10 j conseillés (83h30, gain +37h50) », selon le cycle. */
+function texteSourceRTC(cycleConfig?: CycleConfig): string {
+  const c = conseilRTCCET(cycleConfig);
+  const gain = c.gainTotal > 0 ? `, gain +${formatMinutes(c.gainTotal)}` : '';
+  return `RTC : tous versables, ${c.jours} j conseillés (${formatMinutes(c.minutes)}${gain})`;
+}
 
 export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_ANNUEL, cycleConfig, onUpdateCycle, onClose, onUpdate }: CounterDetailsModalProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -192,13 +199,14 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         const reserves = reserveRTC(counters);
         const rtcLibres = Math.max(0, counters.rtc - reserves);
         const reservesIntactes = counters.rtc >= reserves;
+        const gainReserve = (reserves / RTC_COUT_PAR_JOUR_CET) * conseilRTCCET(cycleConfig).gainParJour;
         return (
           <>
             <Row label="Solde actuel" value={formatMinutes(counters.rtc)} bold color="text-blue-700" />
             <Row label="Réservé pour CET" value={formatMinutes(reserves)} color="text-blue-600" separator />
             <Row label="RTC libres" value={formatMinutes(rtcLibres)} color={rtcLibres > 0 ? 'text-amber-600' : 'text-slate-400'} />
             {reservesIntactes
-              ? <Alert type="info" text={`Les ${formatMinutes(reserves)} réservés CET sont intacts. Gain net : +37h50/an par rapport à une pose classique.`} />
+              ? <Alert type="info" text={`Les ${formatMinutes(reserves)} réservés CET sont intacts.${gainReserve > 0 ? ` Gain net : +${formatMinutes(gainReserve)}/an par rapport à une pose classique.` : ''}`} />
               : <Alert type="error" text="⚠️ Les RTC réservés CET ont été entamés ! Cela réduit le gain annuel CET." />
             }
             <Alert type="warning" text="Les RTC libres sont perdus au 31/12 s'ils ne sont ni posés ni versés au CET (au-delà de ce que le CET peut garder, le versement est indemnisé)." />
@@ -317,7 +325,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sources d'alimentation</p>
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                <span>RTC : tous versables, 10 j conseillés (83h30, gain +37h50)</span>
+                <span>{texteSourceRTC(cycleConfig)}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />

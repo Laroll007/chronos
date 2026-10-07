@@ -51,17 +51,8 @@ export const RTC_DOTATION = {
 } as const;
 export const RTC_BRUT_ANNUEL = RTC_DOTATION.cycle12h08; // 188h09 = 11289 minutes
 
-// Journée de solidarité (APORTT)
-export const JOURNEE_SOLIDARITE = HEURES_PAR_JOUR; // 12h08 = 728 minutes
-export const RTC_NET_ANNUEL = RTC_BRUT_ANNUEL - JOURNEE_SOLIDARITE; // 175h01 = 10501 minutes
-
-
-// Cycles exclus de l'abondement HS (journée solidarité)
-export const CYCLES_EXCLUS_ABONDEMENT_HS = ['2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'];
-
 // Pour compatibilité avec le code existant
 export const RTC_TOTAL_ANNUEL = RTC_BRUT_ANNUEL; // plus de déduction de la journée de solidarité (2026-10)
-export const RTC_JOURS_ANNUELS = 15; // 15 jours + 6h09 (brut)
 
 // Conversion RTC → CET (avantageuse)
 export const RTC_COUT_PAR_JOUR_CET = 8 * 60 + 21; // 8h21 = 501 minutes pour 1 jour CET
@@ -74,10 +65,6 @@ export const RTC_GAIN_PAR_JOUR = RTC_VALEUR_REELLE_JOUR - RTC_COUT_PAR_JOUR_CET;
 // à la RAFP) : on conseille donc d'en garder 10 jours (83h30), sans les poser.
 export const RTC_JOURS_CET_CONSEILLES = 10;
 export const RTC_RESERVES_CET = RTC_COUT_PAR_JOUR_CET * RTC_JOURS_CET_CONSEILLES; // 83h30 = 5010 minutes
-export const RTC_GAIN_ANNUEL_TOTAL = RTC_GAIN_PAR_JOUR * RTC_JOURS_CET_CONSEILLES; // 37h50 = 2270 minutes
-
-// RTC libres (après réserve CET)
-export const RTC_LIBRES = RTC_TOTAL_ANNUEL - RTC_RESERVES_CET; // 103h39 = 6219 minutes
 
 // ============================================
 // RPS - RÉCUPÉRATION DIMANCHE
@@ -184,7 +171,7 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   rtc: {
     name: 'RTC',
-    description: '83h30 conseillés pour le CET. Perdus au 31/12 s\'ils ne sont ni posés ni versés.',
+    description: 'À garder en partie pour le CET (8h21 le jour). Perdus au 31/12 s\'ils ne sont ni posés ni versés.',
     unit: 'heures',
   },
   rtcReserves: {

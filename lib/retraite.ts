@@ -26,7 +26,6 @@ import { Counters, CycleConfig, CounterType, HistoryEntry } from './types';
 import {
   CF_TOTAL_ANNUEL,
   RTC_BRUT_ANNUEL,
-  RTC_NET_ANNUEL,
   ARTT_QUOTA_ANNUEL,
   RTT_QUOTA_HEBDO,
   CET_SEUIL_OPTION,
