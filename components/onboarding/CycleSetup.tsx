@@ -344,6 +344,12 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
                 </div>
               </div>
             </div>
+            {!horaireInvalide && dureeVacation !== 11 * 60 + 8 && dureeVacation !== 12 * 60 + 8 && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                Les cycles APORTT sont en 11h08 ou 12h08 : vérifiez vos horaires. Votre dotation de RTC en dépend
+                (188h09 à 12h08, 53h27 à 11h08).
+              </p>
+            )}
             {horaireInvalide ? (
               <p className="text-sm text-rose-600">Vérifiez vos horaires : une vacation dure entre 1 h et 16 h.</p>
             ) : (

@@ -151,8 +151,8 @@ describe('Calculs CA APORTT', () => {
       expect(getCAParCycle('3/3')).toBe(18);
     });
 
-    it('retourne 18 CA pour vacation_forte', () => {
-      expect(getCAParCycle('vacation_forte')).toBe(18);
+    it('retourne 20 CA pour vacation_forte (grille officielle)', () => {
+      expect(getCAParCycle('vacation_forte')).toBe(20);
     });
 
     it('retourne 18 CA par défaut si pattern undefined', () => {

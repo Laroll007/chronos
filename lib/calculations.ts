@@ -30,9 +30,10 @@ import {
   CET_SEUIL_OPTION,
   JOURNEE_SOLIDARITE,
   CYCLES_EXCLUS_ABONDEMENT_HS,
-  RTC_BRUT_PAR_PATTERN,
+  RTC_DOTATION,
   RTC_BRUT_ANNUEL,
   HS_COUT_PAR_JOUR_CET,
+  RTC_JOURS_CET_CONSEILLES,
 } from './constants';
 import { estFerie } from './feries';
 
@@ -384,12 +385,21 @@ export function countWorkingMinutes(
 /**
  * Retourne le nombre de CA selon le pattern de cycle
  */
+/** Au-delà de cette durée de vacation, la colonne 12h08 s'applique (milieu entre 11h08 et 12h08). */
+export const SEUIL_VACATION_12H08 = 11 * 60 + 38;
+
 /**
- * Dotation RTC annuelle du cycle. Plus de déduction de la journée de
- * solidarité (2026-10) : aucun agent n'en voyait l'effet sur son relevé.
+ * Dotation RTC annuelle du cycle, d'après la grille officielle : elle dépend du
+ * cycle ET de la durée de vacation (11h08 ou 12h08 pour 2/2, 3/3, 2/2/3). Plus
+ * de déduction de la journée de solidarité (2026-10).
  */
 export function getRTCAnnuel(cycleConfig: CycleConfig | undefined): number {
-  return (cycleConfig?.pattern && RTC_BRUT_PAR_PATTERN[cycleConfig.pattern]) || RTC_BRUT_ANNUEL;
+  if (!cycleConfig || cycleConfig.type !== 'alterne') return RTC_BRUT_ANNUEL;
+  if (cycleConfig.pattern === '4/2') return RTC_DOTATION.cycle4_2;
+  if (cycleConfig.pattern === 'vacation_forte') return RTC_DOTATION.vacationForte;
+  return (cycleConfig.heuresParJour || HEURES_PAR_JOUR) <= SEUIL_VACATION_12H08
+    ? RTC_DOTATION.cycle11h08
+    : RTC_DOTATION.cycle12h08;
 }
 
 export function getCAParCycle(pattern?: CyclePattern): number {
@@ -645,8 +655,19 @@ export function getDaysUntilSemesterDeadline(date: Date): number {
  * Calcule les RTC libres disponibles (après réserve CET)
  */
 /** Minutes de RTC protégées pour le CET : choix de l'agent, sinon 83h30. */
-export function reserveRTC(c: Pick<Counters, 'rtcJoursCET'>): number {
-  return c.rtcJoursCET !== undefined ? Math.max(0, c.rtcJoursCET) * RTC_COUT_PAR_JOUR_CET : RTC_RESERVES_CET;
+export function reserveRTC(c: Pick<Counters, 'rtcJoursCET' | 'rtcReservesCET'>): number {
+  if (c.rtcJoursCET !== undefined) return Math.max(0, c.rtcJoursCET) * RTC_COUT_PAR_JOUR_CET;
+  // Réglage conseillé, fixé selon le cycle (cf. reserveRTCConseillee) ; 83h30 à défaut.
+  return c.rtcReservesCET > 0 ? c.rtcReservesCET : RTC_RESERVES_CET;
+}
+
+/**
+ * Réserve RTC conseillée pour le CET : 10 jours à 8h21 (83h30), sans dépasser
+ * ce que la dotation du cycle permet de verser (6 jours à 11h08 : 50h06).
+ */
+export function reserveRTCConseillee(cycleConfig: CycleConfig | undefined): number {
+  const versables = Math.floor(getRTCAnnuel(cycleConfig) / RTC_COUT_PAR_JOUR_CET);
+  return Math.min(RTC_JOURS_CET_CONSEILLES, versables) * RTC_COUT_PAR_JOUR_CET;
 }
 
 /** Minutes d'HS gardées pour le CET (0 sans choix de l'agent). */

@@ -50,8 +50,8 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
   rtc: {
     title: 'Récupération Temps de Cycle (RTC)',
     bullets: [
-      'Dotation annuelle : 187h09 en cycle 2/2/3/2/2/3, 188h09 en cycle 3/3.',
-      'Conseil : gardez 83h30 (10 jours à 8h21) pour alimenter le CET en janvier.',
+      'Dotation annuelle : 188h09 en vacations de 12h08 (2/2, 3/3, 2/2/3), 53h27 en vacations de 11h08, 41h45 en 4/2.',
+      'Conseil : gardez 83h30 (10 jours à 8h21) pour alimenter le CET en janvier ; à 11h08, tout ce qui est versable (50h06, 6 jours).',
       'Le reste (RTC libres) peut être posé comme congé.',
       'Tous les RTC restants peuvent être versés au CET, mais au-delà de ce que le CET peut garder, ils sont indemnisés ou versés à la RAFP.',
       'Les RTC ni posés ni versés au CET sont perdus au 31 décembre.',

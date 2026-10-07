@@ -8,7 +8,7 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
+import { reserveRTCConseillee, getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
 import { CET_PLAFOND, HS_COUT_PAR_JOUR_CET, RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
@@ -308,9 +308,12 @@ export function useCounters() {
     (updates: Partial<CycleConfig>) => {
       if (!userData) return false;
 
+      const cycleConfig = { ...userData.cycleConfig, ...updates };
       const newData: UserData = {
         ...userData,
-        cycleConfig: { ...userData.cycleConfig, ...updates },
+        cycleConfig,
+        // La réserve RTC conseillée dépend du cycle (10 jours à 12h08, 6 à 11h08).
+        counters: { ...userData.counters, rtcReservesCET: reserveRTCConseillee(cycleConfig) },
         lastUpdated: new Date().toISOString(),
       };
       return save(newData);

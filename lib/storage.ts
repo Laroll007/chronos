@@ -8,7 +8,7 @@ import {
   DEFAULT_CYCLE_ALTERNE_B,
   DEFAULT_HEBDO_HEURES,
 } from './types';
-import { getCATotalForCycle, getRTCAnnuel } from './calculations';
+import { getCATotalForCycle, getRTCAnnuel, reserveRTCConseillee } from './calculations';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
@@ -107,6 +107,15 @@ export function migrateUserData(data: UserData): UserData {
   // Migration 1: Initialiser le flag journée de solidarité si absent
   if (data.counters.journeeSolidariteAppliquee === undefined) {
     data.counters.journeeSolidariteAppliquee = false;
+    needsSave = true;
+  }
+
+  // Réserve RTC conseillée pour le CET, selon la dotation du cycle (10 jours à
+  // 12h08, 6 à 11h08) : recalculée à chaque chargement, donc aussi après un
+  // changement de cycle.
+  const reserveConseillee = reserveRTCConseillee(data.cycleConfig);
+  if (data.counters.rtcReservesCET !== reserveConseillee) {
+    data.counters.rtcReservesCET = reserveConseillee;
     needsSave = true;
   }
 

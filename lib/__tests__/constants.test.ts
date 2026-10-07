@@ -117,8 +117,8 @@ describe('Congés Annuels (CA)', () => {
       expect(CA_PAR_CYCLE['2/2/3/2/2/3']).toBe(18);
     });
 
-    it('vacation_forte = 18 CA', () => {
-      expect(CA_PAR_CYCLE['vacation_forte']).toBe(18);
+    it('vacation_forte = 20 CA (grille officielle)', () => {
+      expect(CA_PAR_CYCLE['vacation_forte']).toBe(20);
     });
 
     it('tous les cycles de 12h08 ont 18 CA', () => {
@@ -155,9 +155,9 @@ describe('Crédits Fériés (CF)', () => {
 // ============================================
 
 describe('RTC - Récupération Temps de Cycle', () => {
-  it('RTC_BRUT_ANNUEL = 187h09 (11229 minutes)', () => {
-    expect(RTC_BRUT_ANNUEL).toBe(11229);
-    expect(minutesToHoursMinutes(RTC_BRUT_ANNUEL)).toBe('187h09');
+  it('RTC_BRUT_ANNUEL = 188h09 (11289 minutes), dotation à 12h08 de la grille officielle', () => {
+    expect(RTC_BRUT_ANNUEL).toBe(11289);
+    expect(minutesToHoursMinutes(RTC_BRUT_ANNUEL)).toBe('188h09');
   });
 
   it('JOURNEE_SOLIDARITE = 12h08 = HEURES_PAR_JOUR', () => {
@@ -165,11 +165,6 @@ describe('RTC - Récupération Temps de Cycle', () => {
     expect(JOURNEE_SOLIDARITE).toBe(728);
   });
 
-  it('RTC_NET_ANNUEL = brut - JS = 175h01 (10501 minutes)', () => {
-    expect(RTC_NET_ANNUEL).toBe(RTC_BRUT_ANNUEL - JOURNEE_SOLIDARITE);
-    expect(RTC_NET_ANNUEL).toBe(10501);
-    expect(minutesToHoursMinutes(RTC_NET_ANNUEL)).toBe('175h01');
-  });
 
   it('RTC_TOTAL_ANNUEL = dotation brute (plus de journée de solidarité)', () => {
     expect(RTC_TOTAL_ANNUEL).toBe(RTC_BRUT_ANNUEL);

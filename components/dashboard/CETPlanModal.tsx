@@ -5,7 +5,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import { AlertTriangle, CheckCircle2, PiggyBank, X } from 'lucide-react';
 import type { Counters, UserData } from '@/lib/types';
 import { planEpargneCET, type ApportCET } from '@/lib/cet';
-import { formatMinutes } from '@/lib/calculations';
+import { formatMinutes, reserveRTC } from '@/lib/calculations';
 import {
   CET_PLAFOND,
   CET_PLAFOND_DEROGATOIRE,
@@ -14,7 +14,6 @@ import {
   HS_COUT_PAR_JOUR_CET,
   HS_MAX_VERS_CET,
   RTC_COUT_PAR_JOUR_CET,
-  RTC_JOURS_CET_CONSEILLES,
   RTC_GAIN_PAR_JOUR,
 } from '@/lib/constants';
 
@@ -288,7 +287,9 @@ function ReglageGarde({
   onUpdate: (updates: Partial<Counters>) => unknown;
 }) {
   const rtcAuto = counters.rtcJoursCET === undefined;
-  const rtc = counters.rtcJoursCET ?? RTC_JOURS_CET_CONSEILLES;
+  // Conseil selon le cycle : 10 jours à 12h08, 6 à 11h08 (dotation de 53h27).
+  const rtcConseille = Math.floor(reserveRTC({ rtcReservesCET: counters.rtcReservesCET }) / RTC_COUT_PAR_JOUR_CET);
+  const rtc = counters.rtcJoursCET ?? rtcConseille;
   const hs = counters.hsJoursCET ?? 0;
   const champ = (
     id: string,
@@ -336,7 +337,7 @@ function ReglageGarde({
           onClick={() => onUpdate({ rtcJoursCET: undefined })}
           className="text-xs font-medium text-blue-700 hover:text-blue-800"
         >
-          Revenir au réglage conseillé (10 jours de RTC)
+          Revenir au réglage conseillé ({rtcConseille} jours de RTC)
         </button>
       )}
     </div>

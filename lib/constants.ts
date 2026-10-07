@@ -22,7 +22,7 @@ export const CA_PAR_CYCLE: Record<string, number> = {
   '2/2': 18,           // Cycle 2/2 (12h08)
   '3/3': 18,           // Cycle 3/3 (12h08)
   '2/2/3/2/2/3': 18,   // Cycle 2/2/3/2/2/3 (12h08)
-  'vacation_forte': 18, // Vacation Forte (9h31)
+  'vacation_forte': 20, // Vacation Forte (grille officielle : 20 CA)
 };
 
 // Cycle hebdomadaire (régime général : 5 semaines de congés)
@@ -37,17 +37,24 @@ export const CF_PAR_SEMESTRE = 54 * 60 + 36; // 54h36 = 3276 minutes
 // ============================================
 // RTC - RÉCUPÉRATION TEMPS DE CYCLE
 // ============================================
-export const RTC_BRUT_ANNUEL = 187 * 60 + 9; // 187h09 = 11229 minutes (brut)
+// Dotation annuelle de RTC (ARTT) des actifs (CEA, CC non art. 10), d'après la
+// grille officielle par cycle (« cas de figure pour un taux plein ») :
+// - 2/2, 3/3, 2/2/3 à 12h08 : 188h09 (22 vacations de 8h21 versables au CET) ;
+// - 2/2, 3/3, 2/2/3 à 11h08 : 53h27 (6 vacations versables) ;
+// - 4/2 (classique, panaché, compressé) : 41h45 ; vacation forte : 19h02.
+// Les PA et PTS ont d'autres dotations (ex. 285h13 à 12h08), non gérées.
+export const RTC_DOTATION = {
+  cycle12h08: 188 * 60 + 9,
+  cycle11h08: 53 * 60 + 27,
+  cycle4_2: 41 * 60 + 45,
+  vacationForte: 19 * 60 + 2,
+} as const;
+export const RTC_BRUT_ANNUEL = RTC_DOTATION.cycle12h08; // 188h09 = 11289 minutes
 
 // Journée de solidarité (APORTT)
 export const JOURNEE_SOLIDARITE = HEURES_PAR_JOUR; // 12h08 = 728 minutes
 export const RTC_NET_ANNUEL = RTC_BRUT_ANNUEL - JOURNEE_SOLIDARITE; // 175h01 = 10501 minutes
 
-// Dotation RTC brute propre à certains cycles (relevé d'un agent en 3/3 : 188h09).
-// Les autres cycles gardent RTC_BRUT_ANNUEL.
-export const RTC_BRUT_PAR_PATTERN: Partial<Record<string, number>> = {
-  '3/3': 188 * 60 + 9,
-};
 
 // Cycles exclus de l'abondement HS (journée solidarité)
 export const CYCLES_EXCLUS_ABONDEMENT_HS = ['2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'];
