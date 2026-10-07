@@ -10,7 +10,7 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     title: 'Compte Épargne Temps (CET)',
     bullets: [
       'Versement en janvier, au titre de l\'année écoulée.',
-      'Sources : tous les RTC restants (8h21 le jour), CA (max 5j, si 15 CA pris dans l\'année), CA Hors Période (max 2j), Heures Sup (max 5j).',
+      'Sources : tous les RTC restants (8h21 le jour), tous les ARTT ou RTT, CA (max 5j, si 15 CA pris dans l\'année), CA Hors Période (max 2j), Heures Sup (max 5j).',
       'Le CET garde jusqu\'à 15 jours, puis 10 jours de plus par an au maximum, dans la limite de 60 jours.',
       'Au-delà, les jours versés sont payés (forfait par jour selon votre catégorie) ou versés à la RAFP — d\'office sans choix de votre part.',
       'CET au-delà de 60 jours (relèvements COVID/JOP, jusqu\'à 80) : jours conservés, mais compte gelé.',
@@ -63,8 +63,8 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     bullets: [
       'Applicable uniquement aux cycles hebdomadaires.',
       'Crédit de 16 jours par an, décomptés en jours.',
-      'Perdus au 31 décembre s\'ils ne sont pas consommés.',
-      'Non transférables au CET.',
+      'Perdus au 31 décembre s\'ils ne sont ni posés ni versés au CET.',
+      'Versables au CET en totalité, en janvier (1 jour de RTT = 1 jour de CET).',
     ],
   },
   rps: {
@@ -112,8 +112,8 @@ export const HELP_CONTENT: Record<string, { title: string; bullets: string[]; wa
     bullets: [
       'Quota annuel : 20 jours (arrêté du 3 mai 2002).',
       'Spécifique à certains corps de la fonction publique.',
-      'Perdus au 31 décembre s\'ils ne sont pas consommés.',
-      'Non transférables au CET.',
+      'Perdus au 31 décembre s\'ils ne sont ni posés ni versés au CET.',
+      'Versables au CET en totalité, en janvier (guide DNPAF : « tous les jours ou heures ARTT peuvent alimenter le CET »).',
     ],
   },
   cet2008: {

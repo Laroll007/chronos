@@ -66,9 +66,20 @@ describe('Bilan de fin d’année', () => {
     expect(b.apportCET.ca).toBe(CA_MAX_VERS_CET);
   });
 
-  it('inclut ARTT et RTT, qui ne vont pas au CET', () => {
+  it('ARTT et RTT partent au CET quand il a de la place (guide : « tous les jours ARTT peuvent alimenter le CET »)', () => {
     const c = C({
       ca: 0, cet: 0, rtc: 0, hasRTC: false, cf: 0, hasCF: false,
+      hasARTT: true, artt: 8, hasRTT: true, rtt: 4,
+    });
+    const b = calculateYearEndBalance(c, cfg, SEPTEMBRE);
+    expect(b.apportCET).toMatchObject({ artt: 8, rtt: 4 });
+    expect(item(b, 'artt')).toBeUndefined();
+    expect(item(b, 'rtt')).toBeUndefined();
+  });
+
+  it('CET plein : ARTT et RTT restent à poser', () => {
+    const c = C({
+      ca: 0, cet: 60, rtc: 0, hasRTC: false, cf: 0, hasCF: false,
       hasARTT: true, artt: 8, hasRTT: true, rtt: 4,
     });
     const b = calculateYearEndBalance(c, cfg, SEPTEMBRE);

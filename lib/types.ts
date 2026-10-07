@@ -179,12 +179,16 @@ export interface JourModifie {
 export interface ReliquatCET {
   annee: number; // année des congés concernés (N-1 en janvier N)
   rtc: number; // minutes de RTC restantes au 31/12
+  artt?: number; // jours d'ARTT restants au 31/12
+  rtt?: number; // jours de RTT restants au 31/12
   caReserves: number; // CA que l'agent avait sécurisés pour le CET
 }
 
 /** Répartition d'un versement au CET, en jours. */
 export interface DetailEpargneCET {
   rtc: number;
+  artt?: number;
+  rtt?: number;
   caHP: number;
   ca: number;
   hs: number;
@@ -271,7 +275,9 @@ export interface SimulationResult {
 
 export interface CETProjection {
   apportCET: {
-    rtc: number; // jours (max 10)
+    rtc: number; // jours
+    artt?: number; // jours
+    rtt?: number; // jours
     caHP: number; // jours (max 2)
     ca: number; // jours (max 5)
     hs: number; // jours (max 5)

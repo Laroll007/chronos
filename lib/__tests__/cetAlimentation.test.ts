@@ -141,7 +141,7 @@ describe('Répartition de l’apport CET — source unique', () => {
       const proj = calculateOptimalCETStrategy(c).apportCET;
       const bil = calculateYearEndBalance(c, CYCLIQUE, new Date(2026, 8, 15)).apportCET;
       expect(proj, JSON.stringify(profil)).toEqual({
-        rtc: bil.rtc, caHP: bil.caHP, ca: bil.ca, hs: bil.hs,
+        rtc: bil.rtc, artt: bil.artt, rtt: bil.rtt, caHP: bil.caHP, ca: bil.ca, hs: bil.hs,
       });
     }
   });

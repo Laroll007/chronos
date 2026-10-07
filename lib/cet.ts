@@ -137,6 +137,9 @@ export function getCAEpargnablesMaintenant(
 
 export interface ApportCET {
   rtc: number;
+  /** ARTT et RTT (régime hebdomadaire), en jours : versables en totalité, comme les RTC. */
+  artt: number;
+  rtt: number;
   caHP: number;
   ca: number;
   hs: number;
@@ -154,7 +157,7 @@ export interface RepartitionCET {
   indemnises: number;
 }
 
-const total = (a: Omit<ApportCET, 'total'>): ApportCET => ({ ...a, total: a.rtc + a.caHP + a.ca + a.hs });
+const total = (a: Omit<ApportCET, 'total'>): ApportCET => ({ ...a, total: a.rtc + a.artt + a.rtt + a.caHP + a.ca + a.hs });
 
 /**
  * Répartit l'épargne CET entre les sources éligibles.
@@ -162,21 +165,25 @@ const total = (a: Omit<ApportCET, 'total'>): ApportCET => ({ ...a, total: a.rtc 
  * ⚠️ Source de vérité UNIQUE (Projection, bilan de fin d'année, « Mon épargne CET »).
  *
  * Limites par source (guide APORTT) : tous les RTC restants (8h21 le jour),
- * 5 CA, 2 CA HP, 5 jours d'HS. Il n'y a pas de plafond annuel au versement :
+ * tous les ARTT et RTT (« tous les jours ou heures ARTT peuvent alimenter le
+ * CET »), 5 CA, 2 CA HP, 5 jours d'HS. Il n'y a pas de plafond annuel au versement :
  * la limite des 10 jours porte sur ce que le CET CONSERVE au-delà de 15 jours
  * (`capacite`). Le surplus d'un versement maximal est indemnisé ou versé à la RAFP.
  *
  * Le versement conseillé remplit la capacité dans l'ordre : CA sécurisés, RTC
  * (8h21 payés pour une journée entière ; plafonnés au nombre choisi par
- * l'agent s'il en a fixé un), HS gardées par l'agent, CA HP, CA restants, HS.
+ * l'agent s'il en a fixé un), ARTT et RTT (perdus au 31/12 sinon), HS gardées
+ * par l'agent, CA HP, CA restants, HS.
  */
 export function repartirApportCET(counters: Counters): RepartitionCET {
-  const vide = total({ rtc: 0, caHP: 0, ca: 0, hs: 0 });
+  const vide = total({ rtc: 0, artt: 0, rtt: 0, caHP: 0, ca: 0, hs: 0 });
   // Au-delà de 60 jours (relèvement COVID/JOP), le CET est gelé : aucun versement.
   if (counters.cet > CET_PLAFOND) return { capacite: 0, apport: vide, maximum: vide, indemnises: 0 };
 
   const maximum = total({
     rtc: Math.floor(Math.max(0, counters.rtc) / RTC_COUT_PAR_JOUR_CET),
+    artt: counters.hasARTT ? Math.floor(Math.max(0, counters.artt ?? 0)) : 0,
+    rtt: counters.hasRTT ? Math.floor(Math.max(0, counters.rtt ?? 0)) : 0,
     caHP: Math.min(CA_HP_BONUS, Math.max(0, counters.caHP)),
     ca: Math.min(CA_MAX_VERS_CET, Math.max(0, counters.ca)),
     hs: Math.min(HS_MAX_VERS_CET, Math.floor(Math.max(0, counters.hs) / HS_COUT_PAR_JOUR_CET)),
@@ -195,11 +202,13 @@ export function repartirApportCET(counters: Counters): RepartitionCET {
   const hsChoisi = Math.max(0, counters.hsJoursCET ?? 0);
   const caSecurises = prendre(Math.min(Math.max(0, counters.caReservesCET ?? 0), maximum.ca));
   const rtc = prendre(rtcChoisi !== undefined ? Math.min(maximum.rtc, Math.max(0, rtcChoisi)) : maximum.rtc);
+  const artt = prendre(maximum.artt);
+  const rtt = prendre(maximum.rtt);
   const hsSecurises = prendre(Math.min(hsChoisi, maximum.hs));
   const caHP = prendre(maximum.caHP);
   const ca = caSecurises + prendre(maximum.ca - caSecurises);
   const hs = hsSecurises + prendre(maximum.hs - hsSecurises);
-  const apport = total({ rtc, caHP, ca, hs });
+  const apport = total({ rtc, artt, rtt, caHP, ca, hs });
 
   return { capacite, apport, maximum, indemnises: Math.max(0, maximum.total - capacite) };
 }
@@ -214,7 +223,7 @@ export function calculateOptimalCETStrategy(counters: Counters): CETProjection {
   const caExcedentaires = Math.max(0, counters.ca - CA_MAX_VERS_CET);
 
   return {
-    apportCET: { rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs },
+    apportCET: { rtc: apport.rtc, artt: apport.artt, rtt: apport.rtt, caHP: apport.caHP, ca: apport.ca, hs: apport.hs },
     totalApport: apport.total,
     cetFinal: counters.cet + apport.total,
     gainNetRTC,
@@ -272,6 +281,8 @@ export function planEpargneCET(data: UserData, date: Date = new Date()): PlanEpa
     const sources: Counters = {
       ...counters,
       rtc: reliquat?.rtc ?? 0,
+      artt: reliquat?.artt ?? 0,
+      rtt: reliquat?.rtt ?? 0,
       ca: caOk ? counters.caAnterieur : 0,
       caHP: caOk ? counters.caHPAnterieur : 0,
       caReservesCET: caOk ? reliquat?.caReserves ?? 0 : 0,

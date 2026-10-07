@@ -106,7 +106,7 @@ describe('Bascule de janvier : relevé des reliquats pour le CET', () => {
     vi.setSystemTime(new Date(2027, 0, 3));
     const d = data({ lastResetYear: 2026 }, { rtc: h(40), caReservesCET: 2, ca: 4 });
     const out = migrateUserData(d);
-    expect(out.reliquatCET).toEqual({ annee: 2026, rtc: h(40), caReserves: 2 });
+    expect(out.reliquatCET).toEqual({ annee: 2026, rtc: h(40), artt: 0, rtt: 0, caReserves: 2 });
     expect(out.counters.caAnterieur).toBe(4);
     expect(out.counters.rtc).not.toBe(h(40)); // nouvelle dotation
   });
@@ -159,7 +159,7 @@ describe('Enregistrement du versement (janvier)', () => {
     act(() => { result.current.deleteHistoryEntry(entry.id); });
     d = stored();
     expect(d.counters).toMatchObject({ cet: 4, caAnterieur: 3, caHPAnterieur: 2, ca: 18, hs: h(10) });
-    expect(d.reliquatCET).toEqual({ annee: 2026, rtc: 2 * h(8, 21), caReserves: 0 });
+    expect(d.reliquatCET).toEqual({ annee: 2026, rtc: 2 * h(8, 21), artt: 0, rtt: 0, caReserves: 0 });
   });
 
   it('versement maximal : le surplus indemnisé sort du CET, et l’annulation le rend', async () => {

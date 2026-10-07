@@ -34,6 +34,16 @@ function lignesApport(apport: ApportCET, janvier: boolean) {
       label: `${apport.rtc} jour${apport.rtc > 1 ? 's' : ''} de RTC`,
       detail: `${formatMinutes(apport.rtc * RTC_COUT_PAR_JOUR_CET)} de RTC — le plus avantageux : 8h21 par jour au lieu d’une journée entière, soit ${formatMinutes(apport.rtc * RTC_GAIN_PAR_JOUR)} gagnées`,
     },
+    apport.artt > 0 && {
+      key: 'artt',
+      label: `${apport.artt} jour${apport.artt > 1 ? 's' : ''} d’ARTT`,
+      detail: janvier ? 'ARTT restants de l’année écoulée' : 'Perdus au 31 décembre s’ils ne sont ni posés ni versés',
+    },
+    apport.rtt > 0 && {
+      key: 'rtt',
+      label: `${apport.rtt} jour${apport.rtt > 1 ? 's' : ''} de RTT`,
+      detail: janvier ? 'RTT restants de l’année écoulée' : 'Perdus au 31 décembre s’ils ne sont ni posés ni versés',
+    },
     apport.caHP > 0 && {
       key: 'caHP',
       label: `${apport.caHP} jour${apport.caHP > 1 ? 's' : ''} de CA HP`,

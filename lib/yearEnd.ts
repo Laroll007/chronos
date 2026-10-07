@@ -41,7 +41,7 @@ export interface YearEndBalance {
   joursRestants: number;
   /** Places encore disponibles au CET cette année. */
   capaciteCET: number;
-  apportCET: { rtc: number; caHP: number; ca: number; hs: number; total: number };
+  apportCET: { rtc: number; artt: number; rtt: number; caHP: number; ca: number; hs: number; total: number };
   /** Compteurs ayant encore quelque chose à solder, du plus urgent au moins. */
   items: YearEndItem[];
   /** Total de journées de travail à couvrir avant le 31/12. */
@@ -114,11 +114,14 @@ export function calculateYearEndBalance(
   }
 
   // ── ARTT / RTT : perdus au 31/12 ────────────────────────────────────────────
+  // ARTT / RTT : versables au CET en totalité, le reste est perdu.
   if (counters.hasARTT && (counters.artt ?? 0) > 0) {
-    pushJours('artt', 'ARTT', counters.artt ?? 0, 0, 'Perdus au 31/12 s\'ils ne sont pas posés');
+    pushJours('artt', 'ARTT', counters.artt ?? 0, apport.artt,
+      apport.artt > 0 ? `${apport.artt}j partiront au CET, le reste est perdu au 31/12` : 'Perdus au 31/12 s\'ils ne sont ni posés ni versés au CET');
   }
   if (counters.hasRTT && (counters.rtt ?? 0) > 0) {
-    pushJours('rtt', 'RTT', counters.rtt ?? 0, 0, 'Perdus au 31/12 s\'ils ne sont pas posés');
+    pushJours('rtt', 'RTT', counters.rtt ?? 0, apport.rtt,
+      apport.rtt > 0 ? `${apport.rtt}j partiront au CET, le reste est perdu au 31/12` : 'Perdus au 31/12 s\'ils ne sont ni posés ni versés au CET');
   }
 
   // ── HS : seulement le surplus au-delà du plafond stockable ──────────────────

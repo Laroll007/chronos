@@ -547,10 +547,14 @@ export function useCounters() {
     };
     const detail = {
       rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs,
+      ...(apport.artt > 0 && { artt: apport.artt }),
+      ...(apport.rtt > 0 && { rtt: apport.rtt }),
       ...(indemnises > 0 && { indemnises }),
     };
     const parts = [
       apport.rtc && `${apport.rtc}j de RTC`,
+      apport.artt && `${apport.artt}j d'ARTT`,
+      apport.rtt && `${apport.rtt}j de RTT`,
       apport.caHP && `${apport.caHP}j de CA HP`,
       apport.ca && `${apport.ca}j de CA`,
       apport.hs && `${apport.hs}j de HS`,
@@ -610,14 +614,17 @@ export function useCounters() {
           updatedCounters.caAnterieur += d.ca;
           updatedCounters.caHPAnterieur += d.caHP;
           updatedCounters.hs += d.hs * HS_COUT_PAR_JOUR_CET;
-          // Les RTC n'existent plus au compteur (remplacés à la bascule) : on
-          // les rend au reliquat, pour pouvoir refaire le versement.
-          if (d.rtc > 0) {
+          // RTC, ARTT et RTT n'existent plus au compteur (remplacés à la
+          // bascule) : on les rend au reliquat, pour pouvoir refaire le versement.
+          if (d.rtc > 0 || (d.artt ?? 0) > 0 || (d.rtt ?? 0) > 0) {
             const annee = new Date(entry.date).getFullYear() - 1;
+            const meme = reliquatCET?.annee === annee ? reliquatCET : null;
             reliquatCET = {
               annee,
-              rtc: (reliquatCET?.annee === annee ? reliquatCET.rtc : 0) + d.rtc * RTC_COUT_PAR_JOUR_CET,
-              caReserves: reliquatCET?.annee === annee ? reliquatCET.caReserves : 0,
+              rtc: (meme?.rtc ?? 0) + d.rtc * RTC_COUT_PAR_JOUR_CET,
+              artt: (meme?.artt ?? 0) + (d.artt ?? 0),
+              rtt: (meme?.rtt ?? 0) + (d.rtt ?? 0),
+              caReserves: meme?.caReserves ?? 0,
             };
           }
         } else {

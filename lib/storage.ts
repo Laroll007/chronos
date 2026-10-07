@@ -193,6 +193,8 @@ export function migrateUserData(data: UserData): UserData {
       data.reliquatCET = {
         annee: currentYear - 1,
         rtc: c.hasRTC !== false ? Math.max(0, c.rtc) : 0,
+        artt: c.hasARTT ? Math.max(0, c.artt ?? 0) : 0,
+        rtt: c.hasRTT ? Math.max(0, c.rtt ?? 0) : 0,
         caReserves: Math.max(0, c.caReservesCET ?? 0),
       };
     } else {

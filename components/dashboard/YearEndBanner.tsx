@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { Counters, CycleConfig } from '@/lib/types';
-import { calculateYearEndBalance, formatYearEndSummary } from '@/lib/yearEnd';
+import { calculateYearEndBalance, formatYearEndSummary, type YearEndBalance } from '@/lib/yearEnd';
 import { formatMinutes } from '@/lib/calculations';
 import { CalendarClock, X, ChevronDown, PiggyBank } from 'lucide-react';
 
@@ -23,6 +23,20 @@ interface YearEndBannerProps {
  * bougent, le bandeau réapparaît — l'agent n'est pas prévenu une seule fois en
  * septembre puis plus jamais.
  */
+/** « 10j de RTC, 2j de CA HP » : détail de ce qui partira au CET. */
+function detailApport(a: YearEndBalance['apportCET']): string {
+  return [
+    a.rtc > 0 && `${a.rtc}j de RTC`,
+    a.artt > 0 && `${a.artt}j d'ARTT`,
+    a.rtt > 0 && `${a.rtt}j de RTT`,
+    a.ca > 0 && `${a.ca}j de CA`,
+    a.caHP > 0 && `${a.caHP}j de CA HP`,
+    a.hs > 0 && `${a.hs}j d'HS`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndBannerProps) {
   const bilan = useMemo(
     () => calculateYearEndBalance(counters, cycleConfig),
@@ -122,13 +136,9 @@ export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndB
                   <PiggyBank className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <span className="text-[11px] text-emerald-800">
                     Déjà déduit : <strong>{bilan.apportCET.total}j</strong> partiront au CET
-                    {bilan.apportCET.rtc > 0 && ` (${bilan.apportCET.rtc}j de RTC`}
-                    {bilan.apportCET.ca > 0 && `${bilan.apportCET.rtc > 0 ? ', ' : ' ('}${bilan.apportCET.ca}j de CA`}
-                    {bilan.apportCET.caHP > 0 && `, ${bilan.apportCET.caHP}j de CA HP`}
-                    {bilan.apportCET.hs > 0 && `, ${bilan.apportCET.hs}j de HS`}
-                    {(bilan.apportCET.rtc > 0 || bilan.apportCET.ca > 0) && ')'}.
-                    {' '}Le CET n&apos;accepte que {bilan.capaciteCET} jour
-                    {bilan.capaciteCET > 1 ? 's' : ''} cette année — le reste doit être posé.
+                    {detailApport(bilan.apportCET) && ` (${detailApport(bilan.apportCET)})`}.
+                    {' '}Votre CET peut en garder {bilan.capaciteCET} cette année : au-delà, à poser ou à vous
+                    faire payer.
                   </span>
                 </div>
               )}

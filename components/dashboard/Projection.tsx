@@ -229,6 +229,30 @@ export function Projection({ currentCET, counters, projection, onOpenPlan, onUpd
             disabledReason="Solde insuffisant"
           />
 
+          {/* ARTT / RTT : versables en totalité */}
+          {counters.hasARTT && (
+            <SourceRow
+              label="ARTT"
+              sublabel="Tous versables au CET"
+              balance={`${counters.artt ?? 0}j`}
+              towardsCET={projection.apportCET.artt ?? 0}
+              color="emerald"
+              disabled={(counters.artt ?? 0) < 1}
+              disabledReason="Solde insuffisant"
+            />
+          )}
+          {counters.hasRTT && (
+            <SourceRow
+              label="RTT"
+              sublabel="Tous versables au CET"
+              balance={`${counters.rtt ?? 0}j`}
+              towardsCET={projection.apportCET.rtt ?? 0}
+              color="emerald"
+              disabled={(counters.rtt ?? 0) < 1}
+              disabledReason="Solde insuffisant"
+            />
+          )}
+
           {/* CA Hors Période */}
           <SourceRow
             label="CA Hors Période"
