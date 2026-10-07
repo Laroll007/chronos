@@ -115,6 +115,7 @@ describe('stockage et agrégation', () => {
     expect(today.nouveaux).toBe(1);
     expect(today.ouvertures).toBe(5);
     expect(today.actifsParPlateforme).toEqual({ ios: 1, android: 1, pwa: 0, web: 0 });
+    expect(today.nouveauxParPlateforme).toEqual({ ios: 1, android: 0, pwa: 0, web: 0 });
     expect(s.semaines).toEqual([{ semaine: '2026-W39', actifs: 1 }]);
     expect(s.mois).toEqual([{ mois: '2026-09', actifs: 2 }]);
     expect(s.totaux.ouverturesParActif).toBe(2.5);

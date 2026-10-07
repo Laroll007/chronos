@@ -160,6 +160,7 @@ export interface DaySummary {
   nouveaux: number;
   ouvertures: number;
   actifsParPlateforme: PlatformCounts;
+  nouveauxParPlateforme: PlatformCounts;
 }
 
 export interface StatsSummary {
@@ -224,7 +225,14 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
 
   const jours = new Map<string, DaySummary>();
   for (let d = fromDay; d <= toDay; d = shiftDay(d, 1)) {
-    jours.set(d, { day: d, actifs: 0, nouveaux: 0, ouvertures: 0, actifsParPlateforme: zeroPlatforms() });
+    jours.set(d, {
+      day: d,
+      actifs: 0,
+      nouveaux: 0,
+      ouvertures: 0,
+      actifsParPlateforme: zeroPlatforms(),
+      nouveauxParPlateforme: zeroPlatforms(),
+    });
   }
 
   const semaines = new Map<string, number>();
@@ -247,7 +255,10 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
         js.actifsParPlateforme[batch.platform] += 1;
         plateformes[batch.platform] += 1;
         versions[batch.version] = (versions[batch.version] ?? 0) + 1;
-        if (b.active.isNew) js.nouveaux += 1;
+        if (b.active.isNew) {
+          js.nouveaux += 1;
+          js.nouveauxParPlateforme[batch.platform] += 1;
+        }
         if (b.active.firstOfWeek) {
           const w = isoWeekOfDayKey(day);
           semaines.set(w, (semaines.get(w) ?? 0) + 1);

@@ -328,6 +328,39 @@ export default function StatsPage() {
           </div>
         </Card>
 
+        <Card
+          title="Nouvelles installations par jour"
+          subtitle={`Premier lancement d'un appareil sans données, par plateforme · ${data.totaux.nouveaux} sur la période`}
+        >
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.jours} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} barCategoryGap={2}>
+                <CartesianGrid vertical={false} stroke={GRID} />
+                <XAxis dataKey="day" tickFormatter={shortDay} tick={{ fontSize: 11, fill: INK_2 }} tickLine={false} axisLine={{ stroke: GRID }} minTickGap={16} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: INK_2 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,23,42,0.05)' }}
+                  labelFormatter={(d) => shortDay(String(d))}
+                  contentStyle={{ borderRadius: 8, borderColor: GRID, fontSize: 12, color: INK }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, color: INK_2 }} />
+                {PLATFORMS.map((p, i) => (
+                  <Bar
+                    key={p.key}
+                    dataKey={`nouveauxParPlateforme.${p.key}`}
+                    name={p.label}
+                    stackId="n"
+                    fill={p.color}
+                    stroke="#ffffff"
+                    strokeWidth={1}
+                    radius={i === PLATFORMS.length - 1 ? [4, 4, 0, 0] : 0}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
         <div className="grid gap-5 lg:grid-cols-2">
           <Card title="Ouvertures de l'app par jour" subtitle="Lancement ou retour après 5 min d'inactivité">
             <div className="h-52">
