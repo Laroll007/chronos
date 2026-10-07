@@ -26,6 +26,29 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.16.0',
+    items: [
+      {
+        emoji: '📏',
+        title: 'Tes RTC selon la grille officielle',
+        text: 'La dotation annuelle de RTC et le conseil pour le CET suivent maintenant ton cycle et la durée de tes vacations : 188h09 en 12h08, 53h27 en 11h08. Vérifie que ton cycle est bien réglé.',
+        action: { label: 'Vérifier mon cycle', target: 'cycle' },
+      },
+      {
+        emoji: '🔄',
+        title: 'Des horaires qui changent selon les cycles',
+        text: 'Deux cycles de soirée, puis un de matinée ? Indique tes deux jeux d’horaires dans ton cycle : RPS et journées modifiées suivent les bons horaires chaque jour.',
+        action: { label: 'Régler mes horaires', target: 'cycle' },
+      },
+      {
+        emoji: '🏦',
+        title: 'ARTT et RTT vers le CET',
+        text: 'Tes ARTT et tes RTT peuvent maintenant alimenter ton CET en janvier, en totalité.',
+        action: { label: 'Voir mon épargne CET', target: 'cet' },
+      },
+    ],
+  },
+  {
     version: '1.15.0',
     items: [
       {
