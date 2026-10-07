@@ -35,9 +35,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         action: { label: 'Vérifier mon cycle', target: 'cycle' },
       },
       {
+        emoji: '🗓️',
+        title: 'Cycles 4/2 et 2/2',
+        text: 'Ils sont disponibles ! Et si tes horaires changent, chaque jour travaillé du planning affiche sa pastille (S pour soirée, M pour matinée…).',
+        action: { label: 'Modifier mon cycle', target: 'cycle' },
+      },
+      {
         emoji: '🔄',
-        title: 'Des horaires qui changent selon les cycles',
-        text: 'Deux cycles de soirée, puis un de matinée ? Indique tes deux jeux d’horaires dans ton cycle : RPS et journées modifiées suivent les bons horaires chaque jour.',
+        title: 'Des horaires qui changent',
+        text: 'Deux cycles de soirée puis un de matinée, ou deux soirées puis deux matinées dans le même cycle ? Indique tes deux jeux d’horaires : RPS et journées modifiées suivent les bons horaires chaque jour.',
         action: { label: 'Régler mes horaires', target: 'cycle' },
       },
       {
