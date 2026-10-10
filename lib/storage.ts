@@ -511,6 +511,9 @@ export function downloadExport(): boolean {
   }
 }
 
+const FICHIER_PAS_SAUVEGARDE =
+  'Ce fichier n\'est pas une sauvegarde My Chronos. Choisissez le fichier exporté depuis Paramètres → Sauvegarde.';
+
 /**
  * Importe des données depuis un fichier JSON
  */
@@ -519,12 +522,13 @@ export function importData(jsonData: string, merge: boolean = false): { success:
     // Parser le JSON
     let parsed: unknown;
     try {
-      parsed = JSON.parse(jsonData);
+      // Certains éditeurs ajoutent une marque d'ordre des octets (BOM) en tête.
+      parsed = JSON.parse(jsonData.replace(/^\uFEFF/, ''));
     } catch {
       logger.error('JSON invalide lors de l\'import',
         ChronosError.importError('Le fichier n\'est pas un JSON valide')
       );
-      return { success: false, error: 'Le fichier n\'est pas un JSON valide' };
+      return { success: false, error: FICHIER_PAS_SAUVEGARDE };
     }
 
     // Valider avec Zod
@@ -534,7 +538,7 @@ export function importData(jsonData: string, merge: boolean = false): { success:
         ChronosError.importError(validation.error),
         { details: validation.details }
       );
-      return { success: false, error: validation.error };
+      return { success: false, error: FICHIER_PAS_SAUVEGARDE };
     }
 
     const data = validation.data;
