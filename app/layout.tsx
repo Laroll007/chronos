@@ -73,9 +73,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" style={{ colorScheme: "light" }}>
+    <html lang="fr" style={{ colorScheme: "only light" }}>
       <head>
-        <meta name="color-scheme" content="light" />
+        {/* « only light » (et pas « light ») : interdit au navigateur d'assombrir la
+            page de force (mode sombre de Samsung Internet, « Assombrir les sites »
+            de Chrome), qui rendait l'app sombre et illisible sans réglage possible. */}
+        <meta name="color-scheme" content="only light" />
         <script
           dangerouslySetInnerHTML={{
             __html: `try{document.documentElement.classList.remove('dark');localStorage.removeItem('chronos_theme')}catch(e){}`,

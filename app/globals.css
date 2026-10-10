@@ -46,9 +46,10 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Force light color-scheme au niveau CSS */
+/* Force light color-scheme au niveau CSS. « only » interdit l'assombrissement
+   forcé par le navigateur (Samsung Internet, Chrome Android). */
 :root {
-  color-scheme: light;
+  color-scheme: only light;
 }
 
 /* THÈME INDIGO/VIOLET 2026 */
