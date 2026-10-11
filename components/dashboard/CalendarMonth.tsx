@@ -65,7 +65,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
 
   // Placement des événements (barres continues, lignes alignées par semaine)
   const eventLayout = useMemo(
-    () => layoutMonthEvents(days.filter((d) => d.date.getMonth() === month).map((d) => d.date), events),
+    // Jusqu'à 3 événements par jour, puis « +N »
+    () => layoutMonthEvents(days.filter((d) => d.date.getMonth() === month).map((d) => d.date), events, 3),
     [days, month, events]
   );
 
@@ -163,8 +164,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
   };
 
   return (
-    <Card className="glass h-full flex flex-col">
-      <CardHeader className="pb-2 shrink-0">
+    // Sur téléphone, le calendrier prend toute la largeur de l'écran (la carte
+    // déborde des marges de la page) : des cases plus larges pour les événements.
+    <Card className="glass h-full flex flex-col -mx-3 sm:mx-0">
+      <CardHeader className="pb-2 shrink-0 px-4 sm:px-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-blue-600" />
@@ -249,9 +252,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col">
+      <CardContent className="flex-1 flex flex-col px-1 sm:px-6">
         {/* Navigation */}
-        <nav className="flex items-center justify-between mb-4" aria-label="Navigation du calendrier mensuel">
+        <nav className="flex items-center justify-between mb-4 px-2 sm:px-0" aria-label="Navigation du calendrier mensuel">
           <Button
             variant="ghost"
             size="icon"
@@ -302,7 +305,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           aria-label="Calendrier mensuel"
         >
           {emptyDays.map((_, index) => (
-            <div key={`empty-${index}`} className="min-h-11 border-r border-b border-slate-200 bg-slate-50/60" role="gridcell" />
+            <div key={`empty-${index}`} className="min-h-[100px] md:min-h-[112px] border-r border-b border-slate-200 bg-slate-50/60" role="gridcell" />
           ))}
           {days.map((day, index) => {
             const isCurrentMonth = day.date.getMonth() === month;
@@ -361,7 +364,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   if (dateRange.hoveredDate) dateRange.setHoveredDate(null);
                 }}
                 className={cn(
-                  'relative flex flex-col min-h-11 pb-1 border-r border-b border-slate-200 cursor-pointer transition-colors',
+                  'relative flex flex-col min-h-[100px] md:min-h-[112px] pb-1 border-r border-b border-slate-200 cursor-pointer transition-colors',
                   !isCurrentMonth && 'opacity-30',
                   // L'état du jour teinte toute la case (plus de pastille ronde,
                   // qui jurait avec les cases et les barres rectangulaires).
@@ -451,11 +454,11 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                           onOpen={onOpenEvent}
                         />
                       ) : (
-                        <div key={`vide-${i}`} className="h-[14px] md:h-4" aria-hidden="true" />
+                        <div key={`vide-${i}`} className="h-[17px] md:h-5" aria-hidden="true" />
                       )
                     )}
                     {layout.overflow > 0 && (
-                      <span className="block px-1 text-[9px] md:text-[10px] leading-3 font-semibold text-slate-500">
+                      <span className="block px-1 text-[10px] md:text-[11px] leading-3 font-bold text-slate-600">
                         +{layout.overflow}
                       </span>
                     )}
@@ -466,7 +469,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           })}
           {/* Cases vides pour terminer la dernière semaine (grille fermée) */}
           {Array.from({ length: (7 - ((emptyDays.length + days.length) % 7)) % 7 }, (_, i) => (
-            <div key={`fin-${i}`} className="min-h-11 border-r border-b border-slate-200 bg-slate-50/60" aria-hidden="true" />
+            <div key={`fin-${i}`} className="min-h-[100px] md:min-h-[112px] border-r border-b border-slate-200 bg-slate-50/60" aria-hidden="true" />
           ))}
         </div>
 
