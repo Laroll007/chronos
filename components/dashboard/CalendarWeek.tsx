@@ -13,7 +13,6 @@ import { estFerie } from '@/lib/feries';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
-import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
@@ -210,9 +209,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             </div>
           ) : null}
         </div>
-        ) : (
-          <HintPoser texte="Cliquez sur un jour pour commencer" />
-        )}
+        ) : null}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col">

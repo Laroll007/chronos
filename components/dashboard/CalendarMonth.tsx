@@ -15,7 +15,6 @@ import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDat
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
-import { HintPoser } from './HintPoser';
 import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
@@ -166,8 +165,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
   return (
     // Sur téléphone, le calendrier prend toute la largeur de l'écran (la carte
     // déborde des marges de la page) : des cases plus larges pour les événements.
-    <Card className="glass h-full flex flex-col -mx-3 sm:mx-0">
-      <CardHeader className="pb-2 shrink-0 px-4 sm:px-6">
+    <Card className="glass h-full flex flex-col gap-1 py-4 -mx-3 sm:mx-0">
+      <CardHeader className="pb-0 shrink-0 px-4 sm:px-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-blue-600" />
@@ -247,14 +246,12 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             </div>
           ) : null}
         </div>
-        ) : (
-          <HintPoser texte="Cliquez sur un jour pour commencer à poser" />
-        )}
+        ) : null}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col px-1 sm:px-6">
         {/* Navigation */}
-        <nav className="flex items-center justify-between mb-4 px-2 sm:px-0" aria-label="Navigation du calendrier mensuel">
+        <nav className="flex items-center justify-between mb-1 px-2 sm:px-0" aria-label="Navigation du calendrier mensuel">
           <Button
             variant="ghost"
             size="icon"

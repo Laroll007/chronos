@@ -75,7 +75,7 @@ export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndB
 
   return (
     <div
-      className={`rounded-xl border p-3 ${
+      className={`rounded-xl border px-3 py-2 ${
         urgent ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'
       }`}
       role="status"
@@ -86,32 +86,35 @@ export function YearEndBanner({ counters, cycleConfig, onOpenCETPlan }: YearEndB
           aria-hidden="true"
         />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-semibold ${urgent ? 'text-rose-800' : 'text-amber-800'}`}>
-            {bilan.joursASolder.toLocaleString('fr-FR')} journée{bilan.joursASolder >= 2 ? 's' : ''} à poser avant le 31 décembre
-          </div>
-          <div className={`text-xs mt-0.5 ${urgent ? 'text-rose-700' : 'text-amber-700'}`}>
-            {formatYearEndSummary(bilan)}
-            <span className="opacity-70"> — {bilan.joursRestants} jours restants</span>
-          </div>
-
+          {/* Replié : seulement la phrase principale ; le détail s'ouvre en la touchant. */}
           <button
+            type="button"
             onClick={() => setExpanded((v) => !v)}
-            className={`mt-1.5 inline-flex items-center gap-1 text-xs font-medium underline-offset-2 hover:underline ${
-              urgent ? 'text-rose-700' : 'text-amber-700'
-            }`}
             aria-expanded={expanded}
+            className={`w-full flex items-start justify-between gap-2 text-left text-sm font-semibold ${urgent ? 'text-rose-800' : 'text-amber-800'}`}
           >
-            {expanded ? 'Masquer le détail' : 'Voir le détail'}
-            <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <span>
+              {bilan.joursASolder.toLocaleString('fr-FR')} journée{bilan.joursASolder >= 2 ? 's' : ''} à poser avant le 31 décembre
+            </span>
+            <ChevronDown className={`w-4 h-4 mt-0.5 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
-          {onOpenCETPlan && bilan.capaciteCET > 0 && (
-            <button
-              onClick={onOpenCETPlan}
-              className="mt-1.5 ml-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
-            >
-              <PiggyBank className="w-3 h-3" aria-hidden="true" />
-              Mon épargne CET
-            </button>
+
+          {expanded && (
+            <>
+              <div className={`text-xs mt-1 ${urgent ? 'text-rose-700' : 'text-amber-700'}`}>
+                {formatYearEndSummary(bilan)}
+                <span className="opacity-70"> — {bilan.joursRestants} jours restants</span>
+              </div>
+              {onOpenCETPlan && bilan.capaciteCET > 0 && (
+                <button
+                  onClick={onOpenCETPlan}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
+                >
+                  <PiggyBank className="w-3 h-3" aria-hidden="true" />
+                  Mon épargne CET
+                </button>
+              )}
+            </>
           )}
 
           {expanded && (
