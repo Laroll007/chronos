@@ -22,7 +22,8 @@ import { Calendar, Trash2, ListChecks, Pencil, ChevronRight, X, CalendarPlus } f
 interface LeaveListProps {
   history: HistoryEntry[];
   onDelete: (entryId: string) => void;
-  onEdit?: (entry: HistoryEntry) => void;
+  /** Modifier une période : tous ses congés (un ou plusieurs compteurs). */
+  onEdit?: (entries: HistoryEntry[]) => void;
   // Quand renseignée (clic sur un jour déjà posé du calendrier), ouvre la modale
   // détail du congé couvrant cette date. `onFocusHandled` est appelé après traitement.
   focusDate?: Date | null;
@@ -288,10 +289,11 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
             const isRange = activeDetail.start !== activeDetail.end;
             const nbDays = countDays(activeDetail.start, activeDetail.end);
             const multiItem = activeDetail.items.length > 1;
-            const editableItem =
-              activeDetail.items.length === 1 && activeDetail.items[0].action === 'pose'
-                ? activeDetail.items[0]
-                : null;
+            // Une période posée sur plusieurs compteurs (ex. CA + CET) se modifie
+            // comme une période sur un seul : toutes ses poses sont reprises.
+            const editableItems = activeDetail.items.every((it) => it.action === 'pose')
+              ? activeDetail.items
+              : null;
             const isCMO =
               activeDetail.items.length === 1 && activeDetail.items[0].action === 'cmo';
             const isAstreinte =
@@ -479,11 +481,11 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">
-                    {onEdit && editableItem && (
+                    {onEdit && editableItems && (
                       <Button
                         variant="outline"
                         onClick={() => {
-                          onEdit(editableItem);
+                          onEdit(editableItems);
                           closeDetail();
                         }}
                         className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50"

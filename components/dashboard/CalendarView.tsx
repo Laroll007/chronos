@@ -42,7 +42,7 @@ interface CalendarViewProps {
   onRangeSelected: (start: Date, end: Date, workingDays: number) => void;
   history: HistoryEntry[];
   onDeleteLeave?: (entryId: string) => void;
-  onEditLeave?: (entry: HistoryEntry) => void;
+  onEditLeave?: (entries: HistoryEntry[]) => void;
   resetTrigger?: number;
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];

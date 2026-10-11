@@ -271,15 +271,21 @@ export default function DashboardPage() {
   }, [cycleConfig, history]);
 
   // Modifier un congé posé : supprime + rouvre le modal avec la même plage
-  const handleEditLeave = useCallback((entry: HistoryEntry) => {
-    const success = deleteHistoryEntry(entry.id);
-    if (!success) {
-      toast.error('Impossible de modifier ce congé');
-      return;
+  // Modifier une période : ses poses (une ou plusieurs, ex. CA + CET) sont
+  // annulées, compteurs rendus, puis la fenêtre de pose rouvre sur la période.
+  const handleEditLeave = useCallback((entries: HistoryEntry[]) => {
+    if (entries.length === 0) return;
+    for (const entry of entries) {
+      if (!deleteHistoryEntry(entry.id)) {
+        toast.error('Impossible de modifier ce congé');
+        return;
+      }
     }
     track('leave_edit');
-    const start = new Date(entry.date);
-    const end = entry.dateEnd ? new Date(entry.dateEnd) : new Date(entry.date);
+    const debut = Math.min(...entries.map((e) => new Date(e.date).getTime()));
+    const fin = Math.max(...entries.map((e) => new Date(e.dateEnd ?? e.date).getTime()));
+    const start = new Date(debut);
+    const end = new Date(fin);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
     if (!cycleConfig) return;
