@@ -26,6 +26,27 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.17.0',
+    items: [
+      {
+        emoji: '📅',
+        title: 'Un planning plus grand et plus lisible',
+        text: 'Le calendrier prend toute la largeur de l’écran, tous tes événements ont la même barre colorée et tu en vois jusqu’à 3 par jour.',
+      },
+      {
+        emoji: '🏦',
+        title: 'Ton épargne CET, compteur par compteur',
+        text: 'Choisis combien de RTC, CA, CA HP ou HS tu épargnes, demi-journées comprises. Ou en un geste : « Épargner le max sans me faire payer », ou « en me faisant payer » le surplus.',
+        action: { label: 'Voir mon épargne CET', target: 'cet' },
+      },
+      {
+        emoji: '✏️',
+        title: 'Modifier une période à plusieurs compteurs',
+        text: 'Une période posée en CA + CET (ou autre mélange) se modifie maintenant directement, sans la supprimer.',
+      },
+    ],
+  },
+  {
     version: '1.16.0',
     items: [
       {
