@@ -18,8 +18,8 @@ describe('Modifier une période', () => {
   it('CA + CET : le bouton « Modifier » reprend les deux poses', () => {
     const onEdit = vi.fn();
     const history = [
-      pose('a', 'ca', '2026-11-02', '2026-11-04', 'g1'),
-      pose('b', 'cet', '2026-11-05', '2026-11-06', 'g1'),
+      pose('a', 'ca', '2026-11-02T00:00:00', '2026-11-04T00:00:00', 'g1'),
+      pose('b', 'cet', '2026-11-05T00:00:00', '2026-11-06T00:00:00', 'g1'),
     ];
     render(<LeaveList history={history} onDelete={vi.fn()} onEdit={onEdit} />);
     fireEvent.click(screen.getByText(/du 2 au/));
@@ -30,7 +30,7 @@ describe('Modifier une période', () => {
 
   it('une seule pose : inchangé', () => {
     const onEdit = vi.fn();
-    render(<LeaveList history={[pose('a', 'ca', '2026-11-02', '2026-11-04')]} onDelete={vi.fn()} onEdit={onEdit} />);
+    render(<LeaveList history={[pose('a', 'ca', '2026-11-02T00:00:00', '2026-11-04T00:00:00')]} onDelete={vi.fn()} onEdit={onEdit} />);
     fireEvent.click(screen.getByText(/du 2 au/));
     fireEvent.click(screen.getByRole('button', { name: /Modifier/ }));
     expect(onEdit.mock.calls[0]![0]).toHaveLength(1);
