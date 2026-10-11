@@ -11,7 +11,7 @@ import {
   HS_MAX_VERS_CET,
   HS_COUT_PAR_JOUR_CET,
 } from '@/lib/constants';
-import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, ShieldCheck, PiggyBank } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Check, ChevronRight, Sparkles, Ban, PiggyBank } from 'lucide-react';
 
 interface ProjectionProps {
   currentCET: number;
@@ -20,7 +20,6 @@ interface ProjectionProps {
   /** Ouvre « Mon épargne CET » (plan de versement, enregistrement en janvier). */
   onOpenPlan?: () => void;
   /** Met à jour le nombre de CA sécurisés pour le CET. */
-  onUpdateCounters?: (updates: Partial<Counters>) => void;
 }
 
 interface SourceRowProps {
@@ -125,14 +124,9 @@ function SourceRow({ label, sublabel, balance, towardsCET, maxAllowed, note, gai
   );
 }
 
-export function Projection({ currentCET, counters, projection, onOpenPlan, onUpdateCounters }: ProjectionProps) {
+export function Projection({ currentCET, counters, projection, onOpenPlan }: ProjectionProps) {
   const progressBefore = (currentCET / CET_PLAFOND) * 100;
   const progressAfter = (projection.cetFinal / CET_PLAFOND) * 100;
-
-  // ── Sécurisation / épargne des CA ─────────────────────────────────────────
-  const reserve = counters.caReservesCET ?? 0;
-  // On ne peut sécuriser que des CA encore disponibles, dans la limite APORTT.
-  const reserveMax = Math.min(CA_MAX_VERS_CET, counters.ca + reserve);
 
   // Calculs des soldes lisibles
   const rtcJoursDisponibles = Math.floor(counters.rtc / RTC_COUT_PAR_JOUR_CET);
@@ -289,50 +283,6 @@ export function Projection({ currentCET, counters, projection, onOpenPlan, onUpd
             disabledReason="Solde insuffisant"
           />
         </div>
-
-        {/* ── Sécuriser des CA pour le CET ───────────────────────────────── */}
-        {onUpdateCounters && reserveMax > 0 && (
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              <span className="text-sm font-semibold text-foreground">Sécuriser des CA pour le CET</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Ces jours sont mis de côté pour être basculés au CET en fin d&apos;année.
-              L&apos;app ne les proposera pas quand vous posez des congés — sauf si elle
-              n&apos;a aucune autre solution pour couvrir votre période, et elle vous
-              préviendra alors clairement.
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label htmlFor="ca-reserve" className="text-xs text-muted-foreground">
-                CA sécurisés
-              </label>
-              <input
-                id="ca-reserve"
-                type="number"
-                min={0}
-                max={reserveMax}
-                value={reserve || ''}
-                placeholder="0"
-                inputMode="numeric"
-                onChange={(e) => {
-                  const v = Math.max(0, Math.min(reserveMax, parseInt(e.target.value) || 0));
-                  onUpdateCounters({ caReservesCET: v });
-                }}
-                className="w-20 rounded-md border border-blue-500/30 bg-background px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-xs text-muted-foreground">
-                / {reserveMax} max · {Math.max(0, counters.ca)}j librement posables
-              </span>
-            </div>
-            {reserve > 0 && (
-              <div className="flex items-center gap-1.5 text-[11px] text-blue-400">
-                <ShieldCheck className="w-3 h-3 flex-shrink-0" />
-                {reserve}j protégé{reserve > 1 ? 's' : ''} — non proposé{reserve > 1 ? 's' : ''} à la pose
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Plan d'épargne : combien, quels congés, et en janvier l'enregistrement ── */}
         {onOpenPlan && (

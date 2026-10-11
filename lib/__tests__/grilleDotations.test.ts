@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getCATotalForCycle, getRTCAnnuel, reserveRTCConseillee } from '../calculations';
-import { repartirApportCET } from '../cet';
+import { remplirMaximum, repartirApportCET } from '../cet';
 import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG, migrateUserData } from '../storage';
 import type { CycleConfig, UserData } from '../types';
 
@@ -20,8 +20,10 @@ describe('Dotations de la grille officielle (CEA, taux plein)', () => {
   ])('%s : CA, RTC et vacations versables au CET', (_n, cfg, ca, rtc, versables) => {
     expect(getCATotalForCycle(cfg)).toBe(ca);
     expect(getRTCAnnuel(cfg)).toBe(rtc);
-    // Tout le RTC versable part au CET quand il a la place (CET vide)
-    expect(repartirApportCET({ ...DEFAULT_COUNTERS, rtc, ca: 0, caHP: 0, hs: 0, cet: 0 }).maximum.rtc).toBe(versables);
+    // Vacations entières versables (la demi-journée restante ne part qu'associée
+    // à une autre demi-journée : seule, elle n'est pas versée)
+    const { maximum } = repartirApportCET({ ...DEFAULT_COUNTERS, rtc, ca: 0, caHP: 0, hs: 0, cet: 0 });
+    expect(remplirMaximum(maximum).total).toBe(versables);
   });
 
   it('réserve RTC conseillée : 10 jours à 12h08, mais 6 jours (50h06) à 11h08', () => {

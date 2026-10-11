@@ -318,8 +318,8 @@ export default function DashboardPage() {
     track('cet_plan_open');
   }, []);
 
-  const handleRecordCET = useCallback((avecSurplus: boolean) => {
-    const res = enregistrerEpargneCET(avecSurplus);
+  const handleRecordCET = useCallback(() => {
+    const res = enregistrerEpargneCET();
     if (res.success && 'apport' in res && res.apport) {
       toast.success(`${res.apport.total}j versés au CET`, {
         description: 'Vos compteurs sont à jour. Annulable depuis « Congés posés ».',
@@ -864,7 +864,6 @@ export default function DashboardPage() {
                       counters={counters}
                       projection={cetProjection}
                       onOpenPlan={() => { setShowProfile(false); openCETPlan(); }}
-                      onUpdateCounters={handleUpdateCounters}
                     />
                   </Suspense>
                 )}

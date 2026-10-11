@@ -36,15 +36,18 @@ describe('Plan d’épargne CET', () => {
     expect(plan.capacite).toBe(10);
     expect(plan.apport).toMatchObject({ rtc: 10, total: 10 });
     expect(plan.rtcMinutes).toBe(h(83, 30));
-    // Tous les RTC peuvent partir (175h01 / 8h21 = 20 j) : le surplus est indemnisé
-    expect(plan.maximum.rtc).toBe(20);
-    expect(plan.indemnises).toBe(plan.maximum.total - 10);
+    // Tous les RTC peuvent partir (175h01 = 20 j + 7h01, soit une demi-journée de plus)
+    expect(plan.maximum.rtc).toBe(20.5);
+    // Le versement maximal se fait en jours entiers (la demi-journée seule reste)
+    expect(plan.indemnises).toBe(Math.floor(plan.maximum.total) - 10);
   });
 
   it('retour collègue 3/3 : 188h09 de RTC = 22 j ; à l’ouverture tout reste, ensuite 10 gardés et 12 payés', () => {
     const rtc = h(188, 9);
     const ouverture = planEpargneCET(data({ lastResetYear: 2026 }, { rtc, cet: 0, ca: 0, caHP: 0 }), new Date(2026, 8, 15));
-    expect(ouverture.maximum.rtc).toBe(22);
+    // 188h09 = 22 j + 4h27 : une demi-journée de plus, versable seulement avec
+    // une autre demi-journée (HS…) ; seule, elle reste au compteur.
+    expect(ouverture.maximum.rtc).toBe(22.5);
     expect(ouverture.apport.rtc).toBe(22);
     expect(ouverture.indemnises).toBe(0);
     const ensuite = planEpargneCET(data({ lastResetYear: 2026 }, { rtc, cet: 22, ca: 0, caHP: 0 }), new Date(2026, 8, 15));
@@ -174,7 +177,9 @@ describe('Enregistrement du versement (janvier)', () => {
     const { result } = renderHook(() => useCounters());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    act(() => { expect(result.current.enregistrerEpargneCET(true).success).toBe(true); });
+    // « Épargner le max en me faisant payer » : 22 j de RTC choisis
+    act(() => { result.current.updateCounters({ choixCET: { annee: 2026, rtc: 22, artt: 0, rtt: 0, caHP: 0, ca: 0, hs: 0 } }); });
+    act(() => { expect(result.current.enregistrerEpargneCET().success).toBe(true); });
     let d = stored();
     expect(d.counters.cet).toBe(32); // 22 + 10 gardés ; 12 indemnisés
     const entry = d.history.find((e) => e.action === 'transfer_cet')!;

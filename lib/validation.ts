@@ -176,6 +176,11 @@ function checkCounters(v: unknown): string[] {
   if (v.caReservesCET !== undefined && !isNum(v.caReservesCET as unknown, 0)) errors.push('caReservesCET: nombre >= 0 attendu');
   if (v.rtcJoursCET !== undefined && !isNum(v.rtcJoursCET as unknown, 0)) errors.push('rtcJoursCET: nombre >= 0 attendu');
   if (v.hsJoursCET !== undefined && !isNum(v.hsJoursCET as unknown, 0)) errors.push('hsJoursCET: nombre >= 0 attendu');
+  if (v.choixCET !== undefined) {
+    const ch = v.choixCET as unknown;
+    if (!isObj(ch) || !isNum(ch.annee, 2000, 2200) || !['ca', 'caHP', 'rtc', 'artt', 'rtt', 'hs'].every((k) => isNum(ch[k], 0)))
+      errors.push('choixCET: { annee, ca, caHP, rtc, artt, rtt, hs } attendu');
+  }
   if (v.rpsDernierCredit !== undefined && !isStr(v.rpsDernierCredit)) errors.push('rpsDernierCredit: date attendue');
   return errors;
 }

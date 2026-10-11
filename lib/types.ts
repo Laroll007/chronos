@@ -61,6 +61,16 @@ export interface CycleConfig {
 }
 
 /** Un jeu d'horaires de vacation (minutes après minuit, durée en minutes). */
+export interface ChoixCET {
+  annee: number;
+  ca: number;
+  caHP: number;
+  rtc: number;
+  artt: number;
+  rtt: number;
+  hs: number;
+}
+
 export interface JeuHoraires {
   nom: string;
   heureDebut: number;
@@ -102,6 +112,11 @@ export interface Counters {
   // Choisis : protégés à la pose et repris en priorité dans le versement conseillé.
   rtcJoursCET?: number;
   hsJoursCET?: number;
+  // Versement CET choisi ligne par ligne dans « Mon épargne CET » (jours, demi-
+  // journées admises), pour les congés de `annee`. Absent = versement conseillé.
+  // rtc / hs / ca sont recopiés dans rtcJoursCET / hsJoursCET / caReservesCET,
+  // qui les protègent à la pose.
+  choixCET?: ChoixCET;
   hasRTC?: boolean; // false = compteur désactivé (agent sans RTC) ; absent/true = actif
 
   // RTT - optionnel, pour cycles hebdo (en jours) — 16j/an

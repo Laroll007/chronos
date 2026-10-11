@@ -9,11 +9,11 @@ import {
   generateId,
 } from '@/lib/storage';
 import { reserveRTCConseillee, getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
-import { CET_PLAFOND, HS_COUT_PAR_JOUR_CET, RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
+import { CET_PLAFOND, HS_COUT_PAR_JOUR_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
-import { planEpargneCET } from '@/lib/cet';
+import { minutesPourJoursCET, planEpargneCET } from '@/lib/cet';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
 import { effetJournee, sanitizeJoursModifies } from '@/lib/journees';
@@ -529,14 +529,16 @@ export function useCounters() {
   // CA et les prélevait sur la dotation de l'année qui commence.
   // `avecSurplus` : l'agent a versé le maximum, et le surplus que le CET ne peut
   // conserver est indemnisé (ou versé à la RAFP) — il ne reste pas au CET.
-  const enregistrerEpargneCET = useCallback((avecSurplus = false) => {
+  // Enregistre le versement retenu dans « Mon épargne CET » : celui que l'agent
+  // a choisi ligne par ligne (surplus payé ou RAFP compris), sinon le conseillé.
+  const enregistrerEpargneCET = useCallback(() => {
     const current = userDataRef.current;
     if (!current) return { success: false, error: 'Données non chargées' };
     const plan = planEpargneCET(current);
     if (plan.mode !== 'janvier') {
       return { success: false, error: "Le versement au CET se fait en janvier, au titre de l'année écoulée." };
     }
-    const apport = avecSurplus ? plan.maximum : plan.apport;
+    const apport = plan.apport;
     if (apport.total <= 0) return { success: false, error: 'Rien à verser au CET' };
     const indemnises = Math.max(0, apport.total - plan.capacite);
 
@@ -546,7 +548,9 @@ export function useCounters() {
       cet: c.cet + apport.total - indemnises,
       caAnterieur: Math.max(0, c.caAnterieur - apport.ca),
       caHPAnterieur: Math.max(0, c.caHPAnterieur - apport.caHP),
-      hs: Math.max(0, c.hs - apport.hs * HS_COUT_PAR_JOUR_CET),
+      hs: Math.max(0, c.hs - minutesPourJoursCET(apport.hs, HS_COUT_PAR_JOUR_CET)),
+      // Choix de l'année versée : servi, on repart du conseillé l'an prochain.
+      choixCET: undefined,
     };
     const detail = {
       rtc: apport.rtc, caHP: apport.caHP, ca: apport.ca, hs: apport.hs,
@@ -616,7 +620,7 @@ export function useCounters() {
           const d = entry.cetDetail;
           updatedCounters.caAnterieur += d.ca;
           updatedCounters.caHPAnterieur += d.caHP;
-          updatedCounters.hs += d.hs * HS_COUT_PAR_JOUR_CET;
+          updatedCounters.hs += minutesPourJoursCET(d.hs, HS_COUT_PAR_JOUR_CET);
           // RTC, ARTT et RTT n'existent plus au compteur (remplacés à la
           // bascule) : on les rend au reliquat, pour pouvoir refaire le versement.
           if (d.rtc > 0 || (d.artt ?? 0) > 0 || (d.rtt ?? 0) > 0) {
@@ -624,7 +628,7 @@ export function useCounters() {
             const meme = reliquatCET?.annee === annee ? reliquatCET : null;
             reliquatCET = {
               annee,
-              rtc: (meme?.rtc ?? 0) + d.rtc * RTC_COUT_PAR_JOUR_CET,
+              rtc: (meme?.rtc ?? 0) + minutesPourJoursCET(d.rtc),
               artt: (meme?.artt ?? 0) + (d.artt ?? 0),
               rtt: (meme?.rtt ?? 0) + (d.rtt ?? 0),
               caReserves: meme?.caReserves ?? 0,
