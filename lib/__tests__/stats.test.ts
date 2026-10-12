@@ -34,6 +34,15 @@ describe('sanitizeErrorKey', () => {
     expect(key).toBe('window|TypeError: Cannot read <str> of undefined at <url> line #');
   });
 
+  it('garde le code d’une erreur React minifiée, masque le reste', () => {
+    const key = sanitizeErrorKey(
+      'window',
+      'Error',
+      'Minified React error #418; visit https://react.dev/errors/418?args[]=12 for the full message',
+    );
+    expect(key).toBe('window|Error: Minified React error #418; visit <url> for the full message');
+  });
+
   it('borne la longueur', () => {
     expect(sanitizeErrorKey('x', 'E', 'a'.repeat(500)).length).toBe(120);
   });

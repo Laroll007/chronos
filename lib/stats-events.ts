@@ -100,13 +100,18 @@ export const ERROR_KEY_MAX = 120;
  * retirées, longueur bornée.
  */
 export function sanitizeErrorKey(source: string, name: string, message: string): string {
+  // Le code d'une erreur React minifiée (#418, #185…) est un numéro technique,
+  // sans donnée personnelle : on le garde, sinon l'erreur reste indéchiffrable.
+  const codeReact = message.match(/Minified React error #(\d{1,4})/)?.[1];
   const cleaned = message
+    .replace(/Minified React error #\d{1,4}/, 'Minified React error <code>')
     .replace(/https?:\/\/\S+|capacitor:\/\/\S+/g, '<url>')
     .replace(/(["'`]).*?\1/g, '<str>')
     .replace(/\d+/g, '#')
     .replace(/\s+/g, ' ')
     .trim();
-  return `${source}|${name || 'Error'}: ${cleaned}`.slice(0, ERROR_KEY_MAX);
+  const texte = codeReact ? cleaned.replace('<code>', `#${codeReact}`) : cleaned;
+  return `${source}|${name || 'Error'}: ${texte}`.slice(0, ERROR_KEY_MAX);
 }
 
 // ─── Dates (jour local de l'appareil) ─────────────────────────────────────────
