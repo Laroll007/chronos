@@ -562,7 +562,7 @@ export function CountersSetup({
                     updateCounter('caHP', ajusterSoldeCAHP(counters.caPosesHorsPeriode, counters.caHP, v));
                   }}
                   max={caTotal}
-                  hint="01/01-30/04 ou 01/11-31/12 — 4 CA : 1 jour de bonus, 8 CA : 2 jours"
+                  hint="01/01-30/04 ou 01/11-31/12 — 5 CA : 1 jour de bonus, 8 CA : 2 jours"
                   colorKey="caHP"
                 />
               </div>

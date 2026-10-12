@@ -190,7 +190,8 @@ describe('Calculs CA HP', () => {
     });
 
     it('retourne 1 au premier palier (4 à 7 CA posés hors période)', () => {
-      expect(checkCAHPCondition(4)).toBe(1);
+      expect(checkCAHPCondition(5)).toBe(1);
+      expect(checkCAHPCondition(4)).toBe(0); // guide DNPAF : 1 jour à partir de 5 CA
       expect(checkCAHPCondition(7)).toBe(1);
     });
 

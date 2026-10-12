@@ -478,7 +478,7 @@ export function countCAHPDays(
 
 /**
  * CA HP acquis pour un nombre de CA posés hors période.
- * Deux paliers : 4 CA → 1 jour de bonus, 8 CA → 2 jours.
+ * Deux paliers : 5 CA → 1 jour de bonus, 8 CA → 2 jours (guide DNPAF).
  */
 export function checkCAHPCondition(caPosesHorsPeriode: number): number {
   if (caPosesHorsPeriode >= CA_REQUIS_POUR_HP) return CA_HP_BONUS;
@@ -762,7 +762,7 @@ export function simulatePose(
         hpDays ?? (isInCAHPPeriod(date) ? amount : 0)
       );
       if (joursHP > 0) {
-        // Deux paliers : 4 CA hors période → 1 jour de bonus, 8 CA → 2 jours.
+        // Deux paliers : 5 CA hors période → 1 jour de bonus, 8 CA → 2 jours.
         // On ne crédite QUE les paliers nouvellement franchis : `caHP` est un
         // solde consommable, le recalculer écraserait un bonus déjà utilisé.
         const acquisAvant = checkCAHPCondition(newCounters.caPosesHorsPeriode);

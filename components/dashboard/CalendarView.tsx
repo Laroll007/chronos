@@ -97,7 +97,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
             className={`h-full rounded-full transition-all duration-500 ${allObtained ? 'bg-emerald-500' : inPeriod ? 'bg-blue-500' : 'bg-amber-400'}`}
             style={{ width: `${pct}%` }}
           />
-          <div className="absolute top-1/2 -translate-y-1/2 w-px h-2.5 bg-white/50" style={{ left: '50%' }} />
+          <div className="absolute top-1/2 -translate-y-1/2 w-px h-2.5 bg-white/50" style={{ left: `${(CA_HP_PALIER_1 / CA_REQUIS_POUR_HP) * 100}%` }} />
         </div>
         <span className="text-muted-foreground flex-shrink-0">{posed}/{CA_REQUIS_POUR_HP} CA</span>
         <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -137,7 +137,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
                 <button type="button" aria-label="Fermer" onClick={close} className="text-slate-500 hover:text-slate-800 ml-3 flex-shrink-0">✕</button>
               </div>
               <p className="text-sm text-slate-600 mb-4">
-                L'APORTT accorde des <strong>jours de CA bonus</strong> selon le nombre de CA posés en dehors de la période estivale : <strong>1 jour dès 4 CA</strong>, <strong>2 jours dès 8 CA</strong>. Ces jours supplémentaires peuvent être transférés au CET.
+                L'APORTT accorde des <strong>jours de CA bonus</strong> selon le nombre de CA posés en dehors de la période estivale : <strong>1 jour dès {CA_HP_PALIER_1} CA</strong>, <strong>2 jours dès 8 CA</strong>. Ces jours supplémentaires peuvent être transférés au CET.
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-start gap-2 text-sm">
@@ -150,7 +150,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
                 </div>
                 <div className="flex items-start gap-2 text-sm">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-                  <span className="text-slate-600"><strong>Paliers :</strong> 4 CA hors période = 1 CA HP, 8 CA hors période = 2 CA HP</span>
+                  <span className="text-slate-600"><strong>Paliers :</strong> {CA_HP_PALIER_1} CA hors période = 1 CA HP, 8 CA hors période = 2 CA HP</span>
                 </div>
               </div>
               <button

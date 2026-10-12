@@ -119,13 +119,13 @@ describe('CA HP — cohérence du bonus', () => {
       c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
     };
 
-    for (let i = 0; i < 3; i++) poserUnCA();
-    expect(c.caHP).toBe(0);          // 3 CA : rien encore
+    for (let i = 0; i < 4; i++) poserUnCA();
+    expect(c.caHP).toBe(0);          // 4 CA : rien encore (guide : 1 jour à partir de 5)
 
     poserUnCA();
-    expect(c.caHP).toBe(1);          // 4 CA : 1er palier
+    expect(c.caHP).toBe(1);          // 5 CA : 1er palier
 
-    for (let i = 0; i < 3; i++) poserUnCA();
+    for (let i = 0; i < 2; i++) poserUnCA();
     expect(c.caHP).toBe(1);          // 7 CA : toujours 1
 
     poserUnCA();
@@ -141,15 +141,15 @@ describe('CA HP — cohérence du bonus', () => {
   });
 
   it('ne recrédite pas un palier déjà franchi puis consommé', () => {
-    // L'agent atteint 4 CA (1 jour de bonus), le pose, puis continue jusqu'à 8.
+    // L'agent atteint 5 CA (1 jour de bonus), le pose, puis continue jusqu'à 8.
     let c = C({ ca: 18, caHP: 0, caPosesHorsPeriode: 0 });
-    for (let i = 0; i < 4; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
+    for (let i = 0; i < 5; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
     expect(c.caHP).toBe(1);
 
     c = simulatePose(c, 'caHP', 1, new Date(2026, 1, 20)).newCounters;
     expect(c.caHP).toBe(0); // bonus consommé
 
-    for (let i = 0; i < 4; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
+    for (let i = 0; i < 3; i++) c = simulatePose(c, 'ca', 1, new Date(2026, 1, 10)).newCounters;
     expect(c.caHP).toBe(1); // seul le 2e palier est crédité, pas les deux
   });
 
@@ -209,10 +209,10 @@ describe('CA HP — cohérence du bonus', () => {
   });
 
   it('le bonus partiellement consommé est préservé d’un palier à l’autre', () => {
-    // 4 CA → 1 jour acquis, posé aussitôt → solde 0, utilisés 1.
-    expect(getCAHPUtilises(4, 0)).toBe(1);
+    // 5 CA → 1 jour acquis, posé aussitôt → solde 0, utilisés 1.
+    expect(getCAHPUtilises(5, 0)).toBe(1);
     // Il atteint 8 CA : le 2e jour est crédité, pas le premier.
-    expect(ajusterSoldeCAHP(4, 0, 8)).toBe(1);
+    expect(ajusterSoldeCAHP(5, 0, 8)).toBe(1);
   });
 
   it('n’accorde rien pour des CA posés en période estivale', () => {

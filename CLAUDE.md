@@ -91,7 +91,7 @@ affiche une pastille par jour travaillé (`HorairesBadge`).
   relèvements COVID/JOP). Au-delà : indemnisation (A 150 €, B 100 €, C 83 € le
   jour) ou RAFP. Sources : tous les RTC (8h21 le jour), tous les ARTT/RTT,
   5 CA (si 15 CA pris, 20 en hebdo) + CA HP, 5 jours d'HS.
-- **CA HP** : 1 jour dès 4 CA posés hors période (1/01–30/04, 1/11–31/12),
+- **CA HP** : 1 jour dès 5 CA posés hors période (« +1 CAS pour 5 à 7 CA ») (1/01–30/04, 1/11–31/12),
   2 jours dès 8.
 - **CF** : 109h12 par an, à lisser ; abattement de 1/24 par tranche de 15 jours
   de CMO consécutifs.

@@ -661,7 +661,7 @@ export function useCounters() {
         if (joursHP > 0) {
           const newHorsPeriode = Math.max(0, updatedCounters.caPosesHorsPeriode - joursHP);
           updatedCounters.caPosesHorsPeriode = newHorsPeriode;
-          // Redescendre au palier correspondant (4 CA → 1 jour, 8 CA → 2), sans
+          // Redescendre au palier correspondant (5 CA → 1 jour, 8 CA → 2), sans
           // jamais remonter un bonus que l'agent aurait déjà consommé.
           updatedCounters.caHP = Math.min(
             updatedCounters.caHP,

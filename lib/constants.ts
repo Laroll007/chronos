@@ -13,7 +13,7 @@ export const HEURES_PAR_JOUR = 12 * 60 + 8; // 12h08 = 728 minutes
 export const CA_TOTAL_ANNUEL = 18; // jours (par défaut pour cycles 12h08)
 export const CA_MAX_VERS_CET = 5; // jours
 export const CA_REQUIS_POUR_HP = 8; // jours à poser hors période pour obtenir CA HP
-export const CA_HP_PALIER_1 = 4;   // seuil pour obtenir le 1er jour CA HP
+export const CA_HP_PALIER_1 = 5;   // seuil pour obtenir le 1er jour CA HP (guide DNPAF : « +1 CAS pour 5 à 7 CA pris hors période »)
 export const CA_HP_BONUS = 2; // jours bonus si condition remplie
 
 // CA par cycle (APORTT)
@@ -161,7 +161,7 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
   },
   caHP: {
     name: 'CA Hors Période',
-    description: 'Bonus par paliers : 1j dès 4 CA hors période, 2j dès 8. Peuvent aller au CET.',
+    description: 'Bonus par paliers : 1j dès 5 CA hors période, 2j dès 8. Peuvent aller au CET.',
     unit: 'jours',
   },
   cf: {
