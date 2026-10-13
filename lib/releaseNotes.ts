@@ -26,6 +26,31 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.18.0',
+    items: [
+      {
+        emoji: '🔒',
+        title: 'Tes congés prévisionnels d’un coup d’œil',
+        text: 'Quand tu poses des jours, coche « Congé prévisionnel » : ils apparaissent hachurés avec un cadenas sur le planning, et le filtre « Prévisionnels » les liste tous.',
+      },
+      {
+        emoji: '📆',
+        title: 'Poser l’année prochaine sur ses droits',
+        text: 'Des congés posés pour l’an prochain ne touchent plus tes compteurs actuels : ils sont pris sur tes droits de l’année suivante, déduits automatiquement au 1er janvier.',
+      },
+      {
+        emoji: '⏪',
+        title: 'Congés antérieurs sans décompte',
+        text: 'Inscrit en cours d’année ? Pose tes congés passés en cochant « ce sont des congés antérieurs » : ils s’affichent sur le planning sans toucher à tes compteurs.',
+      },
+      {
+        emoji: '✅',
+        title: 'CA HP : la bonne règle',
+        text: 'Le 1er jour de CA HP s’obtient à partir de 5 CA posés hors période (et non 4), le 2e à partir de 8.',
+      },
+    ],
+  },
+  {
     version: '1.17.0',
     items: [
       {
