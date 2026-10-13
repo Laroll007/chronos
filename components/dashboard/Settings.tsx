@@ -37,7 +37,11 @@ import {
   Hourglass,
   BarChart3,
   X,
+  Share2,
+  Star,
 } from 'lucide-react';
+import { RecommanderModal } from '@/components/shared/RecommanderModal';
+import { lienAvisStore, ouvrirFicheStore, plateforme } from '@/lib/recommandation';
 import { toast } from 'sonner';
 
 const FeedbackModal = lazy(() =>
@@ -133,6 +137,9 @@ export function Settings({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showRecommander, setShowRecommander] = useState(false);
+  const [avisStore] = useState(() => (typeof window === 'undefined' ? null : lienAvisStore()));
+  const nomStore = typeof window !== 'undefined' && plateforme() === 'ios' ? 'l’App Store' : 'le Play Store';
   const [showWorkedDays, setShowWorkedDays] = useState(false);
   const [showCycle, setShowCycle] = useState(openCycleOnMount);
   const [showRetraite, setShowRetraite] = useState(false);
@@ -256,6 +263,20 @@ export function Settings({
           <section className="space-y-2.5">
             <SectionLabel icon={<Heart className="w-3 h-3 text-pink-500" />} label="À propos" />
             <div className="space-y-1.5">
+              <ClickableRow
+                icon={<Share2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                label="Recommander My Chronos à un collègue"
+                sublabel="QR code à montrer, ou lien à envoyer"
+                onClick={() => setShowRecommander(true)}
+              />
+              {avisStore && (
+                <ClickableRow
+                  icon={<Star className="w-4 h-4 text-amber-500 shrink-0" />}
+                  label={`Noter My Chronos sur ${nomStore}`}
+                  sublabel="Un avis aide d’autres collègues à trouver l’app"
+                  onClick={ouvrirFicheStore}
+                />
+              )}
               <ClickableRow
                 icon={<DiscordLogo className="w-4 h-4 shrink-0" />}
                 label="Rejoindre la communauté Discord"
@@ -458,6 +479,8 @@ export function Settings({
           </DialogContent>
         </Dialog>
       )}
+
+      {showRecommander && <RecommanderModal onClose={() => setShowRecommander(false)} />}
 
       {showRetraite && (
         <Suspense fallback={null}>

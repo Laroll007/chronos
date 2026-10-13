@@ -57,6 +57,9 @@ const CountersSetup = lazy(() =>
 );
 import { useCounters, type OptionsPose } from '@/hooks/useCounters';
 import { compteursAnneeSuivante, compteursDotation, posesDifferees } from '@/lib/previsionnel';
+import { demanderAvisNatif, noterDemandeAvis, peutDemanderAvis, plateforme } from '@/lib/recommandation';
+import { AvisPrompt } from '@/components/dashboard/AvisPrompt';
+import { RecommanderModal } from '@/components/shared/RecommanderModal';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
@@ -336,15 +339,35 @@ export default function DashboardPage() {
     track('cet_plan_open');
   }, []);
 
+  // Après un moment utile (congés posés, épargne CET) : demande d'avis, au plus
+  // tous les 4 mois et seulement pour un agent qui utilise vraiment l'app.
+  // iPhone : fenêtre native d'Apple (règle 5.6.1) ; Android et web : invitation neutre.
+  const [showAvis, setShowAvis] = useState(false);
+  const [showRecommander, setShowRecommander] = useState(false);
+  const apresMomentPositif = useCallback(() => {
+    if (!userData || !peutDemanderAvis(userData.history, userData.dateInscription)) return;
+    noterDemandeAvis();
+    const p = plateforme();
+    setTimeout(() => {
+      if (p === 'ios') {
+        track('avis_demande');
+        void demanderAvisNatif();
+      } else {
+        setShowAvis(true);
+      }
+    }, 1500);
+  }, [userData]);
+
   const handleRecordCET = useCallback(() => {
     const res = enregistrerEpargneCET();
     if (res.success && 'apport' in res && res.apport) {
       toast.success(`${res.apport.total}j versés au CET`, {
         description: 'Vos compteurs sont à jour. Annulable depuis « Congés posés ».',
       });
+      apresMomentPositif();
     }
     return res;
-  }, [enregistrerEpargneCET]);
+  }, [enregistrerEpargneCET, apresMomentPositif]);
 
   // ─── Événements perso ──────────────────────────────────────────────────────
   // Depuis la fenêtre de sélection : on la ferme (et la sélection du calendrier)
@@ -580,6 +603,7 @@ export default function DashboardPage() {
 
       setShowOptimization(false);
       setSelectedRange(null);
+      apresMomentPositif();
       return true;
     } catch (error) {
       toast.error('Erreur lors de la pose des congés', {
@@ -588,7 +612,7 @@ export default function DashboardPage() {
       });
       return false;
     }
-  }, [poseConge, deleteHistoryEntry, selectedRange, cycleConfig, counters, userData]);
+  }, [poseConge, deleteHistoryEntry, selectedRange, cycleConfig, counters, userData, apresMomentPositif]);
 
   if (isLoading) {
     return (
@@ -1033,6 +1057,11 @@ export default function DashboardPage() {
             }}
           />
         )}
+
+      {showAvis && (
+        <AvisPrompt plateforme={plateforme()} onRecommander={() => setShowRecommander(true)} onClose={() => setShowAvis(false)} />
+      )}
+      {showRecommander && <RecommanderModal onClose={() => setShowRecommander(false)} />}
 
       {/* Popup Bienvenue */}
       <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />

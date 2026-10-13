@@ -14,10 +14,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@capacitor-community/in-app-review": "^8.0.0",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.4",
     "@capacitor/ios": "^8.5.3",
+    "@capacitor/share": "^8.0.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",

@@ -108,7 +108,8 @@ function mutate(fn: (state: StatsState, today: string) => void): void {
 
 // ─── Plateforme ───────────────────────────────────────────────────────────────
 
-function detectPlatform(): StatsPlatform {
+/** Plateforme de l'appareil : app iPhone, app Android (TWA), web installé ou navigateur. */
+export function detectPlatform(): StatsPlatform {
   if (isNativeApp()) return 'ios';
   try {
     // L'app Android (TWA) n'expose le referrer `android-app://` qu'au lancement :

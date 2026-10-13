@@ -75,6 +75,11 @@ export const STATS_EVENTS = {
   feedback_sent: { label: 'Envoie un avis', group: 'À propos' },
   welcome_reopen: { label: 'Revoit le message de bienvenue', group: 'À propos' },
   kofi_click: { label: 'Clic Ko-fi', group: 'À propos' },
+  partage_ouvert: { label: 'Ouvre « Recommander à un collègue »', group: 'À propos' },
+  partage_envoye: { label: 'Recommandation envoyée (partage du téléphone)', group: 'À propos' },
+  partage_lien_copie: { label: 'Recommandation : lien copié / WhatsApp / SMS', group: 'À propos' },
+  avis_demande: { label: 'Demande d’avis affichée', group: 'À propos' },
+  avis_store_ouvert: { label: 'Ouvre la fiche du store pour un avis', group: 'À propos' },
 } as const satisfies Record<string, { label: string; group: string }>;
 
 export type StatsEvent = keyof typeof STATS_EVENTS;
