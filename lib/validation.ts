@@ -197,6 +197,11 @@ function checkHistoryEntry(v: unknown, i: number): string[] {
   if (typeof v.amount !== 'number') errors.push(`history[${i}].amount: nombre attendu`);
   if (v.caHPDays !== undefined && !isNum(v.caHPDays as unknown, 0)) errors.push(`history[${i}].caHPDays: nombre >= 0 attendu`);
   if (v.cfS1Minutes !== undefined && !isNum(v.cfS1Minutes as unknown, 0)) errors.push(`history[${i}].cfS1Minutes: nombre >= 0 attendu`);
+  if (v.previsionnel !== undefined && !isBool(v.previsionnel)) errors.push(`history[${i}].previsionnel: boolean attendu`);
+  if (v.decompte !== undefined && v.decompte !== 'anterieur' && v.decompte !== 'differe')
+    errors.push(`history[${i}].decompte: 'anterieur' ou 'differe' attendu`);
+  if (v.anneeDecompte !== undefined && !isNum(v.anneeDecompte as unknown, 2000, 2200)) errors.push(`history[${i}].anneeDecompte: année attendue`);
+  if (v.decompteApplique !== undefined && !isBool(v.decompteApplique)) errors.push(`history[${i}].decompteApplique: boolean attendu`);
   return errors;
 }
 
@@ -272,6 +277,8 @@ export function validateUserData(data: unknown): ValidationResult<UserData> {
   if (data.schemaVersion !== undefined && !isNum(data.schemaVersion, 0)) errors.push('schemaVersion: nombre attendu');
   if (data.basculeAConfirmer !== undefined && !isNum(data.basculeAConfirmer, 0)) errors.push('basculeAConfirmer: nombre attendu');
   if (!isBool(data.isOnboarded)) errors.push('isOnboarded: boolean attendu');
+  if (data.dateInscription !== undefined && !(typeof data.dateInscription === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.dateInscription)))
+    errors.push('dateInscription: YYYY-MM-DD attendu');
 
   if (errors.length > 0) {
     return {

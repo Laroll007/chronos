@@ -8,7 +8,7 @@ import {
   DEFAULT_CYCLE_ALTERNE_B,
   DEFAULT_HEBDO_HEURES,
 } from './types';
-import { getCATotalForCycle, getRTCAnnuel, reserveRTCConseillee } from './calculations';
+import { countCAHPDays, getCATotalForCycle, getCFS1Share, getRTCAnnuel, reserveRTCConseillee, simulatePose } from './calculations';
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
@@ -210,35 +210,14 @@ export function migrateUserData(data: UserData): UserData {
       delete data.reliquatCET;
     }
 
-    // 1. Report du reliquat (règle APORTT : consommable jusqu'au 30 avril).
-    //    Remplace et n'additionne pas : le report de l'année précédente a expiré.
-    c.caAnterieur = c.ca;
-    c.caHPAnterieur = c.caHP;
+    // 1 à 3. Report des CA, remise à zéro des consommations, nouvelles dotations.
+    data.counters = compteursNouvelleAnnee(c, data.cycleConfig);
 
-    //    Les CA « sécurisés pour le CET » visaient les jours de l'année écoulée,
-    //    qui viennent de basculer en report. Conserver le nombre le ferait
-    //    pointer vers la nouvelle dotation, et le moteur écarterait des CA que
-    //    l'agent n'a jamais mis de côté.
-    c.caReservesCET = 0;
-
-    // 2. Compteurs de consommation remis à zéro.
-    c.caPosesHorsPeriode = 0;
-    c.caHP = 0;
-    c.cfConsoS1 = 0;
-    c.cfConsoS2 = 0;
-    c.caConsommes = 0;
-
-    // 3. Recrédit des quotas annuels, uniquement pour les compteurs activés.
-    c.ca = getCATotalForCycle(data.cycleConfig);
-    if (c.hasCF !== false) c.cf = CF_TOTAL_ANNUEL;
-    if (c.hasRTC !== false) {
-      c.rtc = getRTCAnnuel(data.cycleConfig);
-    }
-    if (c.hasARTT) c.artt = ARTT_QUOTA_ANNUEL;
-    if (c.hasRTT) c.rtt = RTT_QUOTA_HEBDO;
-
-    // RPS, HS, CET, CET 2008, HS historiques et congés bonifiés ne sont PAS
-    // touchés : ils se conservent d'une année sur l'autre.
+    // Congés de l'année posés à l'avance (« prévisionnel de l'année prochaine ») :
+    // déduits maintenant des nouveaux droits.
+    const differes = appliquerDecomptesDifferes(data.counters, data.history ?? [], data.cycleConfig, currentYear);
+    data.counters = differes.counters;
+    data.history = differes.history;
 
     // 4. Les quotas recrédités sont ceux du régime standard. Un agent à temps
     //    partiel, arrivé en cours d'année ou en zone DOM doit les corriger :
@@ -254,6 +233,69 @@ export function migrateUserData(data: UserData): UserData {
   }
 
   return data;
+}
+
+/**
+ * Compteurs au 1er janvier : report des CA restants (consommables jusqu'au 30
+ * avril), consommations remises à zéro, dotations annuelles recréditées pour
+ * les compteurs activés. RPS, HS, CET, CET 2008, HS historiques et congés
+ * bonifiés se conservent. Sert à la bascule et à l'estimation des droits de
+ * l'année suivante (congés posés à l'avance).
+ */
+export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig): Counters {
+  const n: Counters = { ...c };
+  // Report du reliquat (règle APORTT : consommable jusqu'au 30 avril).
+  // Remplace et n'additionne pas : le report de l'année précédente a expiré.
+  n.caAnterieur = c.ca;
+  n.caHPAnterieur = c.caHP;
+  // Les CA « sécurisés pour le CET » visaient les jours de l'année écoulée,
+  // qui viennent de basculer en report.
+  n.caReservesCET = 0;
+  n.caPosesHorsPeriode = 0;
+  n.caHP = 0;
+  n.cfConsoS1 = 0;
+  n.cfConsoS2 = 0;
+  n.caConsommes = 0;
+  n.ca = getCATotalForCycle(cycleConfig);
+  if (c.hasCF !== false) n.cf = CF_TOTAL_ANNUEL;
+  if (c.hasRTC !== false) n.rtc = getRTCAnnuel(cycleConfig);
+  if (c.hasARTT) n.artt = ARTT_QUOTA_ANNUEL;
+  if (c.hasRTT) n.rtt = RTT_QUOTA_HEBDO;
+  return n;
+}
+
+/**
+ * Déduit des compteurs les congés posés à l'avance pour `annee` (pose
+ * « différée »), dans l'ordre chronologique. Une pose que le solde ne couvre
+ * pas reste non décomptée (l'agent est invité à vérifier ses soldes).
+ */
+export function appliquerDecomptesDifferes(
+  counters: Counters,
+  history: HistoryEntry[],
+  cycleConfig: CycleConfig,
+  annee: number,
+  marquer = true
+): { counters: Counters; history: HistoryEntry[] } {
+  let c = counters;
+  const aFaire = history
+    .filter((e) => e.action === 'pose' && e.decompte === 'differe' && e.anneeDecompte === annee && !e.decompteApplique)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const appliques = new Set<string>();
+  for (const e of aFaire) {
+    const debut = new Date(e.date);
+    const fin = new Date(e.dateEnd ?? e.date);
+    const r = simulatePose(c, e.type, e.amount, debut, {
+      hpDays: e.type === 'ca' ? countCAHPDays(debut, fin, cycleConfig) : undefined,
+      cfS1Minutes: e.type === 'cf' ? getCFS1Share(e.amount, debut, fin, cycleConfig) : undefined,
+    });
+    if (!r.isValid) continue;
+    c = r.newCounters;
+    appliques.add(e.id);
+  }
+  return {
+    counters: c,
+    history: marquer ? history.map((e) => (appliques.has(e.id) ? { ...e, decompteApplique: true } : e)) : history,
+  };
 }
 
 /**

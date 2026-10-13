@@ -14,7 +14,7 @@ import {
 import type { CountersDraft } from '@/components/onboarding/CountersSetup';
 import { markReleaseNotesSeen } from '@/lib/releaseNotes';
 import { track } from '@/lib/analytics';
-import { getCETApportMaxAnnee } from '@/lib/calculations';
+import { aujourdhuiISO, getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
 import { Calendar, Calculator, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -122,6 +122,7 @@ export function OnboardingWizard() {
       // (CA posés hors période, CA HP, conso CF du semestre, RTT).
       lastResetYear: new Date().getFullYear(),
       ...(compteursARenseigner && { compteursARenseigner: true }),
+      dateInscription: aujourdhuiISO(),
       isOnboarded: true,
     });
 

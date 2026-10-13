@@ -554,3 +554,8 @@ body {
     animation: none !important;
   }
 }
+
+/* Congé du plan prévisionnel : vert hachuré (repérable d'un coup d'œil). */
+.hachure-previsionnel {
+  background-image: repeating-linear-gradient(135deg, #a7f3d0 0 6px, #d1fae5 6px 12px) !important;
+}

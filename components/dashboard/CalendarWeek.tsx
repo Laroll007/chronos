@@ -17,6 +17,7 @@ import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate } from '@/lib/events';
 import { jeuHorairesDuJour } from '@/lib/horaires';
+import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { LegendeHoraires, libelleJeu, styleJeu } from './HorairesBadge';
 import { isWorkingDay, isSundayWorked, hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 
@@ -239,6 +240,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const isEnd = dateRange.isRangeEnd(day.date);
             const isSelected = dateRange.isDateSelected(day.date);
             const isPosted = hasPostedLeaveOnDate(day.date, history);
+            const isPrevisionnel = isPosted && estPrevisionnelLe(day.date, history);
             const isCMO = !isPosted && hasCMOOnDate(day.date, history);
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const isAbsence = !isPosted && !isCMO && !isAstreinte && hasAbsenceOnDate(day.date, history);
@@ -261,7 +263,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
             else if (cycleConfig.type === 'hebdo' && estFerie(day.date)) statusParts.push('jour férié');
             else statusParts.push('jour de repos');
-            if (isPosted) statusParts.push('congé posé');
+            if (isPosted) statusParts.push(isPrevisionnel ? 'congé posé, prévisionnel' : 'congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
             if (isPartial) statusParts.push('heures posées');
@@ -322,6 +324,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isAbsence && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',
                     // Congé déjà posé
                     isPosted && !isInRange && !isInPreview && 'bg-emerald-200 border border-emerald-300',
+                    isPrevisionnel && !isInRange && !isInPreview && 'hachure-previsionnel',
                     // Arrêt maladie (CMO)
                     isCMO && !isInRange && !isInPreview && 'bg-violet-200 border border-violet-300',
                     // Astreinte / permanence
@@ -387,6 +390,9 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                         'T'
                       )}
                     </Badge>
+                  )}
+                  {isPrevisionnel && (
+                    <span className="mt-1 text-xs leading-none" aria-hidden="true" title="Congé prévisionnel">🔒</span>
                   )}
                   {jourModifie && (
                     <span className={cn('mt-1 text-[10px] font-semibold', isStart || isEnd ? 'text-white' : jourModifie.type === 'stage' ? 'text-indigo-700' : 'text-sky-700')} aria-hidden="true">

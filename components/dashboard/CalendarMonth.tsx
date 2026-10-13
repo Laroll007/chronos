@@ -19,6 +19,7 @@ import { EventChip } from './EventChip';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
 import { jeuHorairesDuJour } from '@/lib/horaires';
+import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { BadgeHoraires, LegendeHoraires, libelleJeu } from './HorairesBadge';
 
 interface CalendarMonthProps {
@@ -312,6 +313,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isEnd = dateRange.isRangeEnd(day.date);
             const isSelected = dateRange.isDateSelected(day.date);
             const isPosted = hasPostedLeaveOnDate(day.date, history);
+            const isPrevisionnel = isPosted && estPrevisionnelLe(day.date, history);
             const isCMO = !isPosted && hasCMOOnDate(day.date, history);
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const isAbsence = !isPosted && !isCMO && !isAstreinte && hasAbsenceOnDate(day.date, history);
@@ -337,7 +339,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (day.isToday) statusParts.push("aujourd'hui");
             if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
             else statusParts.push(isFerie ? 'jour férié' : 'jour de repos');
-            if (isPosted) statusParts.push('congé posé');
+            if (isPosted) statusParts.push(isPrevisionnel ? 'congé posé, prévisionnel' : 'congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
             if (isAbsence) statusParts.push('absence (ASA, Art. 13…)');
@@ -371,7 +373,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                     : isInRange || isInPreview
                       ? isInPreview ? 'bg-emerald-50' : 'bg-emerald-100'
                       : isPosted
-                        ? 'bg-emerald-100'
+                        ? isPrevisionnel ? 'bg-emerald-100 hachure-previsionnel' : 'bg-emerald-100'
                         : isCMO
                           ? 'bg-violet-100'
                           : isAstreinte
@@ -437,6 +439,9 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                   )}
                 </button>
                 {jeu && isCurrentMonth && <BadgeHoraires jeu={jeu} />}
+                {isPrevisionnel && isCurrentMonth && (
+                  <span aria-hidden="true" title="Congé prévisionnel" className="text-[10px] md:text-xs leading-none">🔒</span>
+                )}
                 </div>
 
                 {/* Événements : lignes alignées sur la semaine, 2 au plus puis « +N » */}

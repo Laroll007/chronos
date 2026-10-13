@@ -10,6 +10,8 @@ import { formatMinutes } from '@/lib/calculations';
 import { repartirSurJours } from '@/lib/repartition';
 import { MOTIFS_ABSENCE, ORDRE_MOTIFS, type MotifAbsence } from '@/lib/absences';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
+import { anterieurParDefaut, periodeACheval, periodeAnneeSuivante, periodeAnterieure } from '@/lib/previsionnel';
+import type { OptionsPose } from '@/hooks/useCounters';
 import { CombinationCard } from './CombinationCard';
 import {
   Dialog,
@@ -41,15 +43,25 @@ interface OptimizationModalProps {
    */
   minutesDejaPosees?: number;
   counters: Counters;
+  /**
+   * Compteurs sur lesquels proposer les options quand la pose n'est pas
+   * décomptée maintenant : dotation de l'année (congés antérieurs) ou droits de
+   * l'année suivante, déjà diminués de ce qui y est posé.
+   */
+  compteursSansDecompte?: { anterieur: Counters; anneeSuivante: Counters };
+  /** Jour d'inscription : « congés antérieurs » coché d'office le premier mois. */
+  dateInscription?: string;
+  /** Modification d'une période du plan prévisionnel : case cochée d'office. */
+  previsionnelInitial?: boolean;
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
-  onApply: (combination: Combination) => boolean | void;
+  onApply: (combination: Combination, options: OptionsPose) => boolean | void;
   onMarkCMO?: () => void;
   /** ASA, Art. 13, CFS, EXN, repos décalé : jours non travaillés, sans compteur. */
   onMarkAbsence?: (motif: MotifAbsence) => void;
   onMarkAstreinte?: () => void;
   // Pose fractionnée (départ anticipé / prise retardée) — uniquement pour 1 jour sélectionné.
-  onPosePartiel?: (type: CounterType, minutes: number) => void;
+  onPosePartiel?: (type: CounterType, minutes: number, options: OptionsPose) => void;
   // true si la période sélectionnée contient au moins un jour de repos (astreinte pertinente).
   hasRestDays?: boolean;
   // Événements perso déjà présents sur la période (affichés en tête, cliquables).
@@ -70,7 +82,10 @@ export function OptimizationModal({
   jourMinutes = HEURES_PAR_JOUR,
   dureesJours,
   minutesDejaPosees = 0,
-  counters,
+  counters: countersActuels,
+  compteursSansDecompte,
+  dateInscription,
+  previsionnelInitial = false,
   onApply,
   onMarkCMO,
   onMarkAbsence,
@@ -82,6 +97,30 @@ export function OptimizationModal({
   onOpenEvent,
   daySection,
 }: OptimizationModalProps) {
+  // ── Pose sans décompte immédiat, congé du plan prévisionnel ─────────────────
+  const anterieure = Boolean(startDate && endDate && periodeAnterieure(startDate, endDate));
+  const anneeSuivante = Boolean(startDate && endDate && periodeAnneeSuivante(startDate, endDate));
+  const aCheval = Boolean(startDate && endDate && periodeACheval(startDate, endDate));
+  const [previsionnel, setPrevisionnel] = useState(previsionnelInitial);
+  // Année suivante : cochée d'office (presque toujours prise sur ses droits) ;
+  // passé : cochée d'office seulement le premier mois, avant l'inscription.
+  const [sansDecompte, setSansDecompte] = useState(
+    () => anneeSuivante || Boolean(anterieure && endDate && anterieurParDefaut(dateInscription, endDate))
+  );
+  const decompte: OptionsPose['decompte'] =
+    compteursSansDecompte && sansDecompte ? (anneeSuivante ? 'differe' : anterieure ? 'anterieur' : undefined) : undefined;
+  const counters =
+    decompte === 'differe'
+      ? compteursSansDecompte!.anneeSuivante
+      : decompte === 'anterieur'
+        ? compteursSansDecompte!.anterieur
+        : countersActuels;
+  const optionsPose = useMemo<OptionsPose>(
+    () => ({ ...(previsionnel && { previsionnel: true }), ...(decompte && { decompte }) }),
+    [previsionnel, decompte]
+  );
+  const anneeDroits = (startDate ?? new Date()).getFullYear();
+
   const [isCalculating, setIsCalculating] = useState(false);
   const [combinations, setCombinations] = useState<Combination[]>([]);
   const [showCustom, setShowCustom] = useState(false);
@@ -228,8 +267,8 @@ export function OptimizationModal({
     );
     combination.totalDays = workingDaysCount;
     combination.repartition = repartitionLibre.tranches;
-    if (onApply(combination) !== false) onClose();
-  }, [startDate, isCustomValid, repartitionLibre, customItems, counters, onApply, onClose, jourMinutes, workingDaysCount]);
+    if (onApply(combination, optionsPose) !== false) onClose();
+  }, [startDate, isCustomValid, repartitionLibre, customItems, counters, onApply, onClose, jourMinutes, workingDaysCount, optionsPose]);
 
   // PERF-009: Ref pour tracker si on doit recalculer
   const lastCalculationRef = useRef<{
@@ -303,8 +342,8 @@ export function OptimizationModal({
   // PERF-009: useCallback pour stabiliser la référence
   const handleSelect = useCallback((combination: Combination) => {
     // On ne referme que si la pose a effectivement eu lieu.
-    if (onApply(combination) !== false) onClose();
-  }, [onApply, onClose]);
+    if (onApply(combination, optionsPose) !== false) onClose();
+  }, [onApply, onClose, optionsPose]);
 
   // Formater la période sélectionnée
   const formattedPeriod = useMemo(() => {
@@ -351,6 +390,56 @@ export function OptimizationModal({
 
         <ScrollArea className="h-[calc(90vh-140px)]">
           <div className="p-6">
+            {/* 0. Pour ces congés : plan prévisionnel, et pose sans décompte
+                immédiat (congés antérieurs / année suivante) selon les dates. */}
+            {workingDaysCount > 0 && (
+              <div className="mb-5 rounded-xl border border-slate-200 bg-white p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Pour ces congés</p>
+                <label className="flex items-start gap-3 py-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={previsionnel}
+                    onChange={(e) => setPrevisionnel(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded accent-[#0055A4]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">🔒 Congé prévisionnel</span>
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                      Déposé au plan prévisionnel du service : il apparaît hachuré sur le planning.
+                    </span>
+                  </span>
+                </label>
+                {compteursSansDecompte && (anneeSuivante || anterieure) && (
+                  <label className="flex items-start gap-3 py-2 border-t border-slate-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={sansDecompte}
+                      onChange={(e) => setSansDecompte(e.target.checked)}
+                      className="mt-0.5 h-5 w-5 shrink-0 rounded accent-[#0055A4]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-800">
+                        {anneeSuivante
+                          ? 'Ne pas décompter maintenant : c’est mon prévisionnel de l’année prochaine'
+                          : 'Ne pas déduire de mes compteurs : ce sont des congés antérieurs'}
+                      </span>
+                      <span className="block text-xs text-slate-500 mt-0.5">
+                        {anneeSuivante
+                          ? `Les options ci-dessous portent sur vos droits ${anneeDroits}, déduits automatiquement au 1er janvier.`
+                          : 'Déjà retirés du solde que vous avez saisi : enregistrés pour le planning, sans toucher à vos compteurs.'}
+                      </span>
+                    </span>
+                  </label>
+                )}
+                {compteursSansDecompte && aCheval && (
+                  <p className="pt-2 border-t border-slate-100 text-xs text-slate-500">
+                    Cette période est à cheval sur aujourd&apos;hui ou sur le 1er janvier : pour ne pas décompter une
+                    partie des jours (congés antérieurs, année prochaine), posez-la en deux fois.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* 1. Les meilleures options d'abord */}
             <div className="mb-6 border-b border-border pb-6">
             {minutesDejaPosees > 0 ? (
@@ -798,7 +887,7 @@ export function OptimizationModal({
                         disabled={!partialType || partialMinutes <= 0 || partialMinutes > partialMax}
                         onClick={() => {
                           if (partialType && partialMinutes > 0 && partialMinutes <= partialMax) {
-                            onPosePartiel(partialType, partialMinutes);
+                            onPosePartiel(partialType, partialMinutes, optionsPose);
                             onClose();
                           }
                         }}

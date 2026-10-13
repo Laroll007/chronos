@@ -199,6 +199,8 @@ export interface UserData {
   // annule ou corrige la journée.
   joursModifies?: JourModifie[];
   isOnboarded: boolean;
+  /** Jour de l'inscription ('YYYY-MM-DD') : propose « congés antérieurs » le premier mois. */
+  dateInscription?: string;
 }
 
 export interface JourModifie {
@@ -268,6 +270,17 @@ export interface HistoryEntry {
   cetDetail?: DetailEpargneCET;
   /** Absence sans compteur (action 'absence') : motif, cf. lib/absences.ts. */
   motif?: string;
+  /** Congé déposé au plan prévisionnel du service (ne peut plus être rappelé). */
+  previsionnel?: boolean;
+  /**
+   * Pose sans décompte immédiat :
+   * - 'anterieur' : congé passé, déjà retiré du solde saisi (jamais décompté) ;
+   * - 'differe' : congé de l'année suivante, décompté de ses droits au 1er
+   *   janvier de `anneeDecompte` (`decompteApplique` passe alors à true).
+   */
+  decompte?: 'anterieur' | 'differe';
+  anneeDecompte?: number;
+  decompteApplique?: boolean;
 }
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte' | 'absence';

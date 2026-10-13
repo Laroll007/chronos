@@ -43,6 +43,7 @@ interface CalendarViewProps {
   history: HistoryEntry[];
   onDeleteLeave?: (entryId: string) => void;
   onEditLeave?: (entries: HistoryEntry[]) => void;
+  onTogglePrevisionnel?: (ids: string[], valeur: boolean) => void;
   resetTrigger?: number;
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];
@@ -168,7 +169,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
   );
 }
 
-export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, resetTrigger = 0, events, joursModifies, onAddEvent, onOpenEvent }: CalendarViewProps) {
+export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, onTogglePrevisionnel, resetTrigger = 0, events, joursModifies, onAddEvent, onOpenEvent }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const prevResetTrigger = useRef(resetTrigger);
   // Date dont on veut ouvrir le détail (édition/suppression) dans la liste des congés.
@@ -308,6 +309,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
         events={events}
         onAddEvent={onAddEvent}
         onOpenEvent={onOpenEvent}
+        onTogglePrevisionnel={onTogglePrevisionnel}
       />
 
       {/* Événements perso (RDV, formation…) */}

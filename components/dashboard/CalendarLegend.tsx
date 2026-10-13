@@ -5,11 +5,13 @@ import { jourModifieDu } from '@/lib/journees';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { eventsOnDate } from '@/lib/events';
 import { estFerie } from '@/lib/feries';
+import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { cn } from '@/lib/utils';
 
 export interface LegendFlags {
   travail: boolean;
   conge: boolean;
+  previsionnel: boolean;
   cmo: boolean;
   astreinte: boolean;
   absence: boolean;
@@ -37,13 +39,16 @@ export function legendFlagsForDays(
   hebdo = false
 ): LegendFlags {
   const flags: LegendFlags = {
-    travail: false, conge: false, cmo: false, astreinte: false, absence: false, heures: false,
+    travail: false, conge: false, previsionnel: false, cmo: false, astreinte: false, absence: false, heures: false,
     evenement: false, stage: false, horaires: false, selection: hasSelection, ferie: false,
   };
   for (const { date, isWorking } of days) {
     if (isWorking) flags.travail = true;
     if (hebdo && estFerie(date)) flags.ferie = true;
-    if (hasPostedLeaveOnDate(date, history)) flags.conge = true;
+    if (hasPostedLeaveOnDate(date, history)) {
+      if (estPrevisionnelLe(date, history)) flags.previsionnel = true;
+      else flags.conge = true;
+    }
     else if (hasCMOOnDate(date, history)) flags.cmo = true;
     else if (hasAstreinteOnDate(date, history)) flags.astreinte = true;
     else if (hasAbsenceOnDate(date, history)) flags.absence = true;
@@ -59,6 +64,7 @@ export function legendFlagsForDays(
 const ITEMS: { key: keyof LegendFlags; label: string; swatch: string }[] = [
   { key: 'travail', label: 'Travail', swatch: 'bg-blue-100 border border-blue-200' },
   { key: 'conge', label: 'Congé', swatch: 'bg-emerald-200 border border-emerald-400' },
+  { key: 'previsionnel', label: '🔒 Prévisionnel', swatch: 'bg-emerald-100 hachure-previsionnel border border-emerald-400' },
   { key: 'cmo', label: 'CMO', swatch: 'bg-violet-200 border border-violet-400' },
   { key: 'astreinte', label: 'Astreinte', swatch: 'bg-amber-200 border border-amber-400' },
   { key: 'absence', label: 'Absence (ASA…)', swatch: 'bg-cyan-200 border border-cyan-400' },

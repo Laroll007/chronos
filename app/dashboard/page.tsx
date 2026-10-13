@@ -55,7 +55,8 @@ const CountersSetup = lazy(() =>
     default: mod.CountersSetup,
   }))
 );
-import { useCounters } from '@/hooks/useCounters';
+import { useCounters, type OptionsPose } from '@/hooks/useCounters';
+import { compteursAnneeSuivante, compteursDotation, posesDifferees } from '@/lib/previsionnel';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
@@ -90,6 +91,19 @@ function minutesPoseesALHeure(start: Date, end: Date, history: HistoryEntry[]): 
   return total;
 }
 
+// Toast et statistiques d'une pose selon ses options (prévisionnel, sans décompte).
+function confirmerOptions(options: OptionsPose): string {
+  if (options.previsionnel) track('leave_previsionnel');
+  if (options.decompte === 'anterieur') track('leave_anterieur');
+  if (options.decompte === 'differe') track('leave_annee_suivante');
+  return options.decompte === 'anterieur'
+    ? ' Congés antérieurs : vos compteurs ne changent pas.'
+    : options.decompte === 'differe'
+      ? ' Déduits de vos droits au 1er janvier.'
+      : '';
+}
+
+
 export default function DashboardPage() {
   const router = useRouter();
   const [showCounters, setShowCounters] = useState(false);
@@ -105,6 +119,8 @@ export default function DashboardPage() {
     hasRestDays: boolean;
     /** Heures déjà posées « à l'heure » sur la période (le jour reste travaillé). */
     minutesDejaPosees?: number;
+    /** Modification d'une période du plan prévisionnel : la case reste cochée. */
+    previsionnel?: boolean;
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -138,6 +154,7 @@ export default function DashboardPage() {
     poseAstreinte,
     enregistrerEpargneCET,
     deleteHistoryEntry,
+    marquerPrevisionnel,
     basculeAnnuelleAConfirmer,
     confirmerBasculeAnnuelle,
     compteursARenseigner,
@@ -292,7 +309,8 @@ export default function DashboardPage() {
     const workingDays = Math.max(1, countWorkingDays(start, end, cycleConfig));
     const workingMinutes = countWorkingMinutes(start, end, cycleConfig);
     const hasRestDays = rangeHasRestDay(start, end, cycleConfig);
-    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays });
+    const previsionnel = entries.every((e) => e.previsionnel);
+    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays, previsionnel });
     setShowOptimization(true);
   }, [deleteHistoryEntry, cycleConfig]);
 
@@ -409,7 +427,14 @@ export default function DashboardPage() {
     }
   }, [poseAstreinte, selectedRange]);
 
-  const handlePosePartiel = useCallback((type: CounterType, minutes: number) => {
+  // Options d'une pose sans décompte : dotation de l'année (congés antérieurs)
+  // et droits de l'année suivante, diminués de ce qui y est déjà posé.
+  const compteursSansDecompte = useMemo(
+    () => (userData ? { anterieur: compteursDotation(userData), anneeSuivante: compteursAnneeSuivante(userData) } : undefined),
+    [userData]
+  );
+
+  const handlePosePartiel = useCallback((type: CounterType, minutes: number, options: OptionsPose = {}) => {
     if (!selectedRange || !cycleConfig) return;
     // Premier jour TRAVAILLÉ de la sélection, et non son premier jour tout court :
     // sur une sélection samedi (repos) + dimanche (travaillé), `workingDaysCount`
@@ -423,11 +448,12 @@ export default function DashboardPage() {
     }
     const jourCible = cursor <= last ? cursor : selectedRange.start;
 
-    const result = posePartiel(type, minutes, jourCible);
+    const result = posePartiel(type, minutes, jourCible, options);
     if (result.success) {
       track('leave_pose_partiel');
+      const precision = confirmerOptions(options);
       toast.success('Heures posées', {
-        description: `${formatMinutes(minutes)} de ${type.toUpperCase()} posées sur la journée (le reste est travaillé).`,
+        description: `${formatMinutes(minutes)} de ${type.toUpperCase()} posées sur la journée (le reste est travaillé).${precision}`,
       });
       setShowOptimization(false);
       setSelectedRange(null);
@@ -440,14 +466,18 @@ export default function DashboardPage() {
 
   // PERF-001: useCallback sur handleApplyCombination
   // Retourne false si rien n'a été posé — la modale reste alors ouverte.
-  const handleApplyCombination = useCallback((combination: Combination): boolean => {
-    if (!selectedRange || !cycleConfig || !counters) return false;
+  const handleApplyCombination = useCallback((combination: Combination, options: OptionsPose = {}): boolean => {
+    if (!selectedRange || !cycleConfig || !counters || !userData) return false;
 
     // Garde-fou « tout ou rien » : on vérifie que la combinaison entière est
     // payable AVANT de poser le premier item. Sans ça, un échec en cours de
     // boucle laissait les items précédents posés et trouait la période.
+    // Année suivante : sur ses droits à venir ; congés antérieurs : rien à payer.
     const jourMinutesGuard = cycleConfig.heuresParJour || HEURES_PAR_JOUR;
-    const affordable = canAfford(combination.items, counters, jourMinutesGuard);
+    const soldes = options.decompte === 'differe' ? compteursAnneeSuivante(userData) : counters;
+    const affordable = options.decompte === 'anterieur'
+      ? { ok: true as const }
+      : canAfford(combination.items, soldes, jourMinutesGuard);
     if (!affordable.ok) {
       toast.error('Solde insuffisant — rien n\'a été posé', {
         description: formatShortfalls(affordable),
@@ -488,7 +518,7 @@ export default function DashboardPage() {
         for (const t of combination.repartition) {
           const debut = workingDates[t.debut] ?? selectedRange.start;
           const fin = workingDates[t.fin] ?? debut;
-          const result = poseConge(t.type, t.amount, debut, fin, undefined, groupId);
+          const result = poseConge(t.type, t.amount, debut, fin, undefined, groupId, options);
           if (!result.success) {
             failed.push(`${t.type.toUpperCase()} : ${result.error ?? 'échec'}`);
             break;
@@ -521,7 +551,7 @@ export default function DashboardPage() {
         const sliceEnd = workingDates[sliceEndIdx] ?? sliceStart;
         cursorIdx = sliceEndIdx + 1;
 
-        const result = poseConge(item.type, amount, sliceStart, sliceEnd, undefined, groupId);
+        const result = poseConge(item.type, amount, sliceStart, sliceEnd, undefined, groupId, options);
         if (!result.success) {
           failed.push(`${item.type.toUpperCase()} : ${result.error ?? 'échec'}`);
           break; // inutile de continuer : on va tout annuler
@@ -541,10 +571,11 @@ export default function DashboardPage() {
       }
 
       track('leave_pose');
+      const precision = confirmerOptions(options);
       toast.success('Congés posés avec succès !', {
         description: `${combination.totalDays} jour${
           combination.totalDays > 1 ? 's' : ''
-        } enregistré${combination.totalDays > 1 ? 's' : ''}`,
+        } enregistré${combination.totalDays > 1 ? 's' : ''}.${precision}`,
       });
 
       setShowOptimization(false);
@@ -557,7 +588,7 @@ export default function DashboardPage() {
       });
       return false;
     }
-  }, [poseConge, deleteHistoryEntry, selectedRange, cycleConfig, counters]);
+  }, [poseConge, deleteHistoryEntry, selectedRange, cycleConfig, counters, userData]);
 
   if (isLoading) {
     return (
@@ -630,6 +661,11 @@ export default function DashboardPage() {
             history={history}
             onDeleteLeave={handleDeleteLeave}
             onEditLeave={handleEditLeave}
+            onTogglePrevisionnel={(ids, valeur) => {
+              if (marquerPrevisionnel(ids, valeur)) {
+                toast.success(valeur ? 'Marqué comme congé prévisionnel' : 'Statut prévisionnel retiré');
+              }
+            }}
             resetTrigger={calendarResetTrigger}
             events={events}
             joursModifies={joursModifies}
@@ -689,6 +725,9 @@ export default function DashboardPage() {
             }
             counters={counters}
             onApply={handleApplyCombination}
+            compteursSansDecompte={compteursSansDecompte}
+            dateInscription={userData?.dateInscription}
+            previsionnelInitial={selectedRange?.previsionnel}
             onMarkCMO={handleMarkCMO}
             onMarkAbsence={handleMarkAbsence}
             onMarkAstreinte={handleMarkAstreinte}
@@ -766,6 +805,7 @@ export default function DashboardPage() {
           cycleConfig={cycleConfig}
           onUpdateCycle={handleUpdateCycle}
           onOpenCETPlan={() => { setShowCounters(false); openCETPlan(); }}
+          posesAnneeSuivante={posesDifferees(history, new Date().getFullYear() + 1)}
           onManageCounters={() => {
             track('counters_manage_open');
             setShowCounters(false);

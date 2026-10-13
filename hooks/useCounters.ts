@@ -8,12 +8,13 @@ import {
   DEFAULT_USER_DATA,
   generateId,
 } from '@/lib/storage';
-import { reserveRTCConseillee, getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
+import { aujourdhuiISO, reserveRTCConseillee, getCETApportMaxAnnee, simulatePose, isInCAHPPeriod, getCurrentSemester, countWorkingDays, isWorkingDay, countCAHPDays, checkCAHPCondition, getCFS1Share } from '@/lib/calculations';
 import { CET_PLAFOND, HS_COUT_PAR_JOUR_CET } from '@/lib/constants';
 import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
 import { minutesPourJoursCET, planEpargneCET } from '@/lib/cet';
+import { compteursAnneeSuivante } from '@/lib/previsionnel';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
 import { effetJournee, sanitizeJoursModifies } from '@/lib/journees';
@@ -49,6 +50,12 @@ const EMPTY_JOURS: JourModifie[] = [];
 /**
  * Hook principal pour la gestion des compteurs et données utilisateur
  */
+/** Options d'une pose : congé du plan prévisionnel, et/ou pose sans décompte immédiat. */
+export interface OptionsPose {
+  previsionnel?: boolean;
+  decompte?: 'anterieur' | 'differe';
+}
+
 export function useCounters() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -283,6 +290,7 @@ export function useCounters() {
       counters,
       history: [],
       lastUpdated: new Date().toISOString(),
+      dateInscription: aujourdhuiISO(),
       isOnboarded: true,
     };
     return save(newData);
@@ -330,9 +338,38 @@ export function useCounters() {
       dateEnd?: Date,
       description?: string,
       groupId?: string,
+      options: OptionsPose = {},
     ) => {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
+
+      // Congés antérieurs ou prévisionnel de l'année prochaine : enregistrés
+      // pour le planning, sans toucher aux compteurs actuels.
+      if (options.decompte) {
+        if (options.decompte === 'differe') {
+          // Les droits de l'année suivante doivent couvrir la pose.
+          const r = simulatePose(compteursAnneeSuivante(current), type, amount, dateStart);
+          if (!r.isValid) {
+            return { success: false, error: `Droits ${dateStart.getFullYear()} insuffisants : ${r.errorMessage ?? ''}`.trim() };
+          }
+        }
+        const entree: HistoryEntry = {
+          id: generateId(),
+          date: dateStart.toISOString(),
+          dateEnd: dateEnd ? dateEnd.toISOString() : undefined,
+          action: 'pose',
+          type,
+          amount,
+          description,
+          countersSnapshot: current.counters,
+          groupId,
+          decompte: options.decompte,
+          ...(options.decompte === 'differe' && { anneeDecompte: dateStart.getFullYear() }),
+          ...(options.previsionnel && { previsionnel: true }),
+        };
+        const ok = save({ ...current, history: [...current.history, entree], lastUpdated: new Date().toISOString() });
+        return { success: ok, alerts: [], entryId: ok ? entree.id : undefined };
+      }
 
       // Une plage à cheval sur une frontière ne doit pas être imputée en bloc au
       // côté de sa date de début : 28 avril → 5 mai ne crédite que ses jours
@@ -363,6 +400,7 @@ export function useCounters() {
         groupId,
         caHPDays: hpDays,
         cfS1Minutes,
+        ...(options.previsionnel && { previsionnel: true }),
       };
 
       const newData: UserData = {
@@ -383,11 +421,31 @@ export function useCounters() {
   // Pose fractionnée : ne consomme que `minutes` d'un compteur horaire sur un seul jour
   // (sortie anticipée / demi-journée). Le jour reste travaillé pour le reste.
   const posePartiel = useCallback(
-    (type: CounterType, minutes: number, date: Date) => {
+    (type: CounterType, minutes: number, date: Date, options: OptionsPose = {}) => {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
       if (!Number.isFinite(minutes) || minutes <= 0) {
         return { success: false, error: 'Durée invalide' };
+      }
+      if (options.decompte) {
+        if (options.decompte === 'differe' && !simulatePose(compteursAnneeSuivante(current), type, minutes, date).isValid) {
+          return { success: false, error: `Droits ${date.getFullYear()} insuffisants` };
+        }
+        const entree: HistoryEntry = {
+          id: generateId(),
+          date: date.toISOString(),
+          action: 'pose',
+          type,
+          amount: minutes,
+          partialDay: true,
+          description: 'Pose à l\'heure',
+          countersSnapshot: current.counters,
+          decompte: options.decompte,
+          ...(options.decompte === 'differe' && { anneeDecompte: date.getFullYear() }),
+          ...(options.previsionnel && { previsionnel: true }),
+        };
+        const ok = save({ ...current, history: [...current.history, entree], lastUpdated: new Date().toISOString() });
+        return { success: ok, alerts: [] };
       }
 
       const result = simulatePose(current.counters, type, minutes, date);
@@ -404,6 +462,7 @@ export function useCounters() {
         partialDay: true,
         description: 'Pose à l\'heure',
         countersSnapshot: result.newCounters,
+        ...(options.previsionnel && { previsionnel: true }),
       };
 
       const newData: UserData = {
@@ -589,6 +648,27 @@ export function useCounters() {
     return ok ? { success: true, apport } : { success: false, error: 'Erreur de sauvegarde' };
   }, [save]);
 
+  // Marquer (ou démarquer) des congés comme déposés au plan prévisionnel.
+  const marquerPrevisionnel = useCallback(
+    (ids: string[], valeur: boolean) => {
+      const current = userDataRef.current;
+      if (!current) return false;
+      const cible = new Set(ids);
+      const ok = save({
+        ...current,
+        history: current.history.map((h) => {
+          if (!cible.has(h.id)) return h;
+          const { previsionnel: _ancien, ...reste } = h;
+          return valeur ? { ...reste, previsionnel: true } : reste;
+        }),
+        lastUpdated: new Date().toISOString(),
+      });
+      if (ok) track(valeur ? 'leave_previsionnel_on' : 'leave_previsionnel_off');
+      return ok;
+    },
+    [save]
+  );
+
   // Supprimer une entrée d'historique (congé posé ou épargne CET)
   const deleteHistoryEntry = useCallback(
     (entryId: string) => {
@@ -608,6 +688,19 @@ export function useCounters() {
           lastUpdated: new Date().toISOString(),
         };
         return save(newData);
+      }
+
+      // Pose jamais décomptée (congé antérieur, ou prévisionnel de l'année
+      // prochaine pas encore déduit) : rien à rendre aux compteurs.
+      if (
+        entry.action === 'pose' &&
+        (entry.decompte === 'anterieur' || (entry.decompte === 'differe' && !entry.decompteApplique))
+      ) {
+        return save({
+          ...current,
+          history: current.history.filter((h) => h.id !== entryId),
+          lastUpdated: new Date().toISOString(),
+        });
       }
 
       // Annuler une épargne CET (transfer_cet)
@@ -775,6 +868,7 @@ export function useCounters() {
     poseAstreinte,
     enregistrerEpargneCET,
     deleteHistoryEntry,
+    marquerPrevisionnel,
     confirmerBasculeAnnuelle,
     completerCompteurs,
     masquerRappelCompteurs,

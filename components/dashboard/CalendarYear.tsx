@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar, computeMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
+import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -140,6 +141,10 @@ function MiniMonth({
                 {
                   'bg-emerald-200 text-emerald-800':
                     isPosted && !isInRange && !isSelected,
+                },
+                // Congé du plan prévisionnel : hachuré
+                {
+                  'hachure-previsionnel': isPosted && !isInRange && !isSelected && estPrevisionnelLe(day.date, history),
                 },
                 // Arrêt maladie (CMO) - VIOLET
                 {

@@ -2,7 +2,8 @@
 
 'use client';
 
-import { Counters, CycleConfig, Recommendation } from '@/lib/types';
+import { Counters, CounterType, CycleConfig, Recommendation } from '@/lib/types';
+import { isDayBasedType } from '@/lib/optimization';
 import { CountersOverview } from './CountersOverview';
 import {
   Dialog,
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, BarChart3, ChevronRight, Clock, ListChecks, PiggyBank, X } from 'lucide-react';
-import { jourLocal } from '@/lib/calculations';
+import { formatMinutes, jourLocal } from '@/lib/calculations';
 
 interface CountersDrawerProps {
   isOpen: boolean;
@@ -29,7 +30,14 @@ interface CountersDrawerProps {
   onOpenCETPlan?: () => void;
   /** Ouvre la liste des compteurs pour en activer ou en retirer. */
   onManageCounters?: () => void;
+  /** Congés posés pour l'année suivante, pas encore décomptés (par compteur). */
+  posesAnneeSuivante?: Partial<Record<CounterType, number>>;
 }
+
+const NOMS: Partial<Record<CounterType, string>> = {
+  ca: 'CA', caHP: 'CA HP', caAnterieur: 'CA reportés', caHPAnterieur: 'CA HP reportés', cf: 'CF', rtc: 'RTC',
+  rtt: 'RTT', artt: 'ARTT', rps: 'RPS', hs: 'HS', cet: 'CET', congesBonifies: 'congés bonifiés',
+};
 
 export function CountersDrawer({
   isOpen,
@@ -43,6 +51,7 @@ export function CountersDrawer({
   onUpdateCycle,
   onOpenCETPlan,
   onManageCounters,
+  posesAnneeSuivante,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -87,6 +96,14 @@ export function CountersDrawer({
             <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
               Compteurs
             </h3>
+            {posesAnneeSuivante && Object.keys(posesAnneeSuivante).length > 0 && (
+              <p className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+                <strong>Posés pour {new Date().getFullYear() + 1}</strong> (déduits de vos droits au 1er janvier) :{' '}
+                {Object.entries(posesAnneeSuivante)
+                  .map(([t, n]) => (isDayBasedType(t as CounterType) ? `${n} j de ${NOMS[t as CounterType] ?? t}` : `${formatMinutes(n!)} de ${NOMS[t as CounterType] ?? t}`))
+                  .join(' · ')}
+              </p>
+            )}
             <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes}
             cycleConfig={cycleConfig}
             onUpdateCycle={onUpdateCycle} />
