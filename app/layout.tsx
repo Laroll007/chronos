@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ClientErrorBoundary } from "@/components/shared/ClientErrorBoundary";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
+import { MiseAJourIOS } from "@/components/shared/MiseAJourIOS";
 import { StatsTracker } from "@/components/shared/StatsTracker";
 import "./globals.css";
 
@@ -96,6 +97,7 @@ export default function RootLayout({
           Aller au contenu principal
         </a>
         <ServiceWorkerRegistration />
+        <MiseAJourIOS />
         <StatsTracker />
         <ClientErrorBoundary>{children}</ClientErrorBoundary>
         <Toaster

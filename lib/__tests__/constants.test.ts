@@ -433,10 +433,11 @@ describe('Constantes App', () => {
     const versions = [...pbx.matchAll(/MARKETING_VERSION = ([\d.]+);/g)].map((m) => m[1]);
     expect(versions.length).toBeGreaterThan(0);
 
-    // iOS s'écrit « 1.8 », npm « 1.8.0 » : on compare major.minor.
-    const [major, minor] = APP_VERSION.split('.');
+    // iOS s'écrit « 1.8 » pour npm « 1.8.0 », et « 1.18.1 » pour un correctif.
+    const [major, minor, patch] = APP_VERSION.split('.');
+    const attendu = patch && patch !== '0' ? APP_VERSION : `${major}.${minor}`;
     for (const v of versions) {
-      expect(v).toBe(`${major}.${minor}`);
+      expect(v).toBe(attendu);
     }
   });
 

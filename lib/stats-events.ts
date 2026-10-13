@@ -80,6 +80,7 @@ export const STATS_EVENTS = {
   partage_lien_copie: { label: 'Recommandation : lien copié / WhatsApp / SMS', group: 'À propos' },
   avis_demande: { label: 'Demande d’avis affichée', group: 'À propos' },
   avis_store_ouvert: { label: 'Ouvre la fiche du store pour un avis', group: 'À propos' },
+  maj_ios_ouverte: { label: 'iPhone : ouvre l’App Store depuis le bandeau de mise à jour', group: 'À propos' },
 } as const satisfies Record<string, { label: string; group: string }>;
 
 export type StatsEvent = keyof typeof STATS_EVENTS;

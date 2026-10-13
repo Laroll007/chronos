@@ -7,9 +7,11 @@ interface UpdateBannerProps {
   onDismiss: () => void;
   /** Clic reçu : rechargement en cours (retour visuel immédiat). */
   updating?: boolean;
+  /** Précision sous le titre (ex. nouveauté principale de la version). */
+  detail?: string;
 }
 
-export function UpdateBanner({ onUpdate, onDismiss, updating = false }: UpdateBannerProps) {
+export function UpdateBanner({ onUpdate, onDismiss, updating = false, detail }: UpdateBannerProps) {
   return (
     <div className="fixed top-14 left-0 right-0 z-40 animate-slide-up">
       <div className="mx-auto max-w-2xl px-4 py-2">
@@ -19,6 +21,7 @@ export function UpdateBanner({ onUpdate, onDismiss, updating = false }: UpdateBa
           </div>
           <p className="text-sm text-blue-900 flex-1">
             Une nouvelle version de My Chronos est disponible
+            {detail && <span className="block text-xs text-blue-700 mt-0.5">{detail}</span>}
           </p>
           <button
             onClick={onUpdate}
