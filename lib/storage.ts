@@ -13,6 +13,7 @@ import { validateUserData as nativeValidateUserData, validateExportData } from '
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
 import { noterSauvegarde } from './sauvegarde';
+import { plateformeNative } from './api';
 
 /**
  * Version du schéma de données. À incrémenter pour introduire une migration
@@ -525,36 +526,45 @@ export function exportData(): ExportData | null {
 }
 
 /**
- * Génère un fichier JSON téléchargeable
+ * Enregistre la sauvegarde (fichier JSON) sur l'appareil. App Android : la
+ * WebView ne sait pas télécharger, on passe par « Enregistrer sous » d'Android.
  */
-export function downloadExport(): boolean {
+export async function downloadExport(): Promise<'ok' | 'annule' | 'erreur'> {
   const data = exportData();
   if (!data) {
     logger.error('Aucune donnée à exporter',
       ChronosError.exportError('Aucune donnée disponible pour l\'export')
     );
-    return false;
+    return 'erreur';
   }
 
+  const contenu = JSON.stringify(data, null, 2);
+  const nom = `chronos-backup-${new Date().toISOString().split('T')[0]}.json`;
   try {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `chronos-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (plateformeNative() === 'android') {
+      const { ChronosNatif } = await import('./natif-android');
+      const { enregistre } = await ChronosNatif.enregistrerFichier({ nom, contenu });
+      if (!enregistre) return 'annule';
+    } else {
+      const blob = new Blob([contenu], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nom;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
     noterSauvegarde();
     logger.info('Export téléchargé avec succès');
-    return true;
+    return 'ok';
   } catch (error) {
     logger.error('Erreur lors de l\'export',
       ChronosError.exportError('Impossible de générer le fichier d\'export'),
       { originalError: error instanceof Error ? error.message : String(error) }
     );
-    return false;
+    return 'erreur';
   }
 }
 

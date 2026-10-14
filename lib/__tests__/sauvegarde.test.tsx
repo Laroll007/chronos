@@ -56,8 +56,9 @@ describe('Diagnostic anonyme', () => {
   });
 
   it('profil : vide sur l’iPhone, clés acceptées par le serveur ailleurs', () => {
-    expect(profilDiagnostic(true)).toEqual([]);
-    for (const cle of [...profilDiagnostic(false), 'stockage:protege', 'stockage:non_protege', 'nav:samsung']) {
+    expect(profilDiagnostic('ios')).toEqual([]);
+    expect(profilDiagnostic('android')).toEqual(['nav:app_native']);
+    for (const cle of [...profilDiagnostic(null), ...profilDiagnostic('android'), 'stockage:protege', 'stockage:non_protege', 'nav:samsung']) {
       expect(PROFILE_KEY_RE.test(cle)).toBe(true);
     }
   });

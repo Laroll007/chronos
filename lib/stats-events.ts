@@ -85,6 +85,16 @@ export const STATS_EVENTS = {
   sauvegarde_rappel_export: { label: 'Sauvegarde exportée depuis le rappel', group: 'Outils' },
   restauration_inscription: { label: 'Sauvegarde restaurée depuis l’inscription', group: 'Onboarding' },
   maj_ios_ouverte: { label: 'iPhone : ouvre l’App Store depuis le bandeau de mise à jour', group: 'À propos' },
+  // Passage de l'ancienne app Android (TWA) à l'app native
+  transfert_ouvert: { label: 'App Android : ouvre le navigateur pour récupérer ses données', group: 'Onboarding' },
+  transfert_envoye: { label: 'Navigateur : données envoyées à l’app', group: 'Onboarding' },
+  transfert_page_vide: { label: 'Navigateur : aucune donnée à envoyer', group: 'Onboarding' },
+  transfert_trop_gros: { label: 'Navigateur : données trop volumineuses pour le lien', group: 'Onboarding' },
+  transfert_fichier: { label: 'Navigateur : sauvegarde enregistrée faute d’envoi', group: 'Onboarding' },
+  transfert_recu: { label: 'App Android : données reçues du navigateur', group: 'Onboarding' },
+  transfert_vide: { label: 'App Android : le navigateur n’avait pas de données', group: 'Onboarding' },
+  transfert_invalide: { label: 'App Android : données reçues illisibles', group: 'Onboarding' },
+  transfert_importe: { label: 'App Android : données récupérées', group: 'Onboarding' },
 } as const satisfies Record<string, { label: string; group: string }>;
 
 export type StatsEvent = keyof typeof STATS_EVENTS;

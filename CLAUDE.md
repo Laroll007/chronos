@@ -6,7 +6,7 @@ PWA Next.js 100 % locale (aucun compte, aucune base : tout est dans le
 | Format | Technique | Mise à jour |
 |---|---|---|
 | Web | https://mychronos.fr (VPS OVH, pm2 `chronos`) | `bash deploy.sh` |
-| Android | TWA (Bubblewrap) qui ouvre mychronos.fr | suit le déploiement web |
+| Android | Capacitor : WebView qui charge mychronos.fr (depuis la v4 / 2.0.0 ; avant : TWA) | suit le déploiement web |
 | iOS | Capacitor (export statique embarqué) | build + envoi App Store Connect |
 
 **Dernière mise à jour de ce fichier : 7 octobre 2026.** L'historique détaillé
@@ -130,12 +130,34 @@ Test sur téléphone en réseau local : build de prod avec `CHRONOS_LOCAL_HTTP=1
 - `Info.plist` porte `UIUserInterfaceStyle = Light` et
   `ITSAppUsesNonExemptEncryption = false` ; `cap sync` n'y touche pas.
 
-## Android (TWA)
+## Android (app native Capacitor)
 
-Dossier `chronos-android/` (Bubblewrap, JDK 21). L'app ouvre mychronos.fr :
-tout déploiement web la met à jour. `https://mychronos.fr/.well-known/assetlinks.json`
-doit contenir l'empreinte de signature Google Play (sinon barre d'URL visible).
-Les données vivent dans Chrome : un widget Android natif n'y aurait pas accès.
+Dossier `android/` (Capacitor 8, JDK 21 obligatoire, pas le 25). L'app charge
+`https://mychronos.fr/dashboard` dans sa propre WebView (`server.url`, choisi
+par `capacitor.config.ts` quand la commande contient « android ») : tout
+déploiement web la met à jour, mais les données vivent dans l'app et plus dans
+le navigateur du téléphone (cause des pertes de données de l'ancienne TWA).
+Copie native `files/chronos-backup.json` (même code que l'iPhone, incluse
+dans la sauvegarde automatique Android), restaurée si le stockage web est vidé.
+
+- Build Play Store : `npm run build:android` → `android/app/build/outputs/bundle/release/app-release.aab`.
+  Le script vérifie la signature (clé d'envoi de `chronos-android/keystore.properties`,
+  gitignoré) et que l'app pointe sur mychronos.fr.
+- Version : `versionCode` / `versionName` dans `android/app/build.gradle`
+  (3 = dernière TWA, 4 = première version Capacitor). Ne change que si le code
+  natif change ; le contenu suit le site.
+- Module natif `ChronosNatifPlugin.java` (`lib/natif-android.ts`) : liste et
+  ouverture des navigateurs, réception du lien `fr.mychronos.app://transfert`,
+  « Enregistrer sous » pour la sauvegarde (la WebView ne télécharge pas).
+- Passage TWA → app native (`lib/transfert.ts`) : à l'inscription, l'encart
+  « Vous utilisiez déjà My Chronos ? » ouvre `mychronos.fr/transfert` dans le
+  navigateur, qui renvoie les données brutes (gzip, base64url) par le lien ;
+  l'app vérifie et demande confirmation. Rien n'est effacé du navigateur.
+- Test sur émulateur : `CHRONOS_ANDROID_URL=http://localhost:3012/dashboard npx cap sync android`
+  + `adb reverse tcp:3012 tcp:3012` (localhost = contexte sécurisé, sinon pas de
+  service worker). **Toujours refaire `npm run build:android` ensuite.**
+- `chronos-android/` : ancien projet TWA, gardé pour la clé d'envoi.
+  `assetlinks.json` peut rester en place.
 
 ## Communauté Discord et Marco
 

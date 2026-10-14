@@ -27,9 +27,14 @@ export function navigateurHote(ua: string = typeof navigator === 'undefined' ? '
   return 'autre';
 }
 
-/** Clés de profil du diagnostic (vide sur l'app iPhone). */
-export function profilDiagnostic(natif: boolean): string[] {
-  if (natif) return [];
+/**
+ * Clés de profil du diagnostic : rien sur l'app iPhone ; l'app Android native
+ * garde ses données elle-même (plus de navigateur hôte), on la distingue de
+ * l'ancienne app (TWA) pour suivre la migration.
+ */
+export function profilDiagnostic(natif: 'ios' | 'android' | null): string[] {
+  if (natif === 'ios') return [];
+  if (natif === 'android') return ['nav:app_native'];
   const cles = [`nav:${navigateurHote()}`];
   if (persistant !== null) cles.push(`stockage:${persistant ? 'protege' : 'non_protege'}`);
   return cles;

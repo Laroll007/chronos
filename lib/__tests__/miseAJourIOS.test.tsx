@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('../analytics', () => ({ track: vi.fn(), trackError: vi.fn(), detectPlatform: () => 'ios' }));
-vi.mock('../api', () => ({ isNativeApp: () => true, apiUrl: (p: string) => `https://mychronos.fr${p}` }));
+vi.mock('../api', () => ({ isNativeApp: () => true, plateformeNative: () => 'ios', apiUrl: (p: string) => `https://mychronos.fr${p}` }));
 vi.mock('../constants', async (orig) => ({ ...(await orig<typeof import('../constants')>()), APP_VERSION: '1.17.0' }));
 
 import { MiseAJourIOS } from '@/components/shared/MiseAJourIOS';

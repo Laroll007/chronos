@@ -13,11 +13,14 @@ import {
 } from '@/lib/storage';
 import type { CountersDraft } from '@/components/onboarding/CountersSetup';
 import { markReleaseNotesSeen } from '@/lib/releaseNotes';
+import { markWelcomeSeen } from '@/components/dashboard/WelcomeModal';
 import { track } from '@/lib/analytics';
 import { aujourdhuiISO, getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
 import { Calendar, Calculator, Check, Upload } from 'lucide-react';
 import { importData } from '@/lib/storage';
+import { plateformeNative } from '@/lib/api';
+import type { ResumeTransfert } from '@/lib/transfert';
 import { toast } from 'sonner';
 
 const CycleSetup = dynamic(
@@ -41,6 +44,14 @@ const CycleSetup = dynamic(
     ),
   }
 );
+
+// App Android native : récupération des données de l'ancienne app (TWA).
+const RecuperationAndroid = dynamic(
+  () => import('@/components/onboarding/RecuperationAndroid').then((mod) => ({ default: mod.RecuperationAndroid })),
+  { ssr: false }
+);
+const lireAndroidNatif = () => plateformeNative() === 'android';
+const lireAndroidNatifServeur = () => false;
 
 const CountersSetup = lazy(() =>
   import('@/components/onboarding/CountersSetup').then((mod) => ({ default: mod.CountersSetup }))
@@ -69,6 +80,7 @@ const STEP_CONFIG = [
 export function OnboardingWizard() {
   const router = useRouter();
   const draftRaw = useSyncExternalStore(subscribeNoop, readDraftRaw, readDraftServer);
+  const androidNatif = useSyncExternalStore(subscribeNoop, lireAndroidNatif, lireAndroidNatifServeur);
   const resumed = useMemo(() => parseOnboardingDraft(draftRaw), [draftRaw]);
 
   const [stepState, setStep] = useState<Step | null>(null);
@@ -166,8 +178,22 @@ export function OnboardingWizard() {
     }
   };
 
+  // Données de l'ancienne app Android, vérifiées et confirmées par l'agent.
+  const recuperer = (resume: ResumeTransfert) => {
+    if (!saveUserData(resume.data)) {
+      toast.error('Erreur lors de la récupération');
+      return;
+    }
+    clearOnboardingDraft();
+    markReleaseNotesSeen();
+    markWelcomeSeen(); // l'agent connaît déjà l'app
+    toast.success('Données récupérées', { description: 'Votre planning et vos compteurs sont de retour.' });
+    router.push('/dashboard');
+  };
+
   return (
     <>
+      {step === 'cycle' && androidNatif && <RecuperationAndroid onRecupere={recuperer} />}
       {step === 'cycle' && (
         <label className="mb-6 flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800 cursor-pointer hover:bg-blue-100">
           <Upload className="w-4 h-4 shrink-0" />

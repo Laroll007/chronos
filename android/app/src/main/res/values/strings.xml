@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">My Chronos</string>
+    <string name="title_activity_main">My Chronos</string>
+    <string name="package_name">fr.mychronos.app</string>
+    <string name="custom_url_scheme">fr.mychronos.app</string>
+</resources>

@@ -11,10 +11,12 @@
     "test": "vitest",
     "test:tz": "for tz in Europe/Paris America/Martinique America/Cayenne Indian/Reunion Pacific/Noumea; do echo \"== $tz\"; TZ=$tz vitest run || exit 1; done",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:android": "bash scripts/build-android.sh"
   },
   "dependencies": {
     "@capacitor-community/in-app-review": "^8.0.0",
+    "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.4",

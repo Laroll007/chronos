@@ -126,6 +126,8 @@ export async function restoreFromNativeIfNeeded(): Promise<void> {
     // métier complète est faite ensuite par loadUserData()).
     JSON.parse(data);
     localStorage.setItem(STORAGE_KEY, data);
+    // L'agent connaît déjà l'app : pas de message de bienvenue (WelcomeModal).
+    localStorage.setItem('chronos_welcome_shown', '1');
   } catch {
     /* pas de miroir, illisible ou JSON invalide → on laisse l'onboarding faire */
   }

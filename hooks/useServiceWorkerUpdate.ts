@@ -78,6 +78,9 @@ export function useServiceWorkerUpdate() {
     };
 
     const onWaiting = () => {
+      // Toute première installation (premier lancement de l'app Android, nouveau
+      // visiteur) : aucune ancienne version ne contrôle la page, rien à mettre à jour.
+      if (!navigator.serviceWorker.controller) return;
       setUpdateAvailable(true);
     };
 

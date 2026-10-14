@@ -14,6 +14,14 @@ export function isNativeApp(): boolean {
   return cap?.isNativePlatform?.() === true;
 }
 
+/** App native : 'ios' (export embarqué) ou 'android' (WebView sur mychronos.fr) ; null sur le web. */
+export function plateformeNative(): 'ios' | 'android' | null {
+  if (!isNativeApp()) return null;
+  const cap = (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
+  return cap?.getPlatform?.() === 'android' ? 'android' : 'ios';
+}
+
+// L'app Android charge le site lui-même : chemin relatif, comme sur le web.
 export function apiUrl(path: string): string {
-  return isNativeApp() ? `${PROD_ORIGIN}${path}` : path;
+  return plateformeNative() === 'ios' ? `${PROD_ORIGIN}${path}` : path;
 }

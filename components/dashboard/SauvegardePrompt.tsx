@@ -35,11 +35,12 @@ export function SauvegardePrompt({ onClose }: { onClose: () => void }) {
           </p>
           <button
             type="button"
-            onClick={() => {
-              if (downloadExport()) {
+            onClick={async () => {
+              const res = await downloadExport();
+              if (res === 'ok') {
                 track('sauvegarde_rappel_export');
-                toast.success('Sauvegarde enregistrée', { description: 'Fichier « chronos-backup » dans vos téléchargements.' });
-              } else {
+                toast.success('Sauvegarde enregistrée', { description: 'Fichier « chronos-backup » sur votre téléphone.' });
+              } else if (res === 'erreur') {
                 toast.error("Impossible d'enregistrer la sauvegarde");
               }
               onClose();

@@ -153,12 +153,12 @@ export function Settings({
     toast.success(next ? 'Statistiques anonymes activées' : 'Statistiques anonymes désactivées');
   };
 
-  const handleExport = () => {
-    try {
-      downloadExport();
+  const handleExport = async () => {
+    const res = await downloadExport();
+    if (res === 'ok') {
       track('backup_export');
-      toast.success('Sauvegarde téléchargée');
-    } catch {
+      toast.success('Sauvegarde enregistrée');
+    } else if (res === 'erreur') {
       toast.error("Erreur lors de l'export");
     }
   };

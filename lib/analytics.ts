@@ -20,7 +20,7 @@ import {
   type StatsPayload,
   type StatsPlatform,
 } from './stats-events';
-import { apiUrl, isNativeApp } from './api';
+import { apiUrl, plateformeNative } from './api';
 
 const STATE_KEY = 'chronos_stats';
 const OPTOUT_KEY = 'chronos_stats_optout';
@@ -108,9 +108,10 @@ function mutate(fn: (state: StatsState, today: string) => void): void {
 
 // ─── Plateforme ───────────────────────────────────────────────────────────────
 
-/** Plateforme de l'appareil : app iPhone, app Android (TWA), web installé ou navigateur. */
+/** Plateforme de l'appareil : app iPhone, app Android (native ou TWA), web installé ou navigateur. */
 export function detectPlatform(): StatsPlatform {
-  if (isNativeApp()) return 'ios';
+  const natif = plateformeNative();
+  if (natif) return natif;
   try {
     // L'app Android (TWA) n'expose le referrer `android-app://` qu'au lancement :
     // on le mémorise pour les navigations suivantes.

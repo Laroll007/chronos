@@ -74,7 +74,7 @@ import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { track, setStatsProfile } from '@/lib/analytics';
 import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
-import { isNativeApp } from '@/lib/api';
+import { isNativeApp, plateformeNative } from '@/lib/api';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
@@ -223,7 +223,7 @@ export default function DashboardPage() {
         profile.push(`horaire:${typeDeVacation(cycleConfig.heureDebut, h)}`);
       }
       // Diagnostic des pertes de données (navigateur hôte, stockage protégé).
-      profile.push(...profilDiagnostic(isNativeApp()));
+      profile.push(...profilDiagnostic(plateformeNative()));
       if (counters.hasARTT) profile.push('option:artt');
       if (counters.hasCET2008) profile.push('option:cet2008');
       if (counters.hasCongesBonifies) profile.push('option:bonifies');
@@ -355,15 +355,17 @@ export default function DashboardPage() {
 
   // Après un moment utile (congés posés, épargne CET) : demande d'avis, au plus
   // tous les 4 mois et seulement pour un agent qui utilise vraiment l'app.
-  // iPhone : fenêtre native d'Apple (règle 5.6.1) ; Android et web : invitation neutre.
+  // Apps iPhone et Android : fenêtre native du store (règle Apple 5.6.1) ;
+  // ancienne app Android (TWA) et web : invitation neutre.
   const [showAvis, setShowAvis] = useState(false);
   const [showRecommander, setShowRecommander] = useState(false);
   const apresMomentPositif = useCallback(() => {
     if (!userData || !peutDemanderAvis(userData.history, userData.dateInscription)) return;
     noterDemandeAvis();
-    const p = plateforme();
+    // Apps natives (iPhone, Android) : fenêtre d'avis du store, intégrée à l'app.
+    const natif = isNativeApp();
     setTimeout(() => {
-      if (p === 'ios') {
+      if (natif) {
         track('avis_demande');
         void demanderAvisNatif();
       } else {

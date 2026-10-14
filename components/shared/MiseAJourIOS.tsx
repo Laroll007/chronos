@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { APP_VERSION } from '@/lib/constants';
-import { apiUrl, isNativeApp } from '@/lib/api';
+import { apiUrl, plateformeNative } from '@/lib/api';
 import { compareVersions } from '@/lib/releaseNotes';
 import { APP_STORE } from '@/lib/recommandation';
 import { track } from '@/lib/analytics';
@@ -20,7 +20,8 @@ export function MiseAJourIOS() {
   const [maj, setMaj] = useState<{ version: string; note?: string } | null>(null);
 
   useEffect(() => {
-    if (!isNativeApp()) return;
+    // iPhone seulement : l'app Android charge le site en ligne, déjà à jour.
+    if (plateformeNative() !== 'ios') return;
     let annule = false;
     fetch(apiUrl('/api/version'))
       .then((r) => r.json())

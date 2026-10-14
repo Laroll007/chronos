@@ -48,8 +48,10 @@ try {
     // App native : on route TOUJOURS vers le dashboard, même si le localStorage
     // semble vide. Son démarrage tente une restauration depuis le miroir natif
     // (cas d'une purge WebKit des 7 jours) ; s'il n'y a vraiment rien, il
-    // redirige lui-même vers l'onboarding.
-    window.location.replace('/dashboard/index.html');
+    // redirige lui-même vers l'onboarding. L'app Android charge le site en
+    // ligne : pas de fichier index.html côté serveur.
+    var android = window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android';
+    window.location.replace(android ? '/dashboard' : '/dashboard/index.html');
   } else if (typeof localStorage !== 'undefined' && localStorage.getItem('chronos_data')) {
     window.location.replace('/dashboard');
   }
