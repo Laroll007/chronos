@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Download, Send } from 'lucide-react';
 import { track } from '@/lib/analytics';
@@ -33,6 +33,14 @@ export function Transfert() {
   const resume = useMemo(() => lireDonneesTransfert(brut), [brut]);
   const [envoye, setEnvoye] = useState(false);
   const [tropGros, setTropGros] = useState(false);
+
+  // Pas de proposition « Installer » du navigateur ici : l'agent passe juste
+  // ses données à l'app, une deuxième icône My Chronos l'embrouillerait.
+  useEffect(() => {
+    const bloquer = (e: Event) => e.preventDefault();
+    window.addEventListener('beforeinstallprompt', bloquer);
+    return () => window.removeEventListener('beforeinstallprompt', bloquer);
+  }, []);
 
   // Page ouverte dans l'app elle-même : rien à faire ici.
   if (natif) {
@@ -80,10 +88,12 @@ export function Transfert() {
     <div className={carte}>
       <Entete titre="Vos données My Chronos" />
       <div className="px-6 py-5 space-y-4">
+        <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-center">
+          <p className="text-3xl font-bold text-[#0055A4]">{nb}</p>
+          <p className="text-sm font-medium text-blue-900">congé{nb > 1 ? 's' : ''} posé{nb > 1 ? 's' : ''} dans ce navigateur</p>
+        </div>
         <p className="text-sm text-slate-600 leading-relaxed">
-          Ce navigateur contient les données de l’ancienne version de l’application
-          ({nb} congé{nb > 1 ? 's' : ''} posé{nb > 1 ? 's' : ''}). Envoyez-les dans la nouvelle : elles restent aussi
-          ici, rien n’est effacé.
+          Envoyez ces données dans la nouvelle application. Elles restent aussi ici, rien n’est effacé.
         </p>
         <button type="button" onClick={() => void envoyer()} className={bouton} style={degrade}>
           <Send className="w-4 h-4" />

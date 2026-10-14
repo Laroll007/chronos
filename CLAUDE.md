@@ -144,7 +144,7 @@ dans la sauvegarde automatique Android), restaurée si le stockage web est vidé
   Le script vérifie la signature (clé d'envoi de `chronos-android/keystore.properties`,
   gitignoré) et que l'app pointe sur mychronos.fr.
 - Version : `versionCode` / `versionName` dans `android/app/build.gradle`
-  (3 = dernière TWA, 4 = première version Capacitor). Ne change que si le code
+  (3 = dernière TWA, 4 = première version Capacitor, 5 = nouvelle tentative auto de la page « Pas de connexion »). Ne change que si le code
   natif change ; le contenu suit le site.
 - Module natif `ChronosNatifPlugin.java` (`lib/natif-android.ts`) : liste et
   ouverture des navigateurs, réception du lien `fr.mychronos.app://transfert`,

@@ -15,9 +15,9 @@ android {
         applicationId "fr.mychronos.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // 3 = dernière version TWA en production (22/07/2026).
-        versionCode 4
-        versionName "2.0.0"
+        // 3 = dernière version TWA en production (22/07/2026) ; 4 = première version Capacitor.
+        versionCode 5
+        versionName "2.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

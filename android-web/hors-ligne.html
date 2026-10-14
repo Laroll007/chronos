@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My Chronos</title>
+<script>
+  // Capacitor affiche cette page dès que le premier chargement échoue. Au
+  // démarrage sans réseau, la WebView abandonne parfois avant que le service
+  // worker du site ait servi le planning depuis son cache : on retente une
+  // fois, sans rien afficher. Si ça échoue encore dans les 15 s, la page
+  // s'affiche (vraiment rien en cache : premier lancement hors ligne).
+  (function () {
+    var cle = 'chronos_essai_hors_ligne';
+    try {
+      var dernier = Number(sessionStorage.getItem(cle) || 0);
+      if (Date.now() - dernier > 15000) {
+        sessionStorage.setItem(cle, String(Date.now()));
+        document.documentElement.className = 'essai';
+        setTimeout(function () { location.replace('https://mychronos.fr/dashboard'); }, 300);
+      }
+    } catch (e) {}
+  })();
+</script>
 <style>
   html, body { margin: 0; height: 100%; background: #f8f9fc; color: #0f172a;
     font-family: system-ui, -apple-system, Roboto, sans-serif; }
@@ -11,6 +29,7 @@
     justify-content: center; text-align: center; padding: 24px; box-sizing: border-box; }
   h1 { font-size: 22px; margin: 0 0 12px; color: #0055A4; }
   p { font-size: 16px; line-height: 1.5; margin: 0 0 24px; max-width: 340px; color: #334155; }
+  .essai main { visibility: hidden; }
   a { display: inline-block; padding: 14px 28px; border-radius: 12px; color: #fff;
     background: #0055A4; font-weight: 600; text-decoration: none; font-size: 16px; }
 </style>

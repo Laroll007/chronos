@@ -114,9 +114,16 @@ describe('Page du navigateur (mychronos.fr/transfert)', () => {
   it('données présentes : résumé et envoi vers l’app', () => {
     store.set('chronos_data', JSON.stringify(donnees()));
     render(<Transfert />);
-    expect(document.body.textContent).toMatch(/2 congés posés/);
+    expect(document.body.textContent).toMatch(/2congés posés dans ce navigateur/);
     expect(document.body.textContent).toMatch(/rien n’est effacé/);
     expect(screen.getByRole('button', { name: /Envoyer dans l’application/ })).toBeTruthy();
+  });
+
+  it('pas de proposition « Installer » du navigateur sur cette page', () => {
+    render(<Transfert />);
+    const evt = new Event('beforeinstallprompt', { cancelable: true });
+    window.dispatchEvent(evt);
+    expect(evt.defaultPrevented).toBe(true);
   });
 
   it('aucune donnée : retour à l’app, qui proposera un autre navigateur', () => {
@@ -127,12 +134,14 @@ describe('Page du navigateur (mychronos.fr/transfert)', () => {
 });
 
 describe('Écran de récupération dans l’app Android', () => {
-  it('ouvre le navigateur, puis demande confirmation avant d’importer', async () => {
+  it('propose les navigateurs (par défaut en premier), puis demande confirmation avant d’importer', async () => {
     const onRecupere = vi.fn();
     render(<RecuperationAndroid onRecupere={onRecupere} />);
-    fireEvent.click(screen.getByRole('button', { name: /Récupérer mes données/ }));
-    expect(ouvrirNavigateur).toHaveBeenCalledWith({ url: `${window.location.origin}/transfert`, paquet: undefined });
-    expect(await screen.findByText(/Envoyer dans l’application/)).toBeTruthy();
+    const boutons = await screen.findAllByRole('button', { name: /Samsung Internet|Chrome/ });
+    expect(boutons[0].textContent).toMatch(/Samsung Internet\s*\(par défaut\)/);
+    fireEvent.click(boutons[0]);
+    expect(ouvrirNavigateur).toHaveBeenCalledWith({ url: `${window.location.origin}/transfert`, paquet: 'com.sec.android.app.sbrowser' });
+    expect(await screen.findByText(/Dans Samsung Internet, appuyez sur/)).toBeTruthy();
 
     const d = await encoderTransfert(JSON.stringify(donnees()));
     await act(async () => rappelTransfert!({ donnees: d }));

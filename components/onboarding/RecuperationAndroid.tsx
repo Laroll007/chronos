@@ -73,8 +73,13 @@ export function RecuperationAndroid({ onRecupere }: { onRecupere: (resume: Resum
   };
 
   // Autres navigateurs à essayer : tous sauf celui qu'on vient d'ouvrir.
-  const defaut = navigateurs.find((n) => n.defaut)?.paquet;
-  const autres = navigateurs.filter((n) => n.paquet !== (dernier ?? defaut));
+  // Navigateur précisé à chaque ouverture : pas de fenêtre de choix d'Android
+  // qui clignote. Celui par défaut en premier (c'est en général lui qui
+  // hébergeait l'ancienne app).
+  const tries = [...navigateurs].sort((a, b) => Number(b.defaut) - Number(a.defaut));
+  const defaut = tries.find((n) => n.defaut)?.paquet;
+  const autres = tries.filter((n) => n.paquet !== (dernier ?? defaut));
+  const nomOuvert = tries.find((n) => n.paquet === (dernier ?? defaut))?.nom;
 
   const boutonsAutres = autres.length > 0 && (
     <div className="space-y-2">
@@ -107,15 +112,40 @@ export function RecuperationAndroid({ onRecupere }: { onRecupere: (resume: Resum
               L’application a été améliorée pour ne plus perdre vos données. Celles de l’ancienne version sont
               restées dans votre navigateur : on va les chercher.
             </p>
-            <button
-              type="button"
-              onClick={() => void ouvrir()}
-              className="w-full h-12 rounded-xl text-white font-semibold inline-flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #0055A4, #1a7de8)' }}
-            >
-              <RefreshCw className="w-4 h-4" />
-              Récupérer mes données
-            </button>
+            {tries.length > 1 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  Dans quel navigateur ? Dans le doute, celui par défaut.
+                </p>
+                {tries.map((n) => (
+                  <button
+                    key={n.paquet}
+                    type="button"
+                    onClick={() => void ouvrir(n.paquet)}
+                    className={
+                      n.defaut
+                        ? 'w-full h-12 rounded-xl text-white font-semibold inline-flex items-center justify-center gap-2'
+                        : 'w-full h-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 inline-flex items-center justify-center gap-2'
+                    }
+                    style={n.defaut ? { background: 'linear-gradient(135deg, #0055A4, #1a7de8)' } : undefined}
+                  >
+                    <Globe className="w-4 h-4" />
+                    {n.nom}
+                    {n.defaut && <span className="font-normal opacity-80">(par défaut)</span>}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void ouvrir(tries[0]?.paquet)}
+                className="w-full h-12 rounded-xl text-white font-semibold inline-flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #0055A4, #1a7de8)' }}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Récupérer mes données
+              </button>
+            )}
           </>
         )}
 
@@ -124,7 +154,8 @@ export function RecuperationAndroid({ onRecupere }: { onRecupere: (resume: Resum
             <p className="text-sm text-slate-700 leading-relaxed flex gap-2">
               <Loader2 className="w-4 h-4 mt-0.5 shrink-0 animate-spin text-blue-600" />
               <span>
-                Dans le navigateur qui vient de s’ouvrir, appuyez sur <strong>« Envoyer dans l’application »</strong>.
+                Dans {nomOuvert ?? 'le navigateur qui vient de s’ouvrir'}, appuyez sur{' '}
+                <strong>« Envoyer dans l’application »</strong>.
               </span>
             </p>
             {boutonsAutres}
