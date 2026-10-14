@@ -9,11 +9,11 @@
  *    maladie ne crédite rien, même s'il figure au planning.
  */
 import { describe, it, expect } from 'vitest';
-import { computeRPSCredit, isJourOuvrantRPS, toISODay, baremeRPSNuit } from '@/lib/rps';
-import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG } from '@/lib/storage';
+import { computeRPSCredit, isJourOuvrantRPS, toISODay, baremeRPSNuit, estAncienBaremeNuit } from '@/lib/rps';
+import { DEFAULT_COUNTERS, DEFAULT_CYCLE_CONFIG, migrateUserData } from '@/lib/storage';
 import { RPS_PAR_DIMANCHE } from '@/lib/constants';
 import { isWorkingDay } from '@/lib/calculations';
-import type { Counters, HistoryEntry } from '@/lib/types';
+import type { Counters, HistoryEntry, UserData } from '@/lib/types';
 
 const cfg = DEFAULT_CYCLE_CONFIG;
 const C = (o: Partial<Counters> = {}): Counters => ({ ...DEFAULT_COUNTERS, ...o });
@@ -35,11 +35,36 @@ describe('Barème paramétrable (agents de nuit)', () => {
     expect(avecBareme.minutes).toBeGreaterThan(parDefaut.minutes);
   });
 
-  it('applique le coefficient dimanche sans le cumuler avec celui de nuit', () => {
-    // Les coefficients APORTT ne sont pas cumulables : 0,4 le dimanche, pas 0,5.
+  it('« service de nuit » : seules les heures 21h–6h valent 0,1 (54 min, pas 1h13)', () => {
+    // Retour d'un collègue (14/10/2026) : une nuit de semaine créditait 1h13
+    // (0,1 × 12h08 entières) au lieu de 54 min (0,1 × 9h de nuit).
     const bareme = baremeRPSNuit(728);
-    expect(bareme.dimanche).toBe(Math.round(728 * 0.4));
-    expect(bareme.lundi).toBe(Math.round(728 * 0.1));
+    expect(bareme.lundi).toBe(54);
+    expect(bareme.vendredi).toBe(54);
+    // Coefficients non cumulables, minute par minute (vacation 19h–7h08) :
+    // dimanche 19h–24h × 0,4 + lundi 0h–6h × 0,1 = 2h36 ;
+    // samedi 21h–24h × 0,1 + dimanche 0h–7h08 × 0,4 = 3h09.
+    expect(bareme.dimanche).toBe(156);
+    expect(bareme.samedi).toBe(189);
+  });
+
+  it('ancien barème « nuit » (1h13) : recalculé au chargement, d’après les horaires', () => {
+    const ancien = { lundi: 73, mardi: 73, mercredi: 73, jeudi: 73, vendredi: 73, samedi: 73, dimanche: 291 };
+    expect(estAncienBaremeNuit(ancien, 728)).toBe(true);
+    expect(estAncienBaremeNuit(baremeRPSNuit(728), 728)).toBe(false);
+
+    const base = { cycleConfig: { ...cfg, heuresParJour: 728, rpsParJour: ancien }, counters: C(), history: [],
+      lastUpdated: '', lastResetYear: new Date().getFullYear(), isOnboarded: true } as unknown as UserData;
+    const sansHoraires = migrateUserData(structuredClone(base));
+    expect(sansHoraires.cycleConfig.rpsParJour?.lundi).toBe(54);
+
+    // Horaires connus (19h30–7h38) : barème exact GesTT, samedi 3h21, dimanche 2h24.
+    const avecHoraires = migrateUserData(structuredClone({ ...base, cycleConfig: { ...base.cycleConfig, heureDebut: 19 * 60 + 30 } }));
+    expect(avecHoraires.cycleConfig.rpsParJour).toMatchObject({ lundi: 54, samedi: 201, dimanche: 144 });
+
+    // Hebdo : heure de début inconnue, on ne touche à rien.
+    const hebdo = migrateUserData(structuredClone({ ...base, cycleConfig: { ...base.cycleConfig, type: 'hebdo' } }) as UserData);
+    expect(hebdo.cycleConfig.rpsParJour?.lundi).toBe(73);
   });
 
   it('un barème à zéro ne crédite rien', () => {

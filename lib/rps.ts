@@ -28,16 +28,27 @@ export function baremeRPSParDefaut(): WeekHours {
 }
 
 /**
- * Barème « agent de nuit » : coefficient 0,1 sur chaque vacation (créneau 21h–6h)
- * et 0,4 le dimanche. Les coefficients n'étant PAS cumulables, le dimanche garde
- * le seul 0,4 au lieu d'additionner les deux.
+ * Barème « service de nuit » quand l'heure de prise de service n'est pas
+ * connue : vacation type commençant à `debut` (19h en cycle, 21h en hebdo),
+ * calculée comme le barème exact (seules les minutes entre 21h et 6h valent
+ * 0,1 ; celles du dimanche 0,4). Une nuit complète de semaine donne donc 54 min.
  */
-export function baremeRPSNuit(jourMinutes: number = HEURES_PAR_JOUR): WeekHours {
+export function baremeRPSNuit(jourMinutes: number = HEURES_PAR_JOUR, debut: number = 19 * 60): WeekHours {
+  return baremeRPSDepuisHoraires(debut, jourMinutes);
+}
+
+/**
+ * Ancien barème « nuit » (jusqu'en octobre 2026) : 0,1 sur TOUTE la vacation
+ * (73 min pour 12h08 au lieu de 54) et 0,4 sur toute la vacation le dimanche.
+ * Détecté pour être remplacé par le calcul exact (migrateUserData).
+ */
+export function estAncienBaremeNuit(bareme: WeekHours, jourMinutes: number): boolean {
   const nuit = Math.round(jourMinutes * 0.1);
-  return {
-    lundi: nuit, mardi: nuit, mercredi: nuit, jeudi: nuit, vendredi: nuit, samedi: nuit,
-    dimanche: Math.round(jourMinutes * 0.4),
-  };
+  return (
+    nuit > 0 &&
+    JOURS.filter((j) => j !== 'dimanche').every((j) => bareme[j] === nuit) &&
+    bareme.dimanche === Math.round(jourMinutes * 0.4)
+  );
 }
 
 // ─── Barème exact d'après les horaires de vacation ───────────────────────────

@@ -286,7 +286,7 @@ export function CycleSetup({ onNext, initialConfig }: CycleSetupProps) {
       rpsParJour: !isHebdo
         ? baremeRPSDepuisHoraires(heureDebut, dureeVacation)
         : serviceDeNuit
-          ? baremeRPSNuit(heuresSemaine.lundi || HEURES_PAR_JOUR)
+          ? baremeRPSNuit(heuresSemaine.lundi || HEURES_PAR_JOUR, 21 * 60)
           : baremeRPSParDefaut(),
     });
   };

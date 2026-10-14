@@ -13,6 +13,7 @@ import { validateUserData as nativeValidateUserData, validateExportData } from '
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
 import { noterSauvegarde } from './sauvegarde';
+import { baremeRPSDepuisHoraires, baremeRPSNuit, estAncienBaremeNuit } from './rps';
 import { plateformeNative } from './api';
 
 /**
@@ -145,6 +146,23 @@ export function migrateUserData(data: UserData): UserData {
   }
 
   // Migration 5: heuresSemaine pour cycle hebdo (depuis l'ancien modèle 4 longs + 1 court)
+  // Ancien barème RPS « nuit » (0,1 sur toute la vacation : 1h13 au lieu de
+  // 54 min pour une nuit de 12h08) : recalcul exact, d'après les horaires s'ils
+  // sont connus. Cycles seulement (en hebdo, l'heure de début est inconnue).
+  // Seuls les crédits à venir changent : le solde déjà crédité n'est pas touché.
+  if (
+    data.cycleConfig.type !== 'hebdo' &&
+    data.cycleConfig.rpsParJour &&
+    estAncienBaremeNuit(data.cycleConfig.rpsParJour, data.cycleConfig.heuresParJour || HEURES_PAR_JOUR)
+  ) {
+    const duree = data.cycleConfig.heuresParJour || HEURES_PAR_JOUR;
+    data.cycleConfig.rpsParJour =
+      data.cycleConfig.heureDebut !== undefined
+        ? baremeRPSDepuisHoraires(data.cycleConfig.heureDebut, duree)
+        : baremeRPSNuit(duree);
+    needsSave = true;
+  }
+
   if (data.cycleConfig.type === 'hebdo' && !data.cycleConfig.heuresSemaine) {
     const normal = data.cycleConfig.heuresParJour ?? DEFAULT_HEBDO_HEURES.lundi;
     const court = data.cycleConfig.heuresJourCourt ?? DEFAULT_HEBDO_HEURES.vendredi;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CycleConfig, WeekHours } from '@/lib/types';
-import { baremeRPSParDefaut, baremeRPSNuit } from '@/lib/rps';
+import { baremeRPSParDefaut, baremeRPSNuit, typeDeVacation } from '@/lib/rps';
 import { formatMinutes } from '@/lib/calculations';
 import { JOURS_SEMAINE } from '@/lib/constants';
 import { Moon, Sun, RotateCcw, Check } from 'lucide-react';
@@ -26,6 +26,14 @@ interface RPSBaremeEditorProps {
  */
 export function RPSBaremeEditor({ cycleConfig, onSave }: RPSBaremeEditorProps) {
   const jourMinutes = cycleConfig.heuresParJour || 728;
+  // « Service de nuit » : d'après la prise de service renseignée si c'est bien
+  // une vacation de nuit, sinon une nuit type (19h en cycle, 21h en hebdo).
+  const debutNuit =
+    cycleConfig.heureDebut !== undefined && typeDeVacation(cycleConfig.heureDebut, jourMinutes) !== 'jour'
+      ? cycleConfig.heureDebut
+      : cycleConfig.type === 'hebdo'
+        ? 21 * 60
+        : 19 * 60;
   const [bareme, setBareme] = useState<WeekHours>(
     () => cycleConfig.rpsParJour ?? baremeRPSParDefaut()
   );
@@ -60,7 +68,7 @@ export function RPSBaremeEditor({ cycleConfig, onSave }: RPSBaremeEditorProps) {
           Service de jour
         </button>
         <button
-          onClick={() => appliquerPreset(baremeRPSNuit(jourMinutes))}
+          onClick={() => appliquerPreset(baremeRPSNuit(jourMinutes, debutNuit))}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-700 transition-colors"
         >
           <Moon className="w-3.5 h-3.5" />
