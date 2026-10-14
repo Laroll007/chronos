@@ -16,7 +16,8 @@ import { markReleaseNotesSeen } from '@/lib/releaseNotes';
 import { track } from '@/lib/analytics';
 import { aujourdhuiISO, getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
-import { Calendar, Calculator, Check } from 'lucide-react';
+import { Calendar, Calculator, Check, Upload } from 'lucide-react';
+import { importData } from '@/lib/storage';
 import { toast } from 'sonner';
 
 const CycleSetup = dynamic(
@@ -145,8 +146,35 @@ export function OnboardingWizard() {
     }
   };
 
+  // Données perdues (ou nouveau téléphone) : restaurer une sauvegarde plutôt
+  // que de tout ressaisir.
+  const restaurer = async (fichier: File | undefined) => {
+    if (!fichier) return;
+    try {
+      const res = importData(await fichier.text(), false);
+      if (!res.success) {
+        toast.error('Restauration impossible', { description: res.error });
+        return;
+      }
+      clearOnboardingDraft();
+      markReleaseNotesSeen();
+      track('restauration_inscription');
+      toast.success('Sauvegarde restaurée', { description: 'Votre planning et vos compteurs sont de retour.' });
+      router.push('/dashboard');
+    } catch {
+      toast.error('Lecture du fichier impossible');
+    }
+  };
+
   return (
     <>
+      {step === 'cycle' && (
+        <label className="mb-6 flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800 cursor-pointer hover:bg-blue-100">
+          <Upload className="w-4 h-4 shrink-0" />
+          <span>Vous avez une sauvegarde ? <span className="underline">La restaurer</span></span>
+          <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => void restaurer(e.target.files?.[0])} />
+        </label>
+      )}
       {/* Stepper */}
       <div className="flex items-center justify-center gap-2 mb-8">
         {STEP_CONFIG.map((s, index) => {

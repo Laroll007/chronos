@@ -80,6 +80,10 @@ export const STATS_EVENTS = {
   partage_lien_copie: { label: 'Recommandation : lien copié / WhatsApp / SMS', group: 'À propos' },
   avis_demande: { label: 'Demande d’avis affichée', group: 'À propos' },
   avis_store_ouvert: { label: 'Ouvre la fiche du store pour un avis', group: 'À propos' },
+  donnees_absentes: { label: 'Appareil connu revenu sans données (perte probable)', group: 'Onboarding' },
+  sauvegarde_rappel: { label: 'Rappel « sauvegarde ton planning » affiché', group: 'Outils' },
+  sauvegarde_rappel_export: { label: 'Sauvegarde exportée depuis le rappel', group: 'Outils' },
+  restauration_inscription: { label: 'Sauvegarde restaurée depuis l’inscription', group: 'Onboarding' },
   maj_ios_ouverte: { label: 'iPhone : ouvre l’App Store depuis le bandeau de mise à jour', group: 'À propos' },
 } as const satisfies Record<string, { label: string; group: string }>;
 
@@ -100,7 +104,7 @@ export function isStatsPlatform(p: unknown): p is StatsPlatform {
  * Profil de cycle, en catégories grossières. Jamais de date ni de solde.
  * Clés « famille:valeur », ex. `type:alterne`, `pattern:2/2`, `duree:12h08`.
  */
-export const PROFILE_KEY_RE = /^(type|pattern|duree|option|horaire):[A-Za-z0-9/_\-hé]{1,24}$/;
+export const PROFILE_KEY_RE = /^(type|pattern|duree|option|horaire|nav|stockage):[A-Za-z0-9/_\-hé]{1,24}$/;
 
 /** Clé d'erreur : texte court, déjà nettoyé côté client. */
 export const ERROR_KEY_MAX = 120;

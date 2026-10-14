@@ -12,6 +12,7 @@ import { countCAHPDays, getCATotalForCycle, getCFS1Share, getRTCAnnuel, reserveR
 import { validateUserData as nativeValidateUserData, validateExportData } from './validation';
 import { ChronosError, logger } from './errors';
 import { mirrorToNative, clearNative } from './native-backup';
+import { noterSauvegarde } from './sauvegarde';
 
 /**
  * Version du schéma de données. À incrémenter pour introduire une migration
@@ -348,6 +349,7 @@ export function saveUserData(data: UserData): boolean {
     };
     const serialized = JSON.stringify(toSave);
     localStorage.setItem(STORAGE_KEY, serialized);
+    localStorage.removeItem('chronos_reset_volontaire');
     // Miroir natif iOS (fire-and-forget, silencieux, no-op sur le web)
     void mirrorToNative(serialized);
     logger.debug('Données sauvegardées avec succès');
@@ -477,6 +479,8 @@ export function resetAllData(): boolean {
 
   try {
     localStorage.removeItem(STORAGE_KEY);
+    // Distingue une réinitialisation voulue d'une perte de données (statistiques).
+    localStorage.setItem('chronos_reset_volontaire', '1');
     clearOnboardingDraft();
     // Supprime aussi le miroir natif iOS (fire-and-forget, no-op sur le web)
     void clearNative();
@@ -542,6 +546,7 @@ export function downloadExport(): boolean {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    noterSauvegarde();
     logger.info('Export téléchargé avec succès');
     return true;
   } catch (error) {

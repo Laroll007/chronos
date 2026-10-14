@@ -242,6 +242,8 @@ export default function StatsPage() {
     duree: 'Durée du jour',
     option: 'Options',
     horaire: 'Horaires',
+    nav: 'Navigateur (Android / web)',
+    stockage: 'Stockage protégé (Android / web)',
   };
 
   return (

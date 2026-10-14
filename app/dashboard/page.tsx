@@ -59,6 +59,8 @@ import { useCounters, type OptionsPose } from '@/hooks/useCounters';
 import { compteursAnneeSuivante, compteursDotation, posesDifferees } from '@/lib/previsionnel';
 import { demanderAvisNatif, noterDemandeAvis, peutDemanderAvis, plateforme } from '@/lib/recommandation';
 import { AvisPrompt } from '@/components/dashboard/AvisPrompt';
+import { SauvegardePrompt } from '@/components/dashboard/SauvegardePrompt';
+import { noterRappelSauvegarde, rappelSauvegardeDu } from '@/lib/sauvegarde';
 import { RecommanderModal } from '@/components/shared/RecommanderModal';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -71,6 +73,8 @@ import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { track, setStatsProfile } from '@/lib/analytics';
+import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
+import { isNativeApp } from '@/lib/api';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
@@ -140,6 +144,13 @@ export default function DashboardPage() {
   const [nouveautesAuDemarrage] = useState(() => pendingReleaseNotes().length > 0);
   // Idem pour le rappel des horaires : le message ARTT attend l'ouverture suivante.
   const [rappelHorairesAuDemarrage] = useState(() => rappelHorairesDu());
+  // Rappel de sauvegarde (Android et web : bug d'effacement identifié) : il
+  // passe avant les autres rappels de démarrage, qui attendent l'ouverture suivante.
+  const [rappelSauvegarde, setRappelSauvegarde] = useState(
+    () => typeof window !== 'undefined' && rappelSauvegardeDu(isNativeApp())
+  );
+  // Figé : après le rappel, les autres attendent l'ouverture suivante (pas deux fenêtres d'affilée).
+  const [sauvegardeAuDemarrage] = useState(rappelSauvegarde);
 
   const {
     userData,
@@ -199,6 +210,7 @@ export default function DashboardPage() {
   // date ni de solde), joint au marqueur « actif » du jour.
   useEffect(() => {
     if (!cycleConfig || !counters) return;
+    initDiagnostic();
     setStatsProfile(() => {
       const h = cycleConfig.heuresParJour;
       const profile = [
@@ -210,6 +222,8 @@ export default function DashboardPage() {
       if (cycleConfig.type !== 'hebdo' && cycleConfig.heureDebut !== undefined) {
         profile.push(`horaire:${typeDeVacation(cycleConfig.heureDebut, h)}`);
       }
+      // Diagnostic des pertes de données (navigateur hôte, stockage protégé).
+      profile.push(...profilDiagnostic(isNativeApp()));
       if (counters.hasARTT) profile.push('option:artt');
       if (counters.hasCET2008) profile.push('option:cet2008');
       if (counters.hasCongesBonifies) profile.push('option:bonifies');
@@ -1032,6 +1046,7 @@ export default function DashboardPage() {
       {!showWelcome &&
         hasSeenWelcome() &&
         !nouveautesAuDemarrage &&
+        !sauvegardeAuDemarrage &&
         cycleConfig.type !== 'hebdo' &&
         cycleConfig.heureDebut === undefined && (
           <HorairesPrompt
@@ -1047,6 +1062,7 @@ export default function DashboardPage() {
       {!showWelcome &&
         hasSeenWelcome() &&
         !nouveautesAuDemarrage &&
+        !sauvegardeAuDemarrage &&
         cycleConfig.type === 'alterne' &&
         counters.hasARTT &&
         !(cycleConfig.heureDebut === undefined && rappelHorairesAuDemarrage) && (
@@ -1062,6 +1078,15 @@ export default function DashboardPage() {
         <AvisPrompt plateforme={plateforme()} onRecommander={() => setShowRecommander(true)} onClose={() => setShowAvis(false)} />
       )}
       {showRecommander && <RecommanderModal onClose={() => setShowRecommander(false)} />}
+
+      {rappelSauvegarde && !showWelcome && hasSeenWelcome() && !nouveautesAuDemarrage && (
+        <SauvegardePrompt
+          onClose={() => {
+            noterRappelSauvegarde();
+            setRappelSauvegarde(false);
+          }}
+        />
+      )}
 
       {/* Popup Bienvenue */}
       <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />

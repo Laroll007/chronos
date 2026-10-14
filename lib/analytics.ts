@@ -156,6 +156,15 @@ export function setStatsProfile(provider: () => string[]): void {
   profileProvider = provider;
 }
 
+/** Marqueur posé par « Réinitialiser l'application » (cf. resetAllData). */
+function resetVolontaire(): boolean {
+  try {
+    return localStorage.getItem('chronos_reset_volontaire') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function hasUserData(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) !== null;
@@ -180,6 +189,12 @@ function recordOpen(): void {
       isNew: !state.known && !hasUserData(),
       profile: [],
     };
+    // Appareil déjà vu, mais revenu sans aucune donnée (et sans réinitialisation
+    // volontaire) : ses données ont probablement été effacées par le navigateur.
+    if (state.known && !hasUserData() && !resetVolontaire()) {
+      const bucket = bucketFor(state, today);
+      bucket.events.donnees_absentes = (bucket.events.donnees_absentes ?? 0) + 1;
+    }
     state.lastActiveDay = today;
     state.lastActiveWeek = week;
     state.lastActiveMonth = month;
