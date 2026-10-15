@@ -84,10 +84,8 @@ const LIBELLE_RAPPEL: Record<CompensationRappel, string> = {
 };
 
 /**
- * Rappel sur un repos : formule de compensation. La règle confirmée est
- * présélectionnée ; quand elle n'est pas tranchée (RC de plus de 4h), l'agent
- * choisit ; il peut toujours recopier les HS de GesTT (statistique anonyme qui
- * sert à confirmer le barème).
+ * Rappel sur un repos : barème APORTT présélectionné ; l'agent peut toujours
+ * recopier les HS de GesTT (statistique anonyme qui vérifie le barème).
  */
 function CompensationRappelChoix({
   e, mode, libre, onMode, onLibre,
@@ -106,14 +104,14 @@ function CompensationRappelChoix({
       <p className="text-xs text-slate-600">
         Travail sur un {e.nature === 'RL' ? 'repos légal' : 'repos compensateur'} : c’est un rappel, crédité
         en HS, <strong>sans RPS</strong>.
-        {!r.defaut && ' Barème non confirmé pour plus de 4h sur un RC : choisissez ce que GesTT vous crédite.'}
+        {' '}Barème APORTT des gardiens et gradés ; officiers, ou montant différent dans GesTT : saisissez vos HS.
       </p>
       {choix.map((m) => (
         <label key={m} className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
           <input type="radio" name="compensation-rappel" checked={mode === m} onChange={() => onMode(m)} />
           <span className="flex-1">
             {LIBELLE_RAPPEL[m]}
-            {m === r.defaut && <span className="ml-1 text-xs text-emerald-700">(règle)</span>}
+            {m === r.defaut && <span className="ml-1 text-xs text-emerald-700">(barème APORTT)</span>}
           </span>
           {m !== 'libre' && (
             <span className="text-xs font-semibold text-slate-600">+{formatMinutes(hsRappel(m, e.duree, r.vacation))}</span>
@@ -139,7 +137,7 @@ function CompensationRappelChoix({
         </div>
       )}
       <p className="text-[11px] text-slate-500">
-        Votre choix est compté anonymement : il nous aide à confirmer le barème appliqué par GesTT.
+        Une saisie GesTT est comptée anonymement : elle nous aide à vérifier le barème sur le terrain.
       </p>
     </fieldset>
   );

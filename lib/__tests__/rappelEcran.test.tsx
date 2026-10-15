@@ -34,17 +34,14 @@ describe('Compensation du rappel', () => {
     expect(onSave).toHaveBeenCalledWith([expect.objectContaining({ choix: { mode: '2vac' } })]);
   });
 
-  it('RC de plus de 4h : enregistrement bloqué tant que la compensation n’est pas choisie', () => {
+  it('RC de plus de 4h : 150 % présélectionné ; saisie GesTT possible et transmise', () => {
     const onSave = ouvrir(SAMEDI);
-    const enregistrer = screen.getByRole('button', { name: 'Enregistrer' }) as HTMLButtonElement;
-    expect(enregistrer.disabled).toBe(true);
-    expect(screen.getByText(/Choisissez la compensation du rappel/)).toBeTruthy();
-
+    expect((screen.getByRole('radio', { name: /150 % des heures/ }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole('radio', { name: /1 vacation/ })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: /Selon GesTT/ }));
     fireEvent.change(screen.getByLabelText('HS créditées — heures'), { target: { value: '18' } });
     fireEvent.change(screen.getByLabelText('HS créditées — minutes'), { target: { value: '12' } });
-    expect(enregistrer.disabled).toBe(false);
-    fireEvent.click(enregistrer);
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
     expect(onSave).toHaveBeenCalledWith([expect.objectContaining({ choix: { mode: 'libre', libre: h(18, 12) } })]);
   });
 });

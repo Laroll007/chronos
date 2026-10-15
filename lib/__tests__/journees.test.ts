@@ -39,25 +39,19 @@ describe('Rappel sur un repos : HS selon le barème, aucun RPS', () => {
     expect(e.rappel).toMatchObject({ defaut: '2vac', long: true, mode: '2vac' });
   });
 
-  it('RL 4h au plus : 1 vacation (4h pile compte comme « 4h au plus »)', () => {
+  it('RL moins de 4h : 1 vacation (4h pile compte comme « moins de 4h »)', () => {
     expect(effetJournee(DIMANCHE, 'horaires', h(14), h(17), JOUR).hs).toBe(h(12, 8));
     expect(effetJournee(DIMANCHE, 'horaires', h(14), h(18), JOUR).hs).toBe(h(12, 8));
   });
 
-  it('RC 4h au plus : 150 % des heures', () => {
-    const e = effetJournee(SAMEDI, 'horaires', h(14), h(17), JOUR);
-    expect(e).toMatchObject({ hs: h(4, 30), rps: 0 });
-    expect(e.rappel?.defaut).toBe('150');
-  });
-
-  it('RC plus de 4h : non tranché, l’agent choisit (150 % des heures, 1 ou 1,5 vacation) ou recopie GesTT', () => {
-    const sansChoix = effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR);
-    expect(sansChoix.rappel?.modes).toEqual(['150', '1vac', '150vac']);
-    expect(sansChoix.rappel?.defaut).toBeUndefined();
-    expect(sansChoix.hs).toBe(h(20, 15)); // repli : 150 %
-    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: '1vac' }).hs).toBe(h(12, 8));
-    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: '150vac' }).hs).toBe(h(18, 12));
-    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: 'libre', libre: h(21) }).hs).toBe(h(21));
+  it('RC : 150 % des heures, quelle que soit la durée (barème APORTT, pas de forfait au-delà de 4h)', () => {
+    const court = effetJournee(SAMEDI, 'horaires', h(14), h(17), JOUR);
+    expect(court).toMatchObject({ hs: h(4, 30), rps: 0 });
+    const long = effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR);
+    expect(long).toMatchObject({ hs: h(20, 15), rps: 0 });
+    expect(long.rappel).toMatchObject({ modes: ['150'], defaut: '150' });
+    // L'agent peut toujours recopier GesTT (officier, cas particulier)
+    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: 'libre', libre: h(13, 30) }).hs).toBe(h(13, 30));
   });
 
   it('HS recopiées de GesTT : rattachées à la formule correspondante (stats)', () => {
@@ -67,11 +61,9 @@ describe('Rappel sur un repos : HS selon le barème, aucun RPS', () => {
     expect(formuleCorrespondante(h(21), h(13, 30), h(12, 8))).toBe('autre');
   });
 
-  it('régime hebdomadaire : 100 % par défaut (barème non confirmé), pas de RPS', () => {
-    const HEBDO: CycleConfig = { ...JOUR, type: 'hebdo' };
-    const e = effetJournee(DIMANCHE, 'horaires', h(9), h(15), HEBDO);
-    expect(e).toMatchObject({ hs: h(6), rps: 0 });
-    expect(e.rappel?.modes).toEqual(['100', '150', '200']);
+  it('régime hebdomadaire : même barème (il dépend du corps, pas du régime), vacation = journée', () => {
+    const HEBDO: CycleConfig = { ...JOUR, type: 'hebdo', heuresParJour: h(7, 45) };
+    expect(effetJournee(DIMANCHE, 'horaires', h(9), h(15), HEBDO)).toMatchObject({ hs: 2 * h(7, 45), rps: 0 });
   });
 });
 

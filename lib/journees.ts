@@ -101,15 +101,16 @@ function rpsReel(date: Date, debut: number, duree: number, cfg: CycleConfig): nu
 
 // ─── Rappel sur un repos ─────────────────────────────────────────────────────
 //
-// Barème des régimes cycliques (instruction générale d'organisation du travail
-// de 2002, confirmé par des agents sur GesTT, 10/2026) :
-//   RL : 4h au plus → 1 vacation ; plus de 4h → 2 vacations ;
-//   RC : 4h au plus → 150 % des heures ; plus de 4h → 1 vacation (texte de
-//        2002), 150 % des heures ou 150 % de la vacation (selon les agents) :
-//        NON TRANCHÉ, l'agent choisit.
-// Toujours possible : saisir les HS créditées par GesTT (« libre ») ; ces
-// saisies, classées par formule, alimentent les stats anonymes pour trancher.
-// Régime hebdomadaire : pas de barème confirmé, 100 % par défaut.
+// Barème de l'article 53 de l'APORTT (annexe de l'arrêté du 5 septembre 2019,
+// publiée en image au JO ; reproduite par Alternative Police CFDT, mai 2024),
+// colonne CEA (gardiens, gradés), tous régimes :
+//   RL : moins de 4h → 1 vacation ; plus de 4h → 2 vacations ;
+//   RC : 150 % des heures (sans seuil : le forfait d'1 vacation au-delà de 4h
+//        venait de l'instruction de 2002, remplacée par l'APORTT) ;
+//   tous les autres cas : 150 %. Officiers (CC) : 100 % ; CCD, CC art. 10 : rien.
+// L'app suit la colonne CEA ; « libre » permet toujours de recopier les HS de
+// GesTT (officiers, cas particuliers), et ces saisies, classées par formule,
+// alimentent les stats anonymes qui vérifient le barème sur le terrain.
 
 export type CompensationRappel = '100' | '150' | '200' | '1vac' | '150vac' | '2vac' | 'libre';
 export const SEUIL_RAPPEL = 4 * 60;
@@ -117,18 +118,17 @@ export const SEUIL_RAPPEL = 4 * 60;
 export interface OptionsRappel {
   /** Formules proposées (hors « libre », toujours possible). */
   modes: Exclude<CompensationRappel, 'libre'>[];
-  /** Formule confirmée, appliquée par défaut ; absente si non tranché. */
+  /** Formule du barème, appliquée par défaut. */
   defaut?: Exclude<CompensationRappel, 'libre'>;
   /** Durée d'une vacation (forfaits). */
   vacation: number;
   long: boolean;
 }
 
-export function optionsRappel(nature: 'RC' | 'RL', duree: number, vacation: number, hebdo: boolean): OptionsRappel {
+export function optionsRappel(nature: 'RC' | 'RL', duree: number, vacation: number): OptionsRappel {
   const long = duree > SEUIL_RAPPEL;
-  if (hebdo) return { modes: ['100', '150', '200'], defaut: '100', vacation, long };
   if (nature === 'RL') return long ? { modes: ['2vac'], defaut: '2vac', vacation, long } : { modes: ['1vac'], defaut: '1vac', vacation, long };
-  return long ? { modes: ['150', '1vac', '150vac'], vacation, long } : { modes: ['150'], defaut: '150', vacation, long };
+  return { modes: ['150'], defaut: '150', vacation, long };
 }
 
 export function hsRappel(mode: CompensationRappel, duree: number, vacation: number, libre = 0): number {
@@ -199,8 +199,7 @@ export function effetJournee(
   // Repos travaillé : rappel, HS selon le barème, aucun RPS.
   if (!prevue && nature !== 'travail') {
     const vacation = horairesDuJour(date, cfg).duree;
-    const options = optionsRappel(nature, duree, vacation, cfg.type === 'hebdo');
-    // Sans choix (non tranché, ou stage sur plusieurs jours) : 150 % des heures.
+    const options = optionsRappel(nature, duree, vacation);
     const mode = choix?.mode ?? options.defaut ?? '150';
     return {
       duree, dureePrevue, hs: hsRappel(mode, duree, vacation, choix?.libre), manque: 0,
