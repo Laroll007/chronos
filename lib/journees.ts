@@ -7,10 +7,13 @@
 //   heures effectuées sur un RC (0,25) ou sur un RL / jour férié (0,60),
 //   crédités en RPS ; coefficients non cumulables avec 0,1 (nuit) et 0,4
 //   (dimanche) → on retient le plus fort, minute par minute.
-// - Choix terrain (2026-10) : les heures en plus de nuit, et le travail sur un
-//   repos, ouvrent aussi ces RPS (venue du pape : repos travaillé 12h30–02h00).
+// - Choix terrain (2026-10) : les heures en plus de nuit ouvrent aussi ces RPS.
+// - Travail sur un repos = RAPPEL (service supplémentaire) : AUCUN RPS (guide
+//   DNPAF : RPS « exclusifs des services supplémentaires »), HS selon le
+//   barème du rappel (voir optionsRappel). Stage sur un repos : idem (le guide
+//   fait saisir les horaires de stage en rappel).
 // - Stage sur un jour travaillé : remplace la vacation, journée habituelle,
-//   aucun effet. Sur un repos : rappel pour la durée du stage (HS + RPS).
+//   aucun effet.
 //
 // Repos de cycle : à l'issue d'une période de travail, « un RC suivi d'un RL »
 // (deux RC puis un RL pour trois jours) : le DERNIER jour de repos est le RL.
@@ -96,6 +99,60 @@ function rpsReel(date: Date, debut: number, duree: number, cfg: CycleConfig): nu
   return total;
 }
 
+// ─── Rappel sur un repos ─────────────────────────────────────────────────────
+//
+// Barème des régimes cycliques (instruction générale d'organisation du travail
+// de 2002, confirmé par des agents sur GesTT, 10/2026) :
+//   RL : 4h au plus → 1 vacation ; plus de 4h → 2 vacations ;
+//   RC : 4h au plus → 150 % des heures ; plus de 4h → 1 vacation (texte de
+//        2002) ou 150 % des heures (agents) : NON TRANCHÉ, l'agent choisit.
+// Toujours possible : saisir les HS créditées par GesTT (« libre ») ; ces
+// saisies, classées par formule, alimentent les stats anonymes pour trancher.
+// Régime hebdomadaire : pas de barème confirmé, 100 % par défaut.
+
+export type CompensationRappel = '100' | '150' | '200' | '1vac' | '2vac' | 'libre';
+export const SEUIL_RAPPEL = 4 * 60;
+
+export interface OptionsRappel {
+  /** Formules proposées (hors « libre », toujours possible). */
+  modes: Exclude<CompensationRappel, 'libre'>[];
+  /** Formule confirmée, appliquée par défaut ; absente si non tranché. */
+  defaut?: Exclude<CompensationRappel, 'libre'>;
+  /** Durée d'une vacation (forfaits). */
+  vacation: number;
+  long: boolean;
+}
+
+export function optionsRappel(nature: 'RC' | 'RL', duree: number, vacation: number, hebdo: boolean): OptionsRappel {
+  const long = duree > SEUIL_RAPPEL;
+  if (hebdo) return { modes: ['100', '150', '200'], defaut: '100', vacation, long };
+  if (nature === 'RL') return long ? { modes: ['2vac'], defaut: '2vac', vacation, long } : { modes: ['1vac'], defaut: '1vac', vacation, long };
+  return long ? { modes: ['150', '1vac'], vacation, long } : { modes: ['150'], defaut: '150', vacation, long };
+}
+
+export function hsRappel(mode: CompensationRappel, duree: number, vacation: number, libre = 0): number {
+  switch (mode) {
+    case '100': return duree;
+    case '150': return Math.round(duree * 1.5);
+    case '200': return duree * 2;
+    case '1vac': return vacation;
+    case '2vac': return vacation * 2;
+    case 'libre': return Math.max(0, Math.round(libre));
+  }
+}
+
+/** Formule à laquelle correspondent des HS saisies (à 10 min près), pour les stats. */
+export function formuleCorrespondante(hs: number, duree: number, vacation: number): Exclude<CompensationRappel, 'libre'> | 'autre' {
+  const formules = ['100', '150', '200', '1vac', '2vac'] as const;
+  return formules.find((f) => Math.abs(hsRappel(f, duree, vacation) - hs) <= 10) ?? 'autre';
+}
+
+export interface ChoixRappel {
+  mode: CompensationRappel;
+  /** HS saisies (minutes) quand mode = 'libre'. */
+  libre?: number;
+}
+
 export interface EffetJournee {
   duree: number;
   dureePrevue: number;
@@ -109,6 +166,8 @@ export interface EffetJournee {
   rpsDelta: number;
   nature: NatureJour;
   ferie: boolean;
+  /** Travail sur un repos : barème du rappel et formule appliquée. */
+  rappel?: OptionsRappel & { mode: CompensationRappel };
 }
 
 /** Effet sur les compteurs de `type` effectué de `debut` à `fin` le jour `date`. */
@@ -117,7 +176,8 @@ export function effetJournee(
   type: JourModifie['type'],
   debut: number | undefined,
   fin: number | undefined,
-  cfg: CycleConfig
+  cfg: CycleConfig,
+  choix?: ChoixRappel
 ): EffetJournee {
   const nature = natureDuJour(date, cfg);
   const ferie = estFerie(date);
@@ -133,6 +193,19 @@ export function effetJournee(
   }
 
   const duree = dureePlage(debut, fin);
+
+  // Repos travaillé : rappel, HS selon le barème, aucun RPS.
+  if (!prevue && nature !== 'travail') {
+    const vacation = horairesDuJour(date, cfg).duree;
+    const options = optionsRappel(nature, duree, vacation, cfg.type === 'hebdo');
+    // Sans choix (non tranché, ou stage sur plusieurs jours) : 150 % des heures.
+    const mode = choix?.mode ?? options.defaut ?? '150';
+    return {
+      duree, dureePrevue, hs: hsRappel(mode, duree, vacation, choix?.libre), manque: 0,
+      rps: 0, rpsDelta: 0, nature, ferie, rappel: { ...options, mode },
+    };
+  }
+
   const rps = Math.round(rpsReel(date, debut, duree, cfg) / 100);
   const habituel = prevue ? getRPSPourJour(date, cfg) : 0;
   return {

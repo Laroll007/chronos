@@ -4,7 +4,7 @@
 // d'ici. Ajouter une fonctionnalité à mesurer = ajouter une ligne ci-dessous,
 // puis appeler `track('<nom>')` à l'endroit voulu.
 
-export const STATS_EVENTS = {
+const EVENTS_BASE = {
   // Onboarding (entonnoir)
   onboarding_cycle_done: { label: 'Onboarding : cycle renseigné', group: 'Onboarding' },
   onboarding_done: { label: 'Onboarding : terminé', group: 'Onboarding' },
@@ -96,6 +96,40 @@ export const STATS_EVENTS = {
   transfert_invalide: { label: 'App Android : données reçues illisibles', group: 'Onboarding' },
   transfert_importe: { label: 'App Android : données récupérées', group: 'Onboarding' },
 } as const satisfies Record<string, { label: string; group: string }>;
+
+// Rappel sur un repos : barème à confirmer (cf. lib/journees.ts). Chaque saisie
+// est comptée par nature du repos, durée (4h ou moins / plus) et formule :
+// « gestt » = HS recopiées de GesTT (la preuve), classées par formule
+// correspondante ; « choix » = formule choisie dans l'app.
+type NatureRappel = 'rc' | 'rl';
+type DureeRappel = 'court' | 'long';
+type FormuleRappel = '100' | '150' | '200' | '1vac' | '2vac' | 'autre';
+type EvenementRappel = `rappel_${'gestt' | 'choix'}_${NatureRappel}_${DureeRappel}_${FormuleRappel}`;
+
+const LIBELLE_FORMULE: Record<FormuleRappel, string> = {
+  '100': '100 % des heures', '150': '150 % des heures', '200': '200 % des heures',
+  '1vac': '1 vacation', '2vac': '2 vacations', autre: 'autre valeur',
+};
+
+const EVENTS_RAPPEL = Object.fromEntries(
+  (['gestt', 'choix'] as const).flatMap((source) =>
+    (['rc', 'rl'] as const).flatMap((nature) =>
+      (['court', 'long'] as const).flatMap((duree) =>
+        (Object.keys(LIBELLE_FORMULE) as FormuleRappel[]).map((formule) => [
+          `rappel_${source}_${nature}_${duree}_${formule}`,
+          {
+            label: `${source === 'gestt' ? 'GesTT' : 'Choix'} · rappel ${nature.toUpperCase()} ${
+              duree === 'court' ? '≤ 4h' : '> 4h'
+            } → ${LIBELLE_FORMULE[formule]}`,
+            group: 'Rappels (barème à confirmer)',
+          },
+        ])
+      )
+    )
+  )
+) as Record<EvenementRappel, { label: string; group: string }>;
+
+export const STATS_EVENTS = { ...EVENTS_BASE, ...EVENTS_RAPPEL };
 
 export type StatsEvent = keyof typeof STATS_EVENTS;
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effetJournee, estFerie, joursFeries, natureDuJour } from '../journees';
+import { effetJournee, estFerie, formuleCorrespondante, joursFeries, natureDuJour } from '../journees';
 import { baremeRPSDepuisHoraires } from '../rps';
 import type { CycleConfig } from '../types';
 
@@ -32,19 +32,44 @@ describe('Jours fériés et nature du jour', () => {
   });
 });
 
-describe('Travail sur un repos (venue du pape : 12h30 → 02h00)', () => {
-  it('sur un RC (samedi) : 13h30 d’HS ; RPS 0,25 puis 0,60 sur le RL d’après minuit', () => {
-    const e = effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR);
-    expect(e.hs).toBe(h(13, 30));
-    // sam. 12h30–24h : 11h30 × 0,25 = 2h52,5 ; dim. 0h–2h (RL) : 2h × 0,60 = 1h12
-    expect(e.rps).toBe(245);
-    expect(e.rpsDelta).toBe(245);
+describe('Rappel sur un repos : HS selon le barème, aucun RPS', () => {
+  it('RL plus de 4h (12h30 → 02h00) : 2 vacations, pas de RPS', () => {
+    const e = effetJournee(DIMANCHE, 'horaires', h(12, 30), h(2), JOUR);
+    expect(e).toMatchObject({ duree: h(13, 30), hs: 2 * h(12, 8), rps: 0, rpsDelta: 0 });
+    expect(e.rappel).toMatchObject({ defaut: '2vac', long: true, mode: '2vac' });
   });
 
-  it('sur un RL (dimanche) : 0,60 l’emporte sur le 0,4 du dimanche, puis nuit 0,1 le lundi', () => {
-    const e = effetJournee(DIMANCHE, 'horaires', h(12, 30), h(2), JOUR);
-    // dim. 11h30 × 0,60 = 6h54 ; lun. 0h–2h hors vacation, jour travaillé : nuit 0,1 = 12 min
-    expect(e.rps).toBe(414 + 12);
+  it('RL 4h au plus : 1 vacation (4h pile compte comme « 4h au plus »)', () => {
+    expect(effetJournee(DIMANCHE, 'horaires', h(14), h(17), JOUR).hs).toBe(h(12, 8));
+    expect(effetJournee(DIMANCHE, 'horaires', h(14), h(18), JOUR).hs).toBe(h(12, 8));
+  });
+
+  it('RC 4h au plus : 150 % des heures', () => {
+    const e = effetJournee(SAMEDI, 'horaires', h(14), h(17), JOUR);
+    expect(e).toMatchObject({ hs: h(4, 30), rps: 0 });
+    expect(e.rappel?.defaut).toBe('150');
+  });
+
+  it('RC plus de 4h : non tranché, l’agent choisit (150 % ou 1 vacation) ou recopie GesTT', () => {
+    const sansChoix = effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR);
+    expect(sansChoix.rappel?.modes).toEqual(['150', '1vac']);
+    expect(sansChoix.rappel?.defaut).toBeUndefined();
+    expect(sansChoix.hs).toBe(h(20, 15)); // repli : 150 %
+    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: '1vac' }).hs).toBe(h(12, 8));
+    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: 'libre', libre: h(21) }).hs).toBe(h(21));
+  });
+
+  it('HS recopiées de GesTT : rattachées à la formule correspondante (stats)', () => {
+    expect(formuleCorrespondante(h(20, 15), h(13, 30), h(12, 8))).toBe('150');
+    expect(formuleCorrespondante(h(24, 16), h(13, 30), h(12, 8))).toBe('2vac');
+    expect(formuleCorrespondante(h(21), h(13, 30), h(12, 8))).toBe('autre');
+  });
+
+  it('régime hebdomadaire : 100 % par défaut (barème non confirmé), pas de RPS', () => {
+    const HEBDO: CycleConfig = { ...JOUR, type: 'hebdo' };
+    const e = effetJournee(DIMANCHE, 'horaires', h(9), h(15), HEBDO);
+    expect(e).toMatchObject({ hs: h(6), rps: 0 });
+    expect(e.rappel?.modes).toEqual(['100', '150', '200']);
   });
 });
 
@@ -86,9 +111,9 @@ describe('Stage', () => {
     expect(effetJournee(MERCREDI, 'stage', undefined, undefined, JOUR)).toMatchObject({ hs: 0, rps: 0, rpsDelta: 0 });
   });
 
-  it('sur un repos (RC) 08h00–17h00 : rappel → 9h d’HS et RPS 0,25', () => {
+  it('sur un repos (RC) 08h00–17h00 : rappel, sans RPS (plus de 4h : 150 % par défaut)', () => {
     const e = effetJournee(SAMEDI, 'stage', h(8), h(17), JOUR);
-    expect(e).toMatchObject({ hs: h(9), rps: 135 });
+    expect(e).toMatchObject({ hs: h(13, 30), rps: 0 });
   });
 });
 
@@ -99,7 +124,8 @@ import { STORAGE_KEY } from '../constants';
 import { DEFAULT_COUNTERS } from '../storage';
 import type { UserData } from '../types';
 
-vi.mock('../analytics', () => ({ track: vi.fn(), trackError: vi.fn() }));
+const track = vi.fn();
+vi.mock('../analytics', () => ({ track: (e: string) => track(e), trackError: vi.fn() }));
 const { useCounters } = await import('@/hooks/useCounters');
 
 describe('Journées modifiées : crédit et annulation', () => {
@@ -122,21 +148,32 @@ describe('Journées modifiées : crédit et annulation', () => {
   });
   const stored = () => JSON.parse(store.get(STORAGE_KEY)!) as UserData;
 
-  it('venue du pape sur un RC : +13h30 HS et +4h05 RPS, puis annulation exacte', async () => {
+  it('rappel sur un RL recopié de GesTT : +21h d’HS, aucun RPS, statistique, puis annulation exacte', async () => {
     const { result } = renderHook(() => useCounters());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     let res: { hs: number; rps: number } | null = null;
-    act(() => { res = result.current.enregistrerJoursModifies([{ date: '2026-10-03', type: 'horaires', debut: h(12, 30), fin: h(2) }]); });
-    expect(res).toEqual({ hs: h(13, 30), rps: 245 });
-    expect(stored().counters).toMatchObject({ hs: h(23, 30), rps: h(20) + 245 });
+    act(() => {
+      res = result.current.enregistrerJoursModifies([
+        { date: '2026-10-04', type: 'horaires', debut: h(12, 30), fin: h(2), choix: { mode: 'libre', libre: h(21) } },
+      ]);
+    });
+    expect(res).toEqual({ hs: h(21), rps: 0 });
+    expect(stored().counters).toMatchObject({ hs: h(31), rps: h(20) });
+    expect(stored().joursModifies?.[0]).toMatchObject({ compensation: 'libre', hsLibre: h(21) });
+    expect(track).toHaveBeenCalledWith('rappel_gestt_rl_long_autre');
 
-    // Corrigée (fin à minuit) : l'ancien crédit est retiré avant le nouveau
-    act(() => { result.current.enregistrerJoursModifies([{ date: '2026-10-03', type: 'horaires', debut: h(12, 30), fin: 0 }]); });
+    // Corrigé (règle : 2 vacations) : l'ancien crédit est retiré avant le nouveau
+    act(() => {
+      result.current.enregistrerJoursModifies([
+        { date: '2026-10-04', type: 'horaires', debut: h(12, 30), fin: h(2), choix: { mode: '2vac' } },
+      ]);
+    });
     expect(stored().joursModifies).toHaveLength(1);
-    expect(stored().counters.hs).toBe(h(10) + h(11, 30));
+    expect(stored().counters.hs).toBe(h(10) + 2 * h(12, 8));
+    expect(track).toHaveBeenCalledWith('rappel_choix_rl_long_2vac');
 
-    act(() => { result.current.supprimerJourModifie('2026-10-03'); });
+    act(() => { result.current.supprimerJourModifie('2026-10-04'); });
     expect(stored().counters).toMatchObject({ hs: h(10), rps: h(20) });
     expect(stored().joursModifies).toEqual([]);
   });

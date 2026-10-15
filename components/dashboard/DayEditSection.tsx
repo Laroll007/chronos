@@ -4,12 +4,15 @@ import { useMemo, useState } from 'react';
 import { GraduationCap, PencilLine, Undo2 } from 'lucide-react';
 import type { CycleConfig, JourModifie } from '@/lib/types';
 import { horairesDuJour } from '@/lib/horaires';
-import { effetJournee, heureDebutHabituelle, joursModifiesEntre, vacationPrevue, type EffetJournee } from '@/lib/journees';
+import {
+  effetJournee, heureDebutHabituelle, hsRappel, joursModifiesEntre, vacationPrevue,
+  type ChoixRappel, type CompensationRappel, type EffetJournee,
+} from '@/lib/journees';
 import { formatMinutes, isWorkingDay } from '@/lib/calculations';
 import { fromDayKey, toDayKey } from '@/lib/events';
 import { TimeSelect } from '@/components/shared/TimeSelect';
 
-type Saisie = { date: string; type: JourModifie['type']; debut?: number; fin?: number };
+type Saisie = { date: string; type: JourModifie['type']; debut?: number; fin?: number; choix?: ChoixRappel };
 
 interface DayEditSectionProps {
   start: Date;
@@ -70,6 +73,77 @@ function Horaires({
   );
 }
 
+const LIBELLE_RAPPEL: Record<CompensationRappel, string> = {
+  '100': '100 % des heures',
+  '150': '150 % des heures',
+  '200': '200 % des heures',
+  '1vac': '1 vacation',
+  '2vac': '2 vacations',
+  libre: 'Selon GesTT : je saisis mes HS',
+};
+
+/**
+ * Rappel sur un repos : formule de compensation. La règle confirmée est
+ * présélectionnée ; quand elle n'est pas tranchée (RC de plus de 4h), l'agent
+ * choisit ; il peut toujours recopier les HS de GesTT (statistique anonyme qui
+ * sert à confirmer le barème).
+ */
+function CompensationRappelChoix({
+  e, mode, libre, onMode, onLibre,
+}: {
+  e: EffetJournee;
+  mode: CompensationRappel | undefined;
+  libre: number;
+  onMode: (m: CompensationRappel) => void;
+  onLibre: (minutes: number) => void;
+}) {
+  const r = e.rappel!;
+  const choix = [...r.modes, 'libre' as const];
+  return (
+    <fieldset className="rounded-lg bg-white border border-sky-100 p-3 space-y-2">
+      <legend className="px-1 text-xs font-semibold text-slate-700">Compensation du rappel</legend>
+      <p className="text-xs text-slate-600">
+        Travail sur un {e.nature === 'RL' ? 'repos légal' : 'repos compensateur'} : c’est un rappel, crédité
+        en HS, <strong>sans RPS</strong>.
+        {!r.defaut && ' Barème non confirmé pour plus de 4h sur un RC : choisissez ce que GesTT vous crédite.'}
+      </p>
+      {choix.map((m) => (
+        <label key={m} className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+          <input type="radio" name="compensation-rappel" checked={mode === m} onChange={() => onMode(m)} />
+          <span className="flex-1">
+            {LIBELLE_RAPPEL[m]}
+            {m === r.defaut && <span className="ml-1 text-xs text-emerald-700">(règle)</span>}
+          </span>
+          {m !== 'libre' && (
+            <span className="text-xs font-semibold text-slate-600">+{formatMinutes(hsRappel(m, e.duree, r.vacation))}</span>
+          )}
+        </label>
+      ))}
+      {mode === 'libre' && (
+        <div className="flex items-center gap-2 pl-6">
+          <input
+            type="number" min={0} max={99} inputMode="numeric" aria-label="HS créditées — heures"
+            value={Math.floor(libre / 60) || ''} placeholder="0"
+            onChange={(ev) => onLibre((parseInt(ev.target.value) || 0) * 60 + (libre % 60))}
+            className="w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-center"
+          />
+          <span className="text-xs text-slate-500">h</span>
+          <input
+            type="number" min={0} max={59} inputMode="numeric" aria-label="HS créditées — minutes"
+            value={libre % 60 || ''} placeholder="0"
+            onChange={(ev) => onLibre(Math.floor(libre / 60) * 60 + Math.min(59, parseInt(ev.target.value) || 0))}
+            className="w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-center"
+          />
+          <span className="text-xs text-slate-500">min</span>
+        </div>
+      )}
+      <p className="text-[11px] text-slate-500">
+        Votre choix est compté anonymement : il nous aide à confirmer le barème appliqué par GesTT.
+      </p>
+    </fieldset>
+  );
+}
+
 function Apercu({ e, fin, debut }: { e: EffetJournee; debut: number; fin: number }) {
   return (
     <div className="rounded-lg bg-white border border-sky-100 p-3 text-xs text-slate-700 space-y-1">
@@ -79,7 +153,7 @@ function Apercu({ e, fin, debut }: { e: EffetJournee; debut: number; fin: number
       </p>
       <p>
         HS : <strong>{e.hs > 0 ? `+${formatMinutes(e.hs)}` : 'aucune'}</strong>
-        {' · '}RPS : <strong>{e.rpsDelta !== 0 ? signe(e.rpsDelta) : 'inchangés'}</strong>
+        {' · '}RPS : <strong>{e.rappel ? 'aucun (rappel)' : e.rpsDelta !== 0 ? signe(e.rpsDelta) : 'inchangés'}</strong>
       </p>
       {e.manque > 0 && (
         <p className="text-amber-700">
@@ -114,14 +188,28 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
     existant?.fin ?? (habituelle ? (habituelle.debut + habituelle.duree) % (24 * 60) : 17 * 60)
   );
   const horairesInconnus = cycleConfig.type !== 'hebdo' && cycleConfig.heureDebut === undefined;
+  // Rappel sur un repos (un seul jour) : formule choisie et HS saisies d'après GesTT.
+  const [modeRappel, setModeRappel] = useState<CompensationRappel | undefined>(existant?.compensation);
+  const [hsLibre, setHsLibre] = useState(existant?.hsLibre ?? 0);
 
   // Stage sur plusieurs jours : seuls les repos ont besoin d'horaires (rappel).
   const repos = jours.filter((d) => !isWorkingDay(d, cycleConfig));
   const besoinHoraires = mode === 'horaires' || (mode === 'stage' && (unJour ? !travaille : repos.length > 0));
 
+  // Formule proposée selon la durée (≤ 4h / > 4h) : un choix devenu impossible
+  // (durée modifiée) retombe sur la règle.
+  const rappelSansChoix = unJour ? effetJournee(start, mode, debut, fin, cycleConfig).rappel : undefined;
+  const choixRappel: ChoixRappel | undefined = (() => {
+    if (!rappelSansChoix) return undefined;
+    const m = modeRappel === 'libre' || (modeRappel && rappelSansChoix.modes.includes(modeRappel)) ? modeRappel : rappelSansChoix.defaut;
+    return m ? { mode: m, ...(m === 'libre' && { libre: hsLibre }) } : undefined;
+  })();
+  const choixManquant = !!rappelSansChoix && !choixRappel;
+
   const apercus = useMemo(
-    () => jours.map((d) => effetJournee(d, mode, debut, fin, cycleConfig)),
-    [jours, mode, debut, fin, cycleConfig]
+    () => jours.map((d) => effetJournee(d, mode, debut, fin, cycleConfig, unJour ? choixRappel : undefined)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- choixRappel dérive de modeRappel / hsLibre
+    [jours, mode, debut, fin, cycleConfig, unJour, modeRappel, hsLibre]
   );
   const total = apercus.reduce((t, e) => ({ hs: t.hs + e.hs, rps: t.rps + e.rpsDelta }), { hs: 0, rps: 0 });
 
@@ -131,7 +219,7 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
       const surRepos = !isWorkingDay(d, cycleConfig);
       return mode === 'stage' && !surRepos
         ? { date, type: 'stage' }
-        : { date, type: mode, debut, fin };
+        : { date, type: mode, debut, fin, ...(unJour && choixRappel && { choix: choixRappel }) };
     });
     if (onSave(saisies)) setOuvert(false);
   };
@@ -200,7 +288,7 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
               {unJour
                 ? travaille
                   ? 'Le stage remplace votre vacation : journée de travail habituelle, sans effet sur vos compteurs.'
-                  : 'Stage sur un jour de repos : c’est un rappel, la durée du stage est créditée en HS.'
+                  : 'Stage sur un jour de repos : c’est un rappel, compensé en HS (sans RPS).'
                 : `${jours.length - repos.length} jour(s) travaillé(s) remplacé(s) par le stage, sans effet.`
                   + (repos.length > 0 ? ` ${repos.length} jour(s) de repos : rappel, horaires du stage crédités en HS.` : '')}
             </p>
@@ -222,6 +310,15 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
             <>
               {!unJour && <p className="text-xs font-medium text-slate-700">Horaires du stage les jours de repos</p>}
               <Horaires debut={debut} fin={fin} onDebut={setDebut} onFin={setFin} idPrefix="jour" />
+              {unJour && apercus[0]!.rappel && (
+                <CompensationRappelChoix
+                  e={apercus[0]!}
+                  mode={choixRappel?.mode}
+                  libre={hsLibre}
+                  onMode={setModeRappel}
+                  onLibre={setHsLibre}
+                />
+              )}
               {unJour ? (
                 <Apercu e={apercus[0]!} debut={debut} fin={fin} />
               ) : (
@@ -233,10 +330,14 @@ export function DayEditSection({ start, end, cycleConfig, joursModifies, onSave,
           )}
 
           <div className="flex justify-end">
+            {choixManquant && (
+              <p className="mr-3 self-center text-xs text-amber-700">Choisissez la compensation du rappel.</p>
+            )}
             <button
               type="button"
               onClick={enregistrer}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-sky-600 hover:bg-sky-700"
+              disabled={choixManquant}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50"
             >
               Enregistrer
             </button>

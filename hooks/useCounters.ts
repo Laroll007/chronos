@@ -17,7 +17,7 @@ import { minutesPourJoursCET, planEpargneCET } from '@/lib/cet';
 import { compteursAnneeSuivante } from '@/lib/previsionnel';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
-import { effetJournee, sanitizeJoursModifies } from '@/lib/journees';
+import { effetJournee, formuleCorrespondante, sanitizeJoursModifies, type ChoixRappel } from '@/lib/journees';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 /**
@@ -179,7 +179,7 @@ export function useCounters() {
   // continue de passer par computeRPSCredit : seul l'ÉCART est ajouté ici.
 
   const enregistrerJoursModifies = useCallback(
-    (saisies: { date: string; type: JourModifie['type']; debut?: number; fin?: number }[]) => {
+    (saisies: { date: string; type: JourModifie['type']; debut?: number; fin?: number; choix?: ChoixRappel }[]) => {
       const current = userDataRef.current;
       if (!current || saisies.length === 0) return null;
       const dates = new Set(saisies.map((s) => s.date));
@@ -189,9 +189,15 @@ export function useCounters() {
       let hsAjoutees = 0;
       let rpsAjoutes = 0;
       const nouveaux: JourModifie[] = saisies.map((s) => {
-        const e = effetJournee(fromDayKey(s.date), s.type, s.debut, s.fin, current.cycleConfig);
+        const e = effetJournee(fromDayKey(s.date), s.type, s.debut, s.fin, current.cycleConfig, s.choix);
         hsAjoutees += e.hs;
         rpsAjoutes += e.rpsDelta;
+        // Rappel : formule retenue, comptée dans les stats pour confirmer le barème.
+        if (e.rappel && s.choix) {
+          const libre = s.choix.mode === 'libre';
+          const formule = libre ? formuleCorrespondante(e.hs, e.duree, e.rappel.vacation) : e.rappel.mode;
+          track(`rappel_${libre ? 'gestt' : 'choix'}_${e.nature === 'RL' ? 'rl' : 'rc'}_${e.rappel.long ? 'long' : 'court'}_${formule as Exclude<typeof formule, 'libre'>}`);
+        }
         return {
           id: generateId(),
           date: s.date,
@@ -200,6 +206,8 @@ export function useCounters() {
           ...(s.fin !== undefined && { fin: s.fin }),
           hsCredite: e.hs,
           rpsCredite: e.rpsDelta,
+          ...(e.rappel && { compensation: e.rappel.mode }),
+          ...(e.rappel?.mode === 'libre' && { hsLibre: e.hs }),
         };
       });
       hs += hsAjoutees;
