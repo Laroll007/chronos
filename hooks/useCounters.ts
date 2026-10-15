@@ -17,6 +17,7 @@ import { minutesPourJoursCET, planEpargneCET } from '@/lib/cet';
 import { compteursAnneeSuivante } from '@/lib/previsionnel';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
+import { annulerChangement, appliquerChangement, type ParamsChangement } from '@/lib/changementCycle';
 import { effetJournee, formuleCorrespondante, sanitizeJoursModifies, type ChoixRappel } from '@/lib/journees';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
@@ -336,6 +337,28 @@ export function useCounters() {
     },
     [userData, save]
   );
+
+  // Changement de cycle en cours d'année (mutation) : ancien cycle conservé
+  // jusqu'à son dernier jour, droits de l'année au prorata, RPS recrédités.
+  const changerDeCycle = useCallback(
+    (p: ParamsChangement): { ok: true } | { erreur: string } => {
+      const current = userDataRef.current;
+      if (!current) return { erreur: 'Données non chargées' };
+      const r = appliquerChangement(current.cycleConfig, current.counters, current.history, p);
+      if ('erreur' in r) return r;
+      const ok = save({ ...current, cycleConfig: r.config, counters: r.counters, lastUpdated: new Date().toISOString() });
+      return ok ? { ok: true } : { erreur: 'Enregistrement impossible' };
+    },
+    [save]
+  );
+
+  const annulerChangementCycle = useCallback(() => {
+    const current = userDataRef.current;
+    if (!current) return false;
+    const r = annulerChangement(current.cycleConfig, current.counters);
+    if (!r) return false;
+    return save({ ...current, cycleConfig: r.config, counters: r.counters, lastUpdated: new Date().toISOString() });
+  }, [save]);
 
   // Poser un congé
   const poseConge = useCallback(
@@ -870,6 +893,8 @@ export function useCounters() {
     initialize,
     updateCounters,
     updateCycle,
+    changerDeCycle,
+    annulerChangementCycle,
     poseConge,
     posePartiel,
     poseCMO,

@@ -58,6 +58,35 @@ export interface CycleConfig {
   // Horaires qui changent au fil des cycles (soirée / matinée…). Absent = les
   // horaires ci-dessus valent tous les jours. Cf. lib/horaires.ts.
   horairesRotation?: RotationHoraires;
+  // ─── Changement de cycle en cours de route (mutation, changement de service) ──
+  // Premier jour du cycle actuel ('YYYY-MM-DD'). Absent = depuis toujours.
+  appliqueDepuis?: string;
+  // Cycles suivis avant, du plus ancien au plus récent. Cf. lib/cycleDuJour.ts.
+  cyclesAnterieurs?: CycleAnterieur[];
+  // Droits de l'année du changement, au prorata des cycles suivis (remplacent
+  // les quotas du cycle cette année-là). Cf. lib/changementCycle.ts.
+  droitsAnnee?: DroitsAnnee;
+}
+
+/** Cycle sans son historique (un cycle « à plat »). */
+export type CycleSimple = Omit<CycleConfig, 'appliqueDepuis' | 'cyclesAnterieurs' | 'droitsAnnee'>;
+
+/** Compteurs à dotation annuelle, proratisés lors d'un changement de cycle. */
+export type CompteurDote = 'ca' | 'cf' | 'rtc' | 'artt' | 'rtt';
+
+export interface DroitsAnnee extends Partial<Record<CompteurDote, number>> {
+  annee: number;
+}
+
+/** Cycle suivi avant un changement : du `debut` (absent = depuis toujours) au `fin`, inclus. */
+export interface CycleAnterieur {
+  debut?: string;
+  fin: string;
+  config: CycleSimple;
+  /** Droits de l'année tels qu'ils étaient avant le changement (pour l'annuler). */
+  droitsAvant?: DroitsAnnee;
+  /** Écarts appliqués aux compteurs lors du changement (pour l'annuler à l'identique). */
+  ajustements?: Partial<Record<CompteurDote | 'rps', number>>;
 }
 
 /** Un jeu d'horaires de vacation (minutes après minuit, durée en minutes). */

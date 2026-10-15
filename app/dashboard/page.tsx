@@ -66,7 +66,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig, PersonalEvent } from '@/lib/types';
-import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getCATotalForCycle, getWeeklyMinutes, formatMinutes, clearCalculationCaches, getPartialMinutesOnDate } from '@/lib/calculations';
+import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getWeeklyMinutes, formatMinutes, clearCalculationCaches, getPartialMinutesOnDate } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -75,6 +75,7 @@ import { toast } from 'sonner';
 import { track, setStatsProfile } from '@/lib/analytics';
 import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
 import { isNativeApp, plateformeNative } from '@/lib/api';
+import { droitsAnnee, type ParamsChangement } from '@/lib/changementCycle';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
@@ -177,6 +178,8 @@ export default function DashboardPage() {
     events,
     joursModifies,
     enregistrerJoursModifies,
+    changerDeCycle,
+    annulerChangementCycle,
     supprimerJourModifie,
     addEvent,
     updateEvent,
@@ -334,6 +337,26 @@ export default function DashboardPage() {
   // Changement de cycle : les compteurs et l'historique sont conservés, seul le
   // calendrier est recalculé. On purge les caches de `calculations`, dont les clés
   // ne couvrent pas tous les champs du cycle (ni `type`, ni `heuresSemaine`).
+  // Changement de cycle en cours d'année (mutation) et son annulation.
+  const handleChangerCycle = useCallback((p: ParamsChangement) => {
+    const r = changerDeCycle(p);
+    if ('ok' in r) {
+      track('cycle_mutation');
+      clearCalculationCaches();
+      setCalendarResetTrigger((prev) => prev + 1);
+    }
+    return r;
+  }, [changerDeCycle]);
+  const handleAnnulerChangementCycle = useCallback(() => {
+    const ok = annulerChangementCycle();
+    if (ok) {
+      track('cycle_mutation_annulee');
+      clearCalculationCaches();
+      setCalendarResetTrigger((prev) => prev + 1);
+    }
+    return ok;
+  }, [annulerChangementCycle]);
+
   const handleUpdateCycle = useCallback((config: Partial<CycleConfig>) => {
     const ok = updateCycle(config);
     if (ok) {
@@ -840,7 +863,7 @@ export default function DashboardPage() {
           counters={counters}
           recommendations={recommendations}
           onUpdateCounters={handleUpdateCounters}
-          caTotal={getCATotalForCycle(cycleConfig)}
+          caTotal={droitsAnnee(cycleConfig, counters, 'ca')}
           dayMinutes={cycleConfig?.heuresParJour || HEURES_PAR_JOUR}
           cycleConfig={cycleConfig}
           onUpdateCycle={handleUpdateCycle}
@@ -873,6 +896,8 @@ export default function DashboardPage() {
               onReset={reset}
               onShowWelcome={() => { setShowSettings(false); setShowWelcome(true); track('welcome_reopen'); }}
               onUpdateCycle={handleUpdateCycle}
+              onChangerCycle={handleChangerCycle}
+              onAnnulerChangementCycle={handleAnnulerChangementCycle}
               openCycleOnMount={settingsOpenCycle}
             />
           </Suspense>

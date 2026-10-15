@@ -2,11 +2,12 @@
 // puis 1 cycle de matinée 06h30-18h38). Sans rotation, les horaires du cycle
 // (heureDebut + heuresParJour) valent pour tous les jours.
 //
-// Module autonome (pas d'import du moteur de cycle) : `calculations`, `rps` et
+// Module autonome (pas d'import du moteur de cycle ; seul `cycleDuJour`, sans dépendance) : `calculations`, `rps` et
 // `journees` s'en servent tous.
 
 import type { CycleConfig, JeuHoraires, RotationHoraires } from './types';
 import { HEURES_PAR_JOUR } from './constants';
+import { cycleDuJour } from './cycleDuJour';
 
 const JOUR_MS = 86_400_000;
 
@@ -45,7 +46,9 @@ export interface HorairesJour {
 }
 
 /** Horaires prévus ce jour-là, selon la rotation s'il y en a une. */
-export function horairesDuJour(date: Date, cfg: CycleConfig): HorairesJour {
+export function horairesDuJour(date: Date, cfgIn: CycleConfig): HorairesJour {
+  // Changement de cycle : horaires du cycle en vigueur ce jour-là.
+  const cfg = cycleDuJour(date, cfgIn) ?? cfgIn;
   const r = cfg.type === 'alterne' ? cfg.horairesRotation : undefined;
   if (rotationValide(r)) {
     const jeu: JeuHoraires = r.jeux[r.sequence[rangDansRotation(date, r)]];

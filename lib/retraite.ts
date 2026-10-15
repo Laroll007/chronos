@@ -31,7 +31,7 @@ import {
   CET_SEUIL_OPTION,
   HEURES_PAR_JOUR,
 } from './constants';
-import { getCATotalForCycle, getJourMinutes, getRTCAnnuel, isWorkingDay } from './calculations';
+import { arrondirDotation, getCATotalForCycle, getJourMinutes, getRTCAnnuel, isWorkingDay } from './calculations';
 import { isDayBasedType } from './optimization';
 import { computeRPSCredit, toISODay } from './rps';
 
@@ -130,17 +130,9 @@ export function getProrataAnnee(dateRetraite: Date): number {
   return Math.max(0, Math.min(1, servis / total));
 }
 
-/**
- * Arrondi APORTT des dotations non entières : au demi-jour le plus proche selon
- * la décimale (< 0,25 en dessous ; 0,25–0,74 au demi ; ≥ 0,75 au dessus).
- */
-export function arrondirDotation(jours: number): number {
-  const entier = Math.floor(jours);
-  const dec = jours - entier;
-  if (dec < 0.25) return entier;
-  if (dec < 0.75) return entier + 0.5;
-  return entier + 1;
-}
+// Arrondi APORTT des dotations : défini dans calculations (partagé avec le
+// changement de cycle), réexporté ici pour les appels existants.
+export { arrondirDotation };
 
 interface Dotation {
   jours: Partial<Record<CounterType, number>>;

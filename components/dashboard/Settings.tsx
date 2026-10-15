@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { APP_VERSION } from '@/lib/constants';
 import { CycleConfig, Counters, HistoryEntry } from '@/lib/types';
+import type { ParamsChangement } from '@/lib/changementCycle';
+import { ChangementCycle } from './ChangementCycle';
 import { downloadExport, importData, resetAllData } from '@/lib/storage';
 import { isStatsEnabled, setStatsEnabled, track } from '@/lib/analytics';
 import { ouvrirCommunaute } from '@/lib/communaute';
@@ -53,10 +55,6 @@ const WorkedDaysCalculator = lazy(() =>
 );
 
 // Réutilise l'écran d'onboarding, qui accepte déjà un `initialConfig`.
-const CycleSetup = lazy(() =>
-  import('@/components/onboarding/CycleSetup').then((m) => ({ default: m.CycleSetup }))
-);
-
 const RetraiteCalculator = lazy(() =>
   import('@/components/dashboard/RetraiteCalculator').then((m) => ({ default: m.RetraiteCalculator }))
 );
@@ -122,6 +120,9 @@ interface SettingsProps {
   onUpdateCycle?: (config: CycleConfig) => boolean;
   /** Ouvre directement « Modifier mon cycle » (raccourci des nouveautés). */
   openCycleOnMount?: boolean;
+  /** Changement de cycle en cours d'année (mutation). */
+  onChangerCycle?: (p: ParamsChangement) => { ok: true } | { erreur: string };
+  onAnnulerChangementCycle?: () => boolean;
 }
 
 export function Settings({
@@ -132,6 +133,8 @@ export function Settings({
   onShowWelcome,
   onUpdateCycle,
   openCycleOnMount = false,
+  onChangerCycle,
+  onAnnulerChangementCycle,
 }: SettingsProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -451,30 +454,38 @@ export function Settings({
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain p-4 bg-[#f8f9fc]">
-              <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-amber-50 border border-amber-200">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800">
-                  Changer de cycle modifie les jours travaillés du calendrier, <strong>y compris
-                  dans le passé</strong>. Vos congés déjà posés restent enregistrés, mais certains
-                  peuvent tomber sur des jours devenus des repos : vérifiez-les ensuite.
-                </p>
-              </div>
-              <Suspense fallback={<div className="flex justify-center py-8 text-sm text-slate-500">Chargement…</div>}>
-                <CycleSetup
-                  initialConfig={cycleConfig}
-                  onNext={(config) => {
-                    const ok = onUpdateCycle(config);
-                    if (ok) {
-                      toast.success('Cycle mis à jour', {
-                        description: 'Le calendrier a été recalculé. Vos compteurs et congés sont inchangés.',
-                      });
-                      setShowCycle(false);
-                    } else {
-                      toast.error('Impossible d\'enregistrer le nouveau cycle');
-                    }
-                  }}
-                />
-              </Suspense>
+              <ChangementCycle
+                cycleConfig={cycleConfig}
+                counters={counters}
+                history={history}
+                onCorriger={(config) => {
+                  if (onUpdateCycle(config)) {
+                    toast.success('Cycle mis à jour', {
+                      description: 'Le calendrier a été recalculé. Vos compteurs et congés sont inchangés.',
+                    });
+                    setShowCycle(false);
+                  } else {
+                    toast.error('Impossible d\'enregistrer le nouveau cycle');
+                  }
+                }}
+                onChanger={(p) => {
+                  const r = onChangerCycle?.(p);
+                  if (r && 'ok' in r) {
+                    toast.success('Changement de cycle enregistré', {
+                      description: 'Planning, droits de l’année et RPS recalculés.',
+                    });
+                    setShowCycle(false);
+                  } else {
+                    toast.error(r?.erreur ?? 'Impossible d\'enregistrer le changement');
+                  }
+                }}
+                onAnnuler={() => {
+                  if (onAnnulerChangementCycle?.()) {
+                    toast.success('Changement de cycle annulé', { description: 'Votre ancien cycle et vos compteurs sont rétablis.' });
+                    setShowCycle(false);
+                  }
+                }}
+              />
             </div>
           </DialogContent>
         </Dialog>

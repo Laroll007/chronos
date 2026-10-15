@@ -1,5 +1,6 @@
 'use client';
 
+import { droitsAnnee } from '@/lib/changementCycle';
 import { useMemo, useState } from 'react';
 import { CounterDetailsModal } from './CounterDetailsModal';
 import { CounterCard } from './CounterCard';
@@ -138,7 +139,8 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         id: 'rtc',
         label: 'RTC',
         value: counters.rtc,
-        max: getRTCAnnuel(cycleConfig),
+        // Droits de l'année (au prorata l'année d'un changement de cycle)
+        max: cycleConfig ? droitsAnnee(cycleConfig, counters, 'rtc') : getRTCAnnuel(cycleConfig),
         unit: 'heures',
         deadline: new Date(year, 11, 31),
         status: getStatus(daysUntilYear, counters.rtc > 0),

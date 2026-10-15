@@ -131,6 +131,26 @@ function checkCycleConfig(v: unknown): string[] {
   checkWeekSchedule(v.semaineA).forEach(e => errors.push('semaineA.' + e));
   if (v.semaineB !== undefined)
     checkWeekSchedule(v.semaineB).forEach(e => errors.push('semaineB.' + e));
+  // Changement de cycle en cours de route (cf. lib/cycleDuJour.ts)
+  if (v.appliqueDepuis !== undefined && (!isStr(v.appliqueDepuis) || !DATE_RE.test(v.appliqueDepuis as string)))
+    errors.push('appliqueDepuis: YYYY-MM-DD attendu');
+  if (v.cyclesAnterieurs !== undefined) {
+    if (!Array.isArray(v.cyclesAnterieurs)) {
+      errors.push('cyclesAnterieurs: tableau attendu');
+    } else {
+      (v.cyclesAnterieurs as unknown[]).forEach((a, i) => {
+        if (!isObj(a) || !isStr(a.fin) || !DATE_RE.test(a.fin as string)) {
+          errors.push(`cyclesAnterieurs[${i}].fin: YYYY-MM-DD attendu`);
+          return;
+        }
+        if (a.debut !== undefined && (!isStr(a.debut) || !DATE_RE.test(a.debut as string)))
+          errors.push(`cyclesAnterieurs[${i}].debut: YYYY-MM-DD attendu`);
+        checkCycleConfig(a.config).forEach(e => errors.push(`cyclesAnterieurs[${i}].` + e));
+      });
+    }
+  }
+  if (v.droitsAnnee !== undefined && (!isObj(v.droitsAnnee) || !isNum(v.droitsAnnee.annee, 2000, 2200)))
+    errors.push('droitsAnnee: { annee } attendu');
   return errors;
 }
 

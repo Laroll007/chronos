@@ -1,5 +1,6 @@
 // Fonctions de calcul pour Chronos
 
+import { cycleDuJour } from './cycleDuJour';
 import {
   CycleConfig,
   Counters,
@@ -145,7 +146,9 @@ export function clearCalculationCaches(): void {
  * Détermine si une date est en semaine A ou B
  * PERF-006: Utilise un cache Map pour éviter les recalculs
  */
-export function getWeekType(date: Date, cycleConfig: CycleConfig): WeekType {
+export function getWeekType(date: Date, cycleConfigIn: CycleConfig): WeekType {
+  // Changement de cycle : semaines A/B du cycle en vigueur ce jour-là.
+  const cycleConfig = cycleDuJour(date, cycleConfigIn) ?? cycleConfigIn;
   // Utiliser la date locale, pas UTC
   const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const configHash = getCycleConfigHash(cycleConfig);
@@ -213,7 +216,12 @@ export function positionDansRotation(date: Date, cycleConfig: CycleConfig, rotat
  * Vérifie si un jour donné est travaillé selon le cycle
  * PERF-007: Utilise un cache Map pour éviter les recalculs
  */
-export function isWorkingDay(date: Date, cycleConfig: CycleConfig): boolean {
+export function isWorkingDay(date: Date, cycleConfigIn: CycleConfig): boolean {
+  // Changement de cycle : le cycle en vigueur ce jour-là ; entre deux cycles
+  // (jours de mutation), aucun jour travaillé.
+  const cycleConfig = cycleDuJour(date, cycleConfigIn);
+  if (!cycleConfig) return false;
+
   // Utiliser la date locale, pas UTC
   const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const configHash = getWorkingDayConfigHash(cycleConfig);
@@ -401,6 +409,18 @@ export function getRTCAnnuel(cycleConfig: CycleConfig | undefined): number {
   return (cycleConfig.heuresParJour || HEURES_PAR_JOUR) <= SEUIL_VACATION_12H08
     ? RTC_DOTATION.cycle11h08
     : RTC_DOTATION.cycle12h08;
+}
+
+/**
+ * Arrondi APORTT des dotations non entières : au demi-jour le plus proche selon
+ * la décimale (< 0,25 en dessous ; 0,25–0,74 au demi ; ≥ 0,75 au dessus).
+ */
+export function arrondirDotation(jours: number): number {
+  const entier = Math.floor(jours);
+  const dec = jours - entier;
+  if (dec < 0.25) return entier;
+  if (dec < 0.75) return entier + 0.5;
+  return entier + 1;
 }
 
 export function getCAParCycle(pattern?: CyclePattern): number {

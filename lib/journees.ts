@@ -22,6 +22,7 @@ import type { CycleConfig, JourModifie } from './types';
 import { isWorkingDay } from './calculations';
 import { getRPSPourJour } from './rps';
 import { horairesDuJour } from './horaires';
+import { cycleDuJour } from './cycleDuJour';
 import { fromDayKey, toDayKey } from './events';
 import { HEURES_PAR_JOUR } from './constants';
 
@@ -59,7 +60,9 @@ function coefRepos(date: Date, cfg: CycleConfig): number {
  * (barème RPS en semaine), 07h00 sinon. Sans ça, les heures de nuit d'un agent
  * de nuit tombaient « hors vacation » et prenaient à tort le bonus RC/RL.
  */
-export function heureDebutHabituelle(cfg: CycleConfig, date?: Date): number {
+export function heureDebutHabituelle(cfgIn: CycleConfig, date?: Date): number {
+  // Changement de cycle : cycle en vigueur ce jour-là.
+  const cfg = date ? cycleDuJour(date, cfgIn) ?? cfgIn : cfgIn;
   // Horaires en rotation : ceux du jour concerné.
   if (date) {
     const h = horairesDuJour(date, cfg).heureDebut;

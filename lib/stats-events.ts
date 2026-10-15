@@ -64,6 +64,8 @@ const EVENTS_BASE = {
 
   // Outils
   cycle_change: { label: 'Change de cycle', group: 'Outils' },
+  cycle_mutation: { label: 'Changement de cycle en cours d’année (mutation)', group: 'Outils' },
+  cycle_mutation_annulee: { label: 'Annule son changement de cycle', group: 'Outils' },
   tool_worked_days: { label: 'Calcul jours travaillés', group: 'Outils' },
   tool_retraite: { label: 'Simulateur retraite', group: 'Outils' },
   backup_export: { label: 'Export sauvegarde', group: 'Outils' },
