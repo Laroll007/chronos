@@ -78,6 +78,7 @@ const LIBELLE_RAPPEL: Record<CompensationRappel, string> = {
   '150': '150 % des heures',
   '200': '200 % des heures',
   '1vac': '1 vacation',
+  '150vac': '1,5 vacation (150 % de la vacation)',
   '2vac': '2 vacations',
   libre: 'Selon GesTT : je saisis mes HS',
 };

@@ -103,12 +103,12 @@ const EVENTS_BASE = {
 // correspondante ; « choix » = formule choisie dans l'app.
 type NatureRappel = 'rc' | 'rl';
 type DureeRappel = 'court' | 'long';
-type FormuleRappel = '100' | '150' | '200' | '1vac' | '2vac' | 'autre';
+type FormuleRappel = '100' | '150' | '200' | '1vac' | '150vac' | '2vac' | 'autre';
 type EvenementRappel = `rappel_${'gestt' | 'choix'}_${NatureRappel}_${DureeRappel}_${FormuleRappel}`;
 
 const LIBELLE_FORMULE: Record<FormuleRappel, string> = {
   '100': '100 % des heures', '150': '150 % des heures', '200': '200 % des heures',
-  '1vac': '1 vacation', '2vac': '2 vacations', autre: 'autre valeur',
+  '1vac': '1 vacation', '150vac': '1,5 vacation', '2vac': '2 vacations', autre: 'autre valeur',
 };
 
 const EVENTS_RAPPEL = Object.fromEntries(

@@ -212,7 +212,7 @@ export interface JourModifie {
   hsCredite: number; // minutes d'HS créditées
   rpsCredite: number; // écart de RPS crédité (peut être négatif)
   /** Rappel sur un repos : formule de compensation retenue (cf. lib/journees.ts). */
-  compensation?: '100' | '150' | '200' | '1vac' | '2vac' | 'libre';
+  compensation?: '100' | '150' | '200' | '1vac' | '150vac' | '2vac' | 'libre';
   /** HS saisies d'après GesTT (compensation « libre »), en minutes. */
   hsLibre?: number;
 }

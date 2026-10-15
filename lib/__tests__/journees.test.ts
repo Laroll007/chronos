@@ -50,18 +50,20 @@ describe('Rappel sur un repos : HS selon le barème, aucun RPS', () => {
     expect(e.rappel?.defaut).toBe('150');
   });
 
-  it('RC plus de 4h : non tranché, l’agent choisit (150 % ou 1 vacation) ou recopie GesTT', () => {
+  it('RC plus de 4h : non tranché, l’agent choisit (150 % des heures, 1 ou 1,5 vacation) ou recopie GesTT', () => {
     const sansChoix = effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR);
-    expect(sansChoix.rappel?.modes).toEqual(['150', '1vac']);
+    expect(sansChoix.rappel?.modes).toEqual(['150', '1vac', '150vac']);
     expect(sansChoix.rappel?.defaut).toBeUndefined();
     expect(sansChoix.hs).toBe(h(20, 15)); // repli : 150 %
     expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: '1vac' }).hs).toBe(h(12, 8));
+    expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: '150vac' }).hs).toBe(h(18, 12));
     expect(effetJournee(SAMEDI, 'horaires', h(12, 30), h(2), JOUR, { mode: 'libre', libre: h(21) }).hs).toBe(h(21));
   });
 
   it('HS recopiées de GesTT : rattachées à la formule correspondante (stats)', () => {
     expect(formuleCorrespondante(h(20, 15), h(13, 30), h(12, 8))).toBe('150');
     expect(formuleCorrespondante(h(24, 16), h(13, 30), h(12, 8))).toBe('2vac');
+    expect(formuleCorrespondante(h(18, 12), h(6), h(12, 8))).toBe('150vac');
     expect(formuleCorrespondante(h(21), h(13, 30), h(12, 8))).toBe('autre');
   });
 
