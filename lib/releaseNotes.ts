@@ -26,6 +26,32 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.19.0',
+    items: [
+      {
+        emoji: '🔁',
+        title: 'Tu changes de cycle en cours d’année ?',
+        text: 'Mutation, changement de service : dans « Modifier mon cycle », choisis « Je change de cycle » et indique ton dernier jour et le premier du nouveau. L’ancien cycle reste sur ton planning, tes droits de l’année sont recalculés au prorata et tes RPS suivent le nouveau cycle.',
+        action: { label: 'Modifier mon cycle', target: 'cycle' },
+      },
+      {
+        emoji: '📟',
+        title: 'Rappel sur un repos : le barème APORTT',
+        text: 'Sur un RL : 1 vacation (moins de 4h) ou 2 vacations (plus de 4h). Sur un RC : 150 % des heures. Sans RPS. Tu peux aussi recopier les HS de GesTT.',
+      },
+      {
+        emoji: '⏱️',
+        title: 'Une journée en heures : ton RTC libre d’abord',
+        text: 'Pour compléter une journée, l’app prend tout ton RTC libre (sans toucher à ta réserve CET), puis complète avec tes HS ou tes RPS.',
+      },
+      {
+        emoji: '🌙',
+        title: 'RPS de nuit corrigés',
+        text: 'Une nuit de semaine crédite bien 54 min de RPS (le réglage « Service de nuit » en donnait 1h13).',
+      },
+    ],
+  },
+  {
     version: '1.18.0',
     items: [
       {
