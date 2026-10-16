@@ -124,9 +124,9 @@ Test sur téléphone en réseau local : build de prod avec `CHRONOS_LOCAL_HTTP=1
   `MARKETING_VERSION`.
 - Étapes : `npm run build:capacitor` → `npx cap sync ios` → vérifier que le
   signing du pbxproj est intact → `xcodebuild archive` (scheme App, Release,
-  `generic/platform=iOS`) → `xcodebuild -exportArchive` avec un
-  `ExportOptionsUpload.plist` (method app-store-connect, signing manuel,
-  destination upload). Xcode n'est pas nécessaire à l'ouverture.
+  `generic/platform=iOS`) → `xcodebuild -exportArchive -exportOptionsPlist
+  ../ExportOptionsUpload.plist` (fichier versionné dans `ios/` : method
+  app-store-connect, signing manuel, destination upload). Xcode n'est pas nécessaire à l'ouverture.
 - `Info.plist` porte `UIUserInterfaceStyle = Light` et
   `ITSAppUsesNonExemptEncryption = false` ; `cap sync` n'y touche pas.
 
