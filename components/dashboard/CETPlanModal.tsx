@@ -120,6 +120,10 @@ export function CETPlanModal({ userData, onClose, onRecord, onUpdateCounters }: 
   }
   regles.push('Le reste est payé ou versé à la RAFP (choix dans GesTT). Il ne revient pas en congés.');
   if (cet + capacite <= CET_SEUIL_OPTION) regles.push(`Sous ${CET_SEUIL_OPTION} jours, le CET ne sert qu’en congés.`);
+  // Confusion fréquente en 11h08 : le jour de CET ne vaut pas une vacation.
+  if (lignes.includes('rtc') || lignes.includes('hs')) {
+    regles.push('1 jour de CET = 8h21 de RTC ou d’HS, quelle que soit la durée de votre vacation (11h08 ou 12h08).');
+  }
 
   const pct = (n: number) => `${Math.min(100, (n / CET_PLAFOND) * 100)}%`;
 

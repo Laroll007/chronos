@@ -734,7 +734,29 @@ function buildCombinations(
     });
     if (rem === 0) pushHourlyCombo(subset.map((t, k) => [t, greedyMins[k]]));
 
-    // Stratégie 2 : équilibre — répartition égale entre les types
+    // Stratégie 3 : greedy sans toucher aux réserves CET — tout le RTC (et les HS)
+    // libres d'abord, puis le compteur suivant. Ex. 7h35 de RTC libres + 4h33 d'HS
+    // pour une vacation de 12h08, plutôt que 6h04 + 6h04 (retour d'un agent).
+    const libres = subset.map((t, k) => {
+      if (t === 'rtc') return Math.min(avails[k], getRTCLibres(dispo.rtc, reserveRTC(counters)));
+      if (t === 'hs') return Math.min(avails[k], Math.max(0, dispo.hs - reserveHS(counters)));
+      return avails[k];
+    });
+    const reserveLimite = libres.some((l, k) => l < avails[k]);
+    if (reserveLimite && libres.reduce((a, b) => a + b, 0) >= totalMinutes) {
+      let reste = totalMinutes;
+      const libresMins = libres.map((l) => {
+        const take = Math.min(l, reste);
+        reste -= take;
+        return take;
+      });
+      pushHourlyCombo(subset.map((t, k) => [t, libresMins[k]]));
+    }
+
+    // Stratégie 2 : équilibre — répartition égale entre les types. Pas quand une
+    // réserve CET limite le RTC ou les HS : la stratégie 3 consomme alors tout le
+    // libre, la moitié-moitié en laisserait une partie de côté.
+    if (reserveLimite) return;
     const share = Math.floor(totalMinutes / subset.length);
     const extra = totalMinutes - share * subset.length;
     const equalMins = subset.map((_, k) => share + (k === 0 ? extra : 0));
