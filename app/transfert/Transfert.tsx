@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Download, Send } from 'lucide-react';
-import { track } from '@/lib/analytics';
+import { etatStatsNavigateur, track } from '@/lib/analytics';
 import { isNativeApp } from '@/lib/api';
 import { downloadExport } from '@/lib/storage';
-import { donneesDuNavigateur, encoderTransfert, lireDonneesTransfert, LIEN_RETOUR, TAILLE_MAX_LIEN } from '@/lib/transfert';
+import { donneesDuNavigateur, empaqueterTransfert, encoderTransfert, lireDonneesTransfert, LIEN_RETOUR, TAILLE_MAX_LIEN } from '@/lib/transfert';
 
 const abonnement = () => () => {};
 const lireBrut = () => donneesDuNavigateur();
@@ -57,7 +57,8 @@ export function Transfert() {
 
   const envoyer = async () => {
     if (!brut) return;
-    const d = await encoderTransfert(brut);
+    // L'état des stats suit les données : l'app ne compte pas l'agent comme nouveau.
+    const d = await encoderTransfert(empaqueterTransfert(brut, etatStatsNavigateur()));
     if (d.length > TAILLE_MAX_LIEN) {
       track('transfert_trop_gros');
       setTropGros(true);

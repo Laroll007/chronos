@@ -54,6 +54,8 @@ describe('analytics (client)', () => {
           active: { firstOfWeek: true, firstOfMonth: true, isNew: true, profile: ['type:alterne'] },
         },
       },
+      // Numéro du lot (tiré au hasard à chaque envoi), pas de l'appareil
+      lot: expect.stringMatching(/^[a-z0-9]{6,32}$/),
     });
     // Rien n'est gardé après un envoi réussi
     await a.flushStats();

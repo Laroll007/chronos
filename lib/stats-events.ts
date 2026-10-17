@@ -97,6 +97,11 @@ const EVENTS_BASE = {
   transfert_vide: { label: 'App Android : le navigateur n’avait pas de données', group: 'Onboarding' },
   transfert_invalide: { label: 'App Android : données reçues illisibles', group: 'Onboarding' },
   transfert_importe: { label: 'App Android : données récupérées', group: 'Onboarding' },
+  // Corrections : un agent passé sur l'app native n'est ni nouveau, ni un 2e actif
+  // de la semaine / du mois (cf. fusionnerMigration, lib/analytics.ts).
+  migration_nouveau_annule: { label: 'Correction : migration comptée à tort comme nouvel appareil', group: 'Corrections' },
+  migration_semaine_annulee: { label: 'Correction : migration comptée deux fois dans la semaine', group: 'Corrections' },
+  migration_mois_annule: { label: 'Correction : migration comptée deux fois dans le mois', group: 'Corrections' },
 } as const satisfies Record<string, { label: string; group: string }>;
 
 // Rappel sur un repos : barème à confirmer (cf. lib/journees.ts). Chaque saisie
@@ -231,4 +236,9 @@ export interface StatsPayload {
   platform: StatsPlatform;
   version: string;
   days: Record<string, StatsDayBucket>;
+  /**
+   * Numéro aléatoire du LOT (pas de l'appareil) : un lot renvoyé après un échec
+   * réseau garde le même numéro, et le serveur ne le compte qu'une fois.
+   */
+  lot?: string;
 }

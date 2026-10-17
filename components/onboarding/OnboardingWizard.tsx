@@ -14,7 +14,7 @@ import {
 import type { CountersDraft } from '@/components/onboarding/CountersSetup';
 import { markReleaseNotesSeen } from '@/lib/releaseNotes';
 import { markWelcomeSeen } from '@/components/dashboard/WelcomeModal';
-import { track } from '@/lib/analytics';
+import { fusionnerMigration, track } from '@/lib/analytics';
 import { aujourdhuiISO, getCETApportMaxAnnee } from '@/lib/calculations';
 import { CET_PLAFOND } from '@/lib/constants';
 import { Calendar, Calculator, Check, Upload } from 'lucide-react';
@@ -187,6 +187,7 @@ export function OnboardingWizard() {
     clearOnboardingDraft();
     markReleaseNotesSeen();
     markWelcomeSeen(); // l'agent connaît déjà l'app
+    fusionnerMigration(resume.statsNavigateur); // pas un nouvel utilisateur pour les stats
     toast.success('Données récupérées', { description: 'Votre planning et vos compteurs sont de retour.' });
     router.push('/dashboard');
   };

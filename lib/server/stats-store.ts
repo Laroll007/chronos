@@ -110,7 +110,8 @@ export function validatePayload(raw: unknown, today: string): StatsPayload | nul
     days[day] = bucket;
   }
 
-  return { v: 1, platform: p.platform, version: p.version, days };
+  const lot = typeof p.lot === 'string' && /^[a-z0-9]{6,32}$/.test(p.lot) ? p.lot : undefined;
+  return { v: 1, platform: p.platform, version: p.version, days, ...(lot && { lot }) };
 }
 
 function shiftDay(day: string, delta: number): string {
@@ -149,6 +150,9 @@ export async function purgeOld(today: string): Promise<void> {
 }
 
 // ─── Lecture / agrégation ─────────────────────────────────────────────────────
+
+/** Événements de la page /transfert (dans le navigateur), pas de l'app. */
+const EVENEMENTS_PAGE_TRANSFERT = new Set(['transfert_envoye', 'transfert_page_vide', 'transfert_trop_gros', 'transfert_fichier']);
 
 type PlatformCounts = Record<StatsPlatform, number>;
 
@@ -243,14 +247,48 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
   const erreurs = new Map<string, { total: number; dernierJour: string }>();
   const profils: Record<string, number> = {};
 
+  // Corrections de fidélité (les données brutes ne sont jamais modifiées) :
+  // - lots renvoyés après un échec réseau : même numéro, comptés une seule fois ;
+  // - page /transfert ouverte dans le navigateur pendant une migration Android
+  //   (avant la 1.19) : une visite, pas un utilisateur web ;
+  // - migration vers l'app Android native : l'agent n'est ni un nouvel appareil
+  //   ni un 2e actif de la semaine / du mois (corrections envoyées par l'app, ou,
+  //   pour les lots d'avant la 1.19, une par récupération de données).
+  const lotsVus = new Set<string>();
+  const corrections = new Map<string, { nouveaux: number; semaine: number; mois: number; plateforme: StatsPlatform }>();
+  const corriger = (day: string, platform: StatsPlatform, k: 'nouveaux' | 'semaine' | 'mois', n: number) => {
+    const cle = `${day}|${platform}`;
+    const c = corrections.get(cle) ?? { nouveaux: 0, semaine: 0, mois: 0, plateforme: platform };
+    c[k] += n;
+    corrections.set(cle, c);
+  };
+
   for (const batch of batches) {
+    if (batch.lot) {
+      if (lotsVus.has(batch.lot)) continue;
+      lotsVus.add(batch.lot);
+    }
     for (const [day, b] of Object.entries(batch.days)) {
       const js = jours.get(day);
       if (!js) continue;
 
-      js.ouvertures += b.opens;
+      const ev = b.events as Partial<Record<string, number>>;
+      if (batch.lot) {
+        corriger(day, batch.platform, 'nouveaux', ev.migration_nouveau_annule ?? 0);
+        corriger(day, batch.platform, 'semaine', ev.migration_semaine_annulee ?? 0);
+        corriger(day, batch.platform, 'mois', ev.migration_mois_annule ?? 0);
+      } else if (ev.transfert_importe) {
+        corriger(day, batch.platform, 'nouveaux', ev.transfert_importe);
+        corriger(day, batch.platform, 'semaine', ev.transfert_importe);
+        corriger(day, batch.platform, 'mois', ev.transfert_importe);
+      }
+      const nomsEvenements = Object.keys(b.events);
+      const visiteTransfert =
+        !batch.lot && nomsEvenements.length > 0 && nomsEvenements.every((e) => EVENEMENTS_PAGE_TRANSFERT.has(e));
 
-      if (b.active) {
+      if (!visiteTransfert) js.ouvertures += b.opens;
+
+      if (b.active && !visiteTransfert) {
         js.actifs += 1;
         js.actifsParPlateforme[batch.platform] += 1;
         plateformes[batch.platform] += 1;
@@ -285,6 +323,19 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
         erreurs.set(key, cur);
       }
     }
+  }
+
+  for (const [cle, c] of corrections) {
+    const day = cle.split('|')[0]!;
+    const js = jours.get(day);
+    if (!js) continue;
+    const n = Math.min(c.nouveaux, js.nouveauxParPlateforme[c.plateforme]);
+    js.nouveaux -= n;
+    js.nouveauxParPlateforme[c.plateforme] -= n;
+    const w = isoWeekOfDayKey(day);
+    if (semaines.has(w)) semaines.set(w, Math.max(0, semaines.get(w)! - c.semaine));
+    const m = day.slice(0, 7);
+    if (mois.has(m)) mois.set(m, Math.max(0, mois.get(m)! - c.mois));
   }
 
   const joursArr = [...jours.values()];

@@ -15,6 +15,7 @@
 import { STORAGE_KEY } from './constants';
 import { validateUserData } from './storage';
 import type { UserData } from './types';
+import type { EtatStatsNavigateur } from './analytics';
 
 export const LIEN_RETOUR = 'fr.mychronos.app://transfert';
 /** Page de transfert, sur le site que l'app affiche (mychronos.fr en production). */
@@ -70,6 +71,8 @@ export async function decoderTransfert(d: string): Promise<string> {
 
 export interface ResumeTransfert {
   data: UserData;
+  /** État des stats de l'ancien appareil (pas un nouvel utilisateur). */
+  statsNavigateur?: EtatStatsNavigateur;
   /** Congés posés (hors annulations). */
   poses: number;
   /** Dernière modification dans l'ancienne app (ISO), si connue. */
@@ -80,8 +83,15 @@ export interface ResumeTransfert {
 export function lireDonneesTransfert(brut: string | null): ResumeTransfert | null {
   if (!brut) return null;
   let data: unknown;
+  let statsNavigateur: EtatStatsNavigateur | undefined;
   try {
     data = JSON.parse(brut);
+    // Format 2 : { v: 2, data: <données brutes>, stats } (cf. empaqueterTransfert)
+    const enveloppe = data as { v?: unknown; data?: unknown; stats?: EtatStatsNavigateur };
+    if (enveloppe && enveloppe.v === 2 && typeof enveloppe.data === 'string') {
+      statsNavigateur = enveloppe.stats;
+      data = JSON.parse(enveloppe.data);
+    }
   } catch {
     return null;
   }
@@ -91,7 +101,13 @@ export function lireDonneesTransfert(brut: string | null): ResumeTransfert | nul
     data,
     poses: history.filter((h) => h.action === 'pose').length,
     derniereModif: data.lastUpdated,
+    ...(statsNavigateur && { statsNavigateur }),
   };
+}
+
+/** Ce que la page du navigateur envoie : les données brutes et l'état des stats. */
+export function empaqueterTransfert(brut: string, stats: EtatStatsNavigateur | undefined): string {
+  return JSON.stringify({ v: 2, data: brut, ...(stats && { stats }) });
 }
 
 /** Côté navigateur : données laissées par l'ancienne app, ou null. */

@@ -123,7 +123,10 @@ export default function PrivacyPage() {
                   (ni cookie, ni identifiant d&apos;appareil, ni empreinte),
                   l&apos;adresse IP n&apos;est pas enregistrée, et{" "}
                   <strong>aucune donnée de planning</strong> (dates, soldes,
-                  congés) ne quitte votre appareil. Les envois ne peuvent pas
+                  congés) ne quitte votre appareil. Chaque envoi porte un
+                  numéro tiré au hasard, propre à cet envoi (jamais réutilisé
+                  ensuite), qui évite de le compter deux fois s&apos;il est
+                  renvoyé après une coupure réseau. Les envois ne peuvent pas
                   être reliés entre eux ni à une personne. Vous pouvez les
                   désactiver à tout moment dans{" "}
                   <strong>Paramètres → Confidentialité</strong>&nbsp;; les
