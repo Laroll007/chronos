@@ -50,12 +50,27 @@ const PERIODS = [7, 30, 90, 365] as const;
 
 // Palette catégorielle validée (validate_palette.js, 4 créneaux, ordre fixe).
 // Deux teintes sont sous 3:1 de contraste → la table des jours sert de relais.
+// Le site (navigateur ou installé sur l'écran d'accueil) pèse moins de 1 % de
+// l'usage : une seule plateforme « Site web » (cf. fusionnerSiteWeb).
 const PLATFORMS = [
   { key: 'ios', label: 'iOS', color: '#2a78d6' },
   { key: 'android', label: 'Android', color: '#eb6834' },
-  { key: 'pwa', label: 'Web installé', color: '#1baf7a' },
-  { key: 'web', label: 'Navigateur', color: '#eda100' },
+  { key: 'web', label: 'Site web', color: '#1baf7a' },
 ] as const;
+
+/** Regroupe « web installé » (PWA) et navigateur sous « Site web ». */
+function fusionnerSiteWeb(s: StatsSummary): StatsSummary {
+  const fusion = <T extends Record<string, number>>(p: T): T => ({ ...p, web: (p.web ?? 0) + (p.pwa ?? 0), pwa: 0 });
+  return {
+    ...s,
+    jours: s.jours.map((j) => ({
+      ...j,
+      actifsParPlateforme: fusion(j.actifsParPlateforme),
+      nouveauxParPlateforme: fusion(j.nouveauxParPlateforme),
+    })),
+    plateformes: fusion(s.plateformes),
+  };
+}
 
 const INK = '#0f172a';
 const INK_2 = '#475569';
@@ -151,7 +166,7 @@ export default function StatsPage() {
         }
         return;
       }
-      setData(json as StatsSummary);
+      setData(fusionnerSiteWeb(json as StatsSummary));
       setAuthed(true);
       savePassword(pwd, remember);
     } catch {
