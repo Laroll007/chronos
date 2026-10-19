@@ -38,26 +38,26 @@ interface SourceRowProps {
 const COLOR_MAP = {
   emerald: {
     dot: '#10b981',
-    badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-    text: 'text-emerald-400',
+    badge: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/20',
+    text: 'text-emerald-600',
     row: 'border-emerald-500/20 bg-emerald-500/5',
   },
   blue: {
     dot: '#3b82f6',
-    badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-    text: 'text-blue-400',
+    badge: 'bg-blue-500/15 text-blue-600 border-blue-500/20',
+    text: 'text-blue-600',
     row: 'border-blue-500/20 bg-blue-500/5',
   },
   red: {
     dot: '#ef4444',
-    badge: 'bg-red-500/15 text-red-400 border-red-500/20',
-    text: 'text-red-400',
+    badge: 'bg-red-500/15 text-red-600 border-red-500/20',
+    text: 'text-red-600',
     row: 'border-red-500/20 bg-red-500/5',
   },
   orange: {
     dot: '#f97316',
-    badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
-    text: 'text-orange-400',
+    badge: 'bg-orange-500/15 text-orange-600 border-orange-500/20',
+    text: 'text-orange-600',
     row: 'border-orange-500/20 bg-orange-500/5',
   },
   slate: {
@@ -143,7 +143,7 @@ export function Projection({ currentCET, counters, projection, onOpenPlan }: Pro
 
       <CardHeader className="relative pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-emerald-400" />
+          <TrendingUp className="w-5 h-5 text-emerald-600" />
           Projection CET au 31/12
         </CardTitle>
       </CardHeader>
@@ -154,7 +154,7 @@ export function Projection({ currentCET, counters, projection, onOpenPlan }: Pro
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Actuel : <span className="font-semibold text-foreground">{currentCET}j</span></span>
-            <span>Projeté : <span className="font-semibold text-emerald-400">{projection.cetFinal}j</span></span>
+            <span>Projeté : <span className="font-semibold text-emerald-600">{projection.cetFinal}j</span></span>
             <span>Plafond : {CET_PLAFOND}j</span>
           </div>
           {/* Double barre : actuel + apport */}
@@ -189,12 +189,12 @@ export function Projection({ currentCET, counters, projection, onOpenPlan }: Pro
             : 'bg-amber-500/10 border-amber-500/20'
         }`}>
           {projection.totalApport > 0 ? (
-            <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
           ) : (
-            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           )}
           <div>
-            <span className={`font-semibold ${projection.totalApport > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <span className={`font-semibold ${projection.totalApport > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {projection.totalApport > 0
                 ? `+${projection.totalApport} jour${projection.totalApport > 1 ? 's' : ''} épargnables`
                 : 'Aucun jour épargnable'}
@@ -289,19 +289,19 @@ export function Projection({ currentCET, counters, projection, onOpenPlan }: Pro
           <button
             type="button"
             onClick={onOpenPlan}
-            className="w-full flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-left hover:bg-emerald-500/10 transition-colors"
+            className="w-full h-12 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-transform"
+            style={{ background: 'linear-gradient(135deg, #0055A4, #1a7de8)' }}
           >
-            <PiggyBank className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-            <span className="flex-1 text-sm font-semibold text-foreground">Mon épargne CET : quoi verser en janvier</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <PiggyBank className="w-5 h-5" aria-hidden="true" />
+            Je choisis ce que j&apos;épargne
           </button>
         )}
 
         {/* Jours perdus */}
         {projection.joursPerdus > 0 && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20">
-            <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-            <span className="text-sm text-rose-400">
+            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-rose-600">
               <strong>{projection.joursPerdus} jour(s)</strong> de CA seront perdus au 31/12 s&apos;ils ne sont pas posés (au-delà des 5 versables au CET).
             </span>
           </div>

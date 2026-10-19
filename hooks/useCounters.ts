@@ -56,6 +56,8 @@ const EMPTY_JOURS: JourModifie[] = [];
 export interface OptionsPose {
   previsionnel?: boolean;
   decompte?: 'anterieur' | 'differe';
+  /** Avance de RPS acceptée par l'agent (solde négatif possible). */
+  avanceRPS?: boolean;
 }
 
 export function useCounters() {
@@ -380,7 +382,7 @@ export function useCounters() {
       if (options.decompte) {
         if (options.decompte === 'differe') {
           // Les droits de l'année suivante doivent couvrir la pose.
-          const r = simulatePose(compteursAnneeSuivante(current), type, amount, dateStart);
+          const r = simulatePose(compteursAnneeSuivante(current), type, amount, dateStart, { avanceRPS: options.avanceRPS });
           if (!r.isValid) {
             return { success: false, error: `Droits ${dateStart.getFullYear()} insuffisants : ${r.errorMessage ?? ''}`.trim() };
           }
@@ -414,7 +416,7 @@ export function useCounters() {
         ? getCFS1Share(amount, dateStart, dEnd, current.cycleConfig)
         : undefined;
 
-      const result = simulatePose(current.counters, type, amount, dateStart, { hpDays, cfS1Minutes });
+      const result = simulatePose(current.counters, type, amount, dateStart, { hpDays, cfS1Minutes, avanceRPS: options.avanceRPS });
 
       if (!result.isValid) {
         return { success: false, error: result.errorMessage };
@@ -460,7 +462,7 @@ export function useCounters() {
         return { success: false, error: 'Durée invalide' };
       }
       if (options.decompte) {
-        if (options.decompte === 'differe' && !simulatePose(compteursAnneeSuivante(current), type, minutes, date).isValid) {
+        if (options.decompte === 'differe' && !simulatePose(compteursAnneeSuivante(current), type, minutes, date, { avanceRPS: options.avanceRPS }).isValid) {
           return { success: false, error: `Droits ${date.getFullYear()} insuffisants` };
         }
         const entree: HistoryEntry = {
@@ -480,7 +482,7 @@ export function useCounters() {
         return { success: ok, alerts: [] };
       }
 
-      const result = simulatePose(current.counters, type, minutes, date);
+      const result = simulatePose(current.counters, type, minutes, date, { avanceRPS: options.avanceRPS });
       if (!result.isValid) {
         return { success: false, error: result.errorMessage };
       }

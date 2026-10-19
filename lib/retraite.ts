@@ -20,7 +20,9 @@
 //
 // 3. Années intermédiaires — les congés payés valent période d'activité : un
 //    agent absent toute l'année 2027 acquiert malgré tout sa dotation 2027, qu'il
-//    peut poser par anticipation. Elles comptent donc pleines.
+//    peut poser par anticipation. Elles comptent donc pleines, mais seulement à
+//    partir de l'année où l'absence commence : avant, l'agent travaille et pose
+//    ses congés dans l'année. Seuls le CET, les HS et les RPS se reportent.
 
 import { Counters, CycleConfig, CounterType, HistoryEntry } from './types';
 import {
@@ -43,6 +45,13 @@ export const INDEMNISATION_CET: Record<CategorieAgent, number> = {
 };
 
 export type CategorieAgent = 'A' | 'B' | 'C';
+
+/**
+ * Compteurs qui se reportent d'une année sur l'autre : seuls ceux-là s'accumulent
+ * pour le départ. Les autres (CA, CF, RTC, ARTT…) sont posés ou perdus chaque
+ * année travaillée.
+ */
+const COMPTEURS_REPORTABLES = new Set<CounterType>(['cet', 'cet2008', 'hs', 'hsHistorique', 'rps']);
 
 /** Compteurs mobilisables pour un départ, dans l'ordre de consommation. */
 export const COMPTEURS_RETRAITE: CounterType[] = [
@@ -198,84 +207,111 @@ export function calculerDepartRetraite(
   const exclus = new Set(options.exclus ?? []);
   const categorie = options.categorie ?? 'B';
 
-  // ── Stock disponible, par compteur ────────────────────────────────────────
-  const stockJours = new Map<CounterType, number>();
-  const stockMinutes = new Map<CounterType, number>();
-  // Même stock, ventilé par provenance, pour le détail restitué à l'agent.
-  const lots: { origine: OrigineStock; prorata?: number; type: CounterType; acquis: number; stock: number }[] = [];
-
-  for (const type of COMPTEURS_RETRAITE) {
-    if (exclus.has(type)) continue;
-    const soldeReel = soldeCourant(counters, type);
-    let solde = soldeReel;
-    if (solde <= 0) continue;
-
-    // Le CET est le seul compteur dont une part peut être indemnisée plutôt que
-    // posée : on ne retient que ce que l'agent a choisi de poser.
-    if (type === 'cet') {
-      const plancher = Math.min(CET_SEUIL_OPTION, solde);
-      const choisi = options.cetPoseEnConges ?? solde;
-      solde = Math.max(plancher, Math.min(choisi, solde));
-    }
-
-    if (isDayBasedType(type)) stockJours.set(type, solde);
-    else stockMinutes.set(type, solde);
-    const origine = type === 'caAnterieur' || type === 'caHPAnterieur' ? 'anterieur' : 'soldes';
-    // Pour le CET, `acquis` garde le solde réel : l'écart avec `stock` est la
-    // part indemnisée.
-    lots.push({ origine, type, acquis: soldeReel, stock: solde });
-  }
-
-  // ── Dotations des années à venir ──────────────────────────────────────────
-  const dotationsFutures: ResultatRetraite['dotationsFutures'] = [];
+  // L'absence finale commence une certaine année : les années d'avant, l'agent
+  // travaille et pose ses congés normalement (CA, CF, RTC… sont pris ou perdus
+  // dans l'année). Seuls se reportent le CET, les HS et les RPS. Compter toutes
+  // les dotations jusqu'à la radiation revenait à supposer qu'il ne prend aucun
+  // congé pendant des années (un départ en 2041 cumulait quinze ans de CA).
+  //
+  // L'année de début dépend du stock, qui dépend de l'année de début : on part
+  // de l'année courante (stock maximal) et on avance jusqu'à stabilisation.
+  // Retirer des années ne peut que retarder le début : la suite est croissante,
+  // bornée par l'année de radiation, donc elle converge.
+  const anneeCourante = today.getFullYear();
   const anneeRetraite = dateRetraite.getFullYear();
-  for (let annee = today.getFullYear() + 1; annee <= anneeRetraite; annee++) {
-    const prorata = annee === anneeRetraite ? getProrataAnnee(dateRetraite) : 1;
-    const dot = dotationAnnuelle(counters, cycleConfig, prorata);
+  let anneeDebut = anneeCourante;
+  let calcul = simuler(anneeDebut);
+  for (let i = 0; i < 100; i++) {
+    const suivante = calcul.resultat.premierJourConge?.getFullYear() ?? anneeDebut;
+    if (suivante <= anneeDebut) break;
+    anneeDebut = suivante;
+    calcul = simuler(anneeDebut);
+  }
+  const { resultat, stockJours, lots, dotationsFutures } = calcul;
 
-    let totalJours = 0;
-    let totalMinutes = 0;
-    for (const [type, valeur] of Object.entries(dot.jours) as [CounterType, number][]) {
-      if (exclus.has(type) || valeur <= 0) continue;
-      stockJours.set(type, (stockJours.get(type) ?? 0) + valeur);
-      lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
-      totalJours += valeur;
+  function simuler(debut: number) {
+    // ── Stock disponible, par compteur ──────────────────────────────────────
+    const stockJours = new Map<CounterType, number>();
+    const stockMinutes = new Map<CounterType, number>();
+    // Même stock, ventilé par provenance, pour le détail restitué à l'agent.
+    const lots: { origine: OrigineStock; prorata?: number; type: CounterType; acquis: number; stock: number }[] = [];
+
+    for (const type of COMPTEURS_RETRAITE) {
+      if (exclus.has(type)) continue;
+      if (debut > anneeCourante && !COMPTEURS_REPORTABLES.has(type)) continue;
+      const soldeReel = soldeCourant(counters, type);
+      let solde = soldeReel;
+      if (solde <= 0) continue;
+
+      // Le CET est le seul compteur dont une part peut être indemnisée plutôt que
+      // posée : on ne retient que ce que l'agent a choisi de poser.
+      if (type === 'cet') {
+        const plancher = Math.min(CET_SEUIL_OPTION, solde);
+        const choisi = options.cetPoseEnConges ?? solde;
+        solde = Math.max(plancher, Math.min(choisi, solde));
+      }
+
+      if (isDayBasedType(type)) stockJours.set(type, solde);
+      else stockMinutes.set(type, solde);
+      const origine = type === 'caAnterieur' || type === 'caHPAnterieur' ? 'anterieur' : 'soldes';
+      // Pour le CET, `acquis` garde le solde réel : l'écart avec `stock` est la
+      // part indemnisée.
+      lots.push({ origine, type, acquis: soldeReel, stock: solde });
     }
-    for (const [type, valeur] of Object.entries(dot.minutes) as [CounterType, number][]) {
-      if (exclus.has(type) || valeur <= 0) continue;
-      stockMinutes.set(type, (stockMinutes.get(type) ?? 0) + valeur);
-      lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
-      totalMinutes += valeur;
+
+    // ── Dotations des années de l'absence ───────────────────────────────────
+    const dotationsFutures: ResultatRetraite['dotationsFutures'] = [];
+    for (let annee = Math.max(anneeCourante + 1, debut); annee <= anneeRetraite; annee++) {
+      const prorata = annee === anneeRetraite ? getProrataAnnee(dateRetraite) : 1;
+      const dot = dotationAnnuelle(counters, cycleConfig, prorata);
+
+      let totalJours = 0;
+      let totalMinutes = 0;
+      for (const [type, valeur] of Object.entries(dot.jours) as [CounterType, number][]) {
+        if (exclus.has(type) || valeur <= 0) continue;
+        stockJours.set(type, (stockJours.get(type) ?? 0) + valeur);
+        lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
+        totalJours += valeur;
+      }
+      for (const [type, valeur] of Object.entries(dot.minutes) as [CounterType, number][]) {
+        if (exclus.has(type) || valeur <= 0) continue;
+        stockMinutes.set(type, (stockMinutes.get(type) ?? 0) + valeur);
+        lots.push({ origine: annee, prorata, type, acquis: valeur, stock: valeur });
+        totalMinutes += valeur;
+      }
+      dotationsFutures.push({ annee, prorata, jours: totalJours, minutes: totalMinutes });
     }
-    dotationsFutures.push({ annee, prorata, jours: totalJours, minutes: totalMinutes });
+
+    // ── Remontée du calendrier ──────────────────────────────────────────────
+    // Le stock de RPS dépend des jours encore travaillés d'ici au départ, qui
+    // dépendent eux-mêmes du stock : on itère jusqu'à stabilisation (convergence
+    // en 2 ou 3 passes, la correction étant décroissante). Comme pour les
+    // dotations, seuls comptent les RPS acquis l'année où l'absence commence :
+    // ceux des années précédentes sont récupérés au fil de l'eau.
+    const repereRPS = debut > anneeCourante ? new Date(debut - 1, 11, 31) : today;
+    const rpsInclus = !exclus.has('rps');
+    let rpsAjoutes = 0;
+    let resultat = parcourir(dateRetraite, cycleConfig, stockJours, stockMinutes);
+
+    for (let i = 0; i < 5 && rpsInclus && resultat.premierJourConge; i++) {
+      const credit = computeRPSCredit(
+        { ...counters, rpsDernierCredit: toISODay(repereRPS) },
+        cycleConfig,
+        history,
+        resultat.premierJourConge
+      );
+      if (credit.minutes === rpsAjoutes) break;
+      const delta = credit.minutes - rpsAjoutes;
+      rpsAjoutes = credit.minutes;
+      stockMinutes.set('rps', (stockMinutes.get('rps') ?? 0) + delta);
+      resultat = parcourir(dateRetraite, cycleConfig, stockJours, stockMinutes);
+    }
+
+    if (rpsAjoutes > 0) {
+      lots.push({ origine: 'rpsAVenir', type: 'rps', acquis: rpsAjoutes, stock: rpsAjoutes });
+    }
+    return { resultat, stockJours, lots, dotationsFutures };
   }
-
-  // ── Remontée du calendrier ────────────────────────────────────────────────
-  // Le stock de RPS dépend des jours encore travaillés d'ici au départ, qui
-  // dépendent eux-mêmes du stock : on itère jusqu'à stabilisation (convergence
-  // en 2 ou 3 passes, la correction étant décroissante).
-  const rpsInclus = !exclus.has('rps');
-  let rpsAjoutes = 0;
-  let resultat = parcourir(dateRetraite, cycleConfig, stockJours, stockMinutes);
-
-  for (let i = 0; i < 5 && rpsInclus && resultat.premierJourConge; i++) {
-    const credit = computeRPSCredit(
-      { ...counters, rpsDernierCredit: toISODay(today) },
-      cycleConfig,
-      history,
-      resultat.premierJourConge
-    );
-    if (credit.minutes === rpsAjoutes) break;
-    const delta = credit.minutes - rpsAjoutes;
-    rpsAjoutes = credit.minutes;
-    stockMinutes.set('rps', (stockMinutes.get('rps') ?? 0) + delta);
-    resultat = parcourir(dateRetraite, cycleConfig, stockJours, stockMinutes);
-  }
-
-  if (rpsAjoutes > 0) {
-    lots.push({ origine: 'rpsAVenir', type: 'rps', acquis: rpsAjoutes, stock: rpsAjoutes });
-  }
-
   // ── Restitution ───────────────────────────────────────────────────────────
   const cetPose = stockJours.get('cet') ?? 0;
   const cetIndemnise = exclus.has('cet') ? counters.cet : Math.max(0, counters.cet - cetPose);

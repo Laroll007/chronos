@@ -190,8 +190,10 @@ export function OptimizationModal({
     // Solde dans l'unité du compteur : jours (CA…) ou minutes (RTC, RPS…). Un
     // solde horaire inférieur à une journée reste proposé : il se complète par
     // un autre compteur (7h de RTC + 5h08 de RPS).
+    // RPS déjà en avance (solde négatif) : toujours proposés, l'avance pouvant se poursuivre.
     return LIBELLES.map(({ type, label }) => ({ type, label, available: Math.max(0, getRawBalance(counters, type)) }))
-      .filter((t) => t.available > 0 && (minutesDejaPosees === 0 || !isDayBasedType(t.type)));
+      .filter((t) => (t.available > 0 || (t.type === 'rps' && counters.rps < 0))
+        && (minutesDejaPosees === 0 || !isDayBasedType(t.type)));
   }, [counters, minutesDejaPosees]);
 
   const getAvailableForType = useCallback((type: CounterType): number => {
@@ -258,10 +260,17 @@ export function OptimizationModal({
 
   const isCustomValid = useMemo(() => {
     if (customItems.length === 0 || !repartitionLibre.ok) return false;
+    // Les RPS peuvent dépasser le solde : avance (guide APORTT, « Temps compensés »).
     return customItems.every(item =>
-      item.amount > 0 && item.amount <= getAvailableForType(item.type)
+      item.amount > 0 && (item.type === 'rps' || item.amount <= getAvailableForType(item.type))
     );
   }, [customItems, repartitionLibre, getAvailableForType]);
+
+  // Avance de RPS demandée : solde qu'aurait l'agent après la pose.
+  const rpsApresPose = useMemo(() => {
+    const rps = customItems.find((item) => item.type === 'rps');
+    return rps && rps.amount > Math.max(0, counters.rps) ? counters.rps - rps.amount : null;
+  }, [customItems, counters.rps]);
 
   const handleCustomApply = useCallback(() => {
     if (!isCustomValid || !startDate || !repartitionLibre.ok) return;
@@ -281,8 +290,9 @@ export function OptimizationModal({
     );
     combination.totalDays = workingDaysCount;
     combination.repartition = repartitionLibre.tranches;
-    if (onApply(combination, optionsPose) !== false) onClose();
-  }, [startDate, isCustomValid, repartitionLibre, customItems, counters, onApply, onClose, jourMinutes, workingDaysCount, optionsPose]);
+    const options = rpsApresPose !== null ? { ...optionsPose, avanceRPS: true } : optionsPose;
+    if (onApply(combination, options) !== false) onClose();
+  }, [startDate, isCustomValid, repartitionLibre, customItems, counters, onApply, onClose, jourMinutes, workingDaysCount, optionsPose, rpsApresPose]);
 
   // PERF-009: Ref pour tracker si on doit recalculer
   const lastCalculationRef = useRef<{
@@ -621,7 +631,18 @@ export function OptimizationModal({
                               />
                             </span>
                           )}
-                          {item.amount > getAvailableForType(item.type) && (
+                          {item.type === 'rps' && rpsApresPose !== null && (
+                            <p className="basis-full text-xs text-amber-700">
+                              Avance de RPS : votre solde passera à {formatMinutes(rpsApresPose)}. Possible seulement
+                              si votre service vous l&apos;accorde (guide APORTT : « des avances peuvent être consenties »).
+                            </p>
+                          )}
+                          {item.type === 'rps' && rpsApresPose === null && !repartitionLibre.ok && repartitionLibre.raison === 'incomplet' && (
+                            <p className="basis-full text-xs text-slate-500">
+                              Vous pouvez dépasser votre solde de RPS (avance), si votre service l&apos;accorde.
+                            </p>
+                          )}
+                          {item.type !== 'rps' && item.amount > getAvailableForType(item.type) && (
                             <p className="basis-full text-xs text-rose-500">
                               Solde insuffisant ({isDayBasedType(item.type) ? `${getAvailableForType(item.type)}j` : formatMinutes(getAvailableForType(item.type))})
                             </p>

@@ -28,16 +28,17 @@ import {
   Upload,
   Trash2,
   AlertTriangle,
-  MessageCircle,
-  MessageSquarePlus,
+  MessageSquareHeart,
   Coffee,
   ChevronRight,
   CalendarCog,
-  Database,
+  DatabaseBackup,
   Heart,
-  Briefcase,
-  Hourglass,
-  BarChart3,
+  Calculator,
+  Sunset,
+  Wrench,
+  ShieldCheck,
+  Sparkles,
   X,
   Share2,
   Star,
@@ -61,49 +62,100 @@ const RetraiteCalculator = lazy(() =>
 
 // ─── Sous-composants de mise en page ─────────────────────────────────────────
 
-function SectionLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
+/** Dégradé d'une pastille d'icône : [clair, foncé]. */
+type Degrade = readonly [string, string];
+
+const D = {
+  bleu: ['#1a7de8', '#0055A4'],
+  violet: ['#a78bfa', '#6d28d9'],
+  orange: ['#fbbf24', '#ea580c'],
+  rose: ['#f472b6', '#db2777'],
+  ambre: ['#fcd34d', '#d97706'],
+  ciel: ['#7dd3fc', '#0284c7'],
+  turquoise: ['#5eead4', '#0f766e'],
+  vert: ['#6ee7b7', '#059669'],
+  rouge: ['#fda4af', '#e11d48'],
+  // Discord : couleur de la marque, sans dégradé (règles de la marque).
+  discord: ['#5865F2', '#5865F2'],
+} as const satisfies Record<string, Degrade>;
+
+/** Pastille d'icône : dégradé, reflet en haut, ombre douce de la même couleur. */
+function Pastille({ degrade, petite = false, children }: { degrade: Degrade; petite?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 px-1">
-      <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-        {icon}
-      </div>
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em]">{label}</span>
-      <div className="flex-1 h-px bg-slate-200" />
-    </div>
+    <span
+      className={`${petite ? 'w-7 h-7 rounded-lg' : 'w-10 h-10 rounded-xl'} flex items-center justify-center shrink-0 text-white`}
+      style={{
+        background: `linear-gradient(145deg, ${degrade[0]} 0%, ${degrade[1]} 100%)`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px -3px ${degrade[1]}99`,
+      }}
+      aria-hidden="true"
+    >
+      {children}
+    </span>
   );
 }
 
+const TEINTES = {
+  bleu: { fond: 'bg-blue-50 border-blue-200', titre: 'text-blue-800', degrade: D.bleu },
+  violet: { fond: 'bg-violet-50 border-violet-200', titre: 'text-violet-800', degrade: D.violet },
+  rose: { fond: 'bg-pink-50 border-pink-200', titre: 'text-pink-800', degrade: D.rose },
+  turquoise: { fond: 'bg-teal-50 border-teal-200', titre: 'text-teal-800', degrade: D.turquoise },
+  rouge: { fond: 'bg-rose-50 border-rose-200', titre: 'text-rose-800', degrade: D.rouge },
+  vert: { fond: 'bg-emerald-50 border-emerald-200', titre: 'text-emerald-800', degrade: D.vert },
+} as const;
+
+/** Partie des paramètres : bloc teinté, titre en couleur, pour bien les distinguer. */
+function Section({ teinte, icon, titre, children }: {
+  teinte: keyof typeof TEINTES; icon: React.ReactNode; titre: string; children: React.ReactNode;
+}) {
+  const t = TEINTES[teinte];
+  return (
+    <section className={`rounded-2xl border p-3 space-y-2 ${t.fond}`}>
+      <div className="flex items-center gap-2.5 px-1 pb-0.5">
+        <Pastille degrade={t.degrade} petite>{icon}</Pastille>
+        <h3 className={`text-[13px] font-bold uppercase tracking-[0.08em] ${t.titre}`}>{titre}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * Bouton d'une partie : carte blanche en relief, texte centré entre la
+ * pastille et la flèche (colonnes de même largeur, pour un vrai centrage).
+ */
 function ClickableRow({
   icon,
+  degrade,
   label,
   sublabel,
   onClick,
   variant = 'default',
 }: {
   icon: React.ReactNode;
+  degrade: Degrade;
   label: string;
   sublabel?: string;
   onClick: () => void;
-  variant?: 'default' | 'amber';
+  variant?: 'default' | 'ambre' | 'danger';
 }) {
-  const baseClass =
-    variant === 'amber'
-      ? 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-      : 'bg-slate-50 border-slate-200 hover:bg-blue-50 hover:border-blue-200';
+  const style = {
+    default: { carte: 'bg-white border-slate-200/80', label: 'text-slate-800', sub: 'text-slate-500' },
+    ambre: { carte: 'bg-amber-50 border-amber-200', label: 'text-amber-800', sub: 'text-amber-700' },
+    danger: { carte: 'bg-white border-rose-200', label: 'text-rose-700', sub: 'text-rose-500' },
+  }[variant];
 
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border w-full text-left transition-all duration-150 group ${baseClass}`}
+      className={`grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 w-full px-3 py-3 rounded-xl border shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 text-center ${style.carte}`}
     >
-      {icon}
-      <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${variant === 'amber' ? 'text-amber-700' : 'text-slate-700'}`}>
-          {label}
-        </div>
-        {sublabel && <div className="text-xs text-slate-400 mt-0.5">{sublabel}</div>}
-      </div>
-      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors shrink-0" aria-hidden="true" />
+      <Pastille degrade={degrade}>{icon}</Pastille>
+      <span className="min-w-0">
+        <span className={`block text-[15px] font-semibold leading-snug ${style.label}`}>{label}</span>
+        {sublabel && <span className={`block text-xs mt-0.5 leading-snug ${style.sub}`}>{sublabel}</span>}
+      </span>
+      <ChevronRight className="justify-self-end w-5 h-5 text-slate-400" aria-hidden="true" />
     </button>
   );
 }
@@ -230,131 +282,134 @@ export function Settings({
 
       {/* ── Contenu scrollable ────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        <div className="px-5 py-5 space-y-6">
+        <div className="px-4 py-4 space-y-4">
 
           {/* Cycle de travail */}
           {onUpdateCycle && (
-            <section className="space-y-2.5">
-              <SectionLabel icon={<CalendarCog className="w-3 h-3 text-blue-600" />} label="Mon cycle" />
+            <Section teinte="bleu" icon={<CalendarCog className="w-4 h-4" />} titre="Mon cycle">
               <ClickableRow
-                icon={<CalendarCog className="w-4 h-4 text-blue-500 shrink-0" />}
+                icon={<CalendarCog className="w-5 h-5" />}
+                degrade={D.bleu}
                 label="Modifier mon cycle de travail"
                 sublabel="Changement de brigade, de régime ou d'horaires"
                 onClick={() => setShowCycle(true)}
               />
-            </section>
+            </Section>
           )}
 
           {/* Outils */}
-          <section className="space-y-2.5">
-            <SectionLabel icon={<Briefcase className="w-3 h-3 text-blue-600" />} label="Jours travaillés" />
+          <Section teinte="violet" icon={<Wrench className="w-4 h-4" />} titre="Mes outils">
             <ClickableRow
-              icon={<Briefcase className="w-4 h-4 text-blue-500 shrink-0" />}
+              icon={<Calculator className="w-5 h-5" />}
+              degrade={D.violet}
               label="Calculer les jours travaillés"
               sublabel="Sur une période, congés et CMO déduits"
               onClick={() => { setShowWorkedDays(true); track('tool_worked_days'); }}
             />
             <ClickableRow
-              icon={<Hourglass className="w-4 h-4 text-blue-500 shrink-0" />}
+              icon={<Sunset className="w-5 h-5" />}
+              degrade={D.orange}
               label="Simuler mon départ à la retraite"
               sublabel="Tous compteurs soldés : à partir de quand cesser de travailler"
               onClick={() => { setShowRetraite(true); track('tool_retraite'); }}
             />
-          </section>
+          </Section>
 
           {/* À propos */}
-          <section className="space-y-2.5">
-            <SectionLabel icon={<Heart className="w-3 h-3 text-pink-500" />} label="À propos" />
-            <div className="space-y-1.5">
+          <Section teinte="rose" icon={<Heart className="w-4 h-4" />} titre="À propos">
+            <ClickableRow
+              icon={<Share2 className="w-5 h-5" />}
+              degrade={D.bleu}
+              label="Recommander My Chronos à un collègue"
+              sublabel="QR code à montrer, ou lien à envoyer"
+              onClick={() => setShowRecommander(true)}
+            />
+            {avisStore && (
               <ClickableRow
-                icon={<Share2 className="w-4 h-4 text-blue-600 shrink-0" />}
-                label="Recommander My Chronos à un collègue"
-                sublabel="QR code à montrer, ou lien à envoyer"
-                onClick={() => setShowRecommander(true)}
+                icon={<Star className="w-5 h-5" fill="currentColor" />}
+                degrade={D.ambre}
+                label={`Noter My Chronos sur ${nomStore}`}
+                sublabel="Un avis aide d’autres collègues à trouver l’app"
+                onClick={ouvrirFicheStore}
               />
-              {avisStore && (
-                <ClickableRow
-                  icon={<Star className="w-4 h-4 text-amber-500 shrink-0" />}
-                  label={`Noter My Chronos sur ${nomStore}`}
-                  sublabel="Un avis aide d’autres collègues à trouver l’app"
-                  onClick={ouvrirFicheStore}
-                />
-              )}
+            )}
+            <ClickableRow
+              icon={<DiscordLogo className="w-5 h-5" couleur="#FFFFFF" />}
+              degrade={D.discord}
+              label="Rejoindre la communauté Discord"
+              sublabel="Idées, bugs, questions — avec Marco, l'assistant"
+              onClick={ouvrirCommunaute}
+            />
+            <ClickableRow
+              icon={<MessageSquareHeart className="w-5 h-5" />}
+              degrade={D.rose}
+              label="Donner mon avis / Signaler un bug"
+              sublabel="Votre retour aide à améliorer l'app"
+              onClick={() => { setShowFeedback(true); track('feedback_open'); }}
+            />
+            {onShowWelcome && (
               <ClickableRow
-                icon={<DiscordLogo className="w-4 h-4 shrink-0" />}
-                label="Rejoindre la communauté Discord"
-                sublabel="Idées, bugs, questions — avec Marco, l'assistant"
-                onClick={ouvrirCommunaute}
+                icon={<Sparkles className="w-5 h-5" />}
+                degrade={D.ciel}
+                label="Revoir le message de bienvenue"
+                onClick={onShowWelcome}
               />
-              <ClickableRow
-                icon={<MessageSquarePlus className="w-4 h-4 text-blue-500 shrink-0" />}
-                label="Donner mon avis / Signaler un bug"
-                sublabel="Votre retour aide à améliorer l'app"
-                onClick={() => { setShowFeedback(true); track('feedback_open'); }}
-              />
-              {onShowWelcome && (
-                <ClickableRow
-                  icon={<MessageCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                  label="Revoir le message de bienvenue"
-                  onClick={onShowWelcome}
-                />
-              )}
-              <button
-                onClick={() => { track('kofi_click'); window.open('https://ko-fi.com/mychronos', '_blank', 'noopener,noreferrer'); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 w-full text-left transition-all duration-150 group"
-              >
-                <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-amber-700">Soutenir le développement ☕</div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-amber-300 group-hover:text-amber-500 transition-colors shrink-0" />
-              </button>
-            </div>
-          </section>
+            )}
+            <ClickableRow
+              icon={<Coffee className="w-5 h-5" />}
+              degrade={D.orange}
+              label="Soutenir le développement ☕"
+              variant="ambre"
+              onClick={() => { track('kofi_click'); window.open('https://ko-fi.com/mychronos', '_blank', 'noopener,noreferrer'); }}
+            />
+          </Section>
 
           {/* Confidentialité */}
-          <section className="space-y-2.5">
-            <SectionLabel icon={<BarChart3 className="w-3 h-3 text-blue-600" />} label="Confidentialité" />
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50">
-              <BarChart3 className="w-4 h-4 text-blue-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div id="stats-toggle-label" className="text-sm font-medium text-slate-700">
-                  Statistiques anonymes d&apos;utilisation
+          <Section teinte="turquoise" icon={<ShieldCheck className="w-4 h-4" />} titre="Confidentialité">
+            <div className="grid grid-cols-[2.5rem_1fr_3rem] items-center gap-2 px-3 py-3 rounded-xl border border-slate-200/80 bg-white shadow-sm text-center">
+              <Pastille degrade={D.turquoise}><ShieldCheck className="w-5 h-5" /></Pastille>
+              <div className="min-w-0">
+                <div id="stats-toggle-label" className="text-[15px] font-semibold leading-snug text-slate-800">
+                  Aider à améliorer l&apos;app
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  Sans identifiant ni donnée de planning : aide à savoir ce qui sert.{' '}
+                <div className="text-xs text-slate-500 mt-0.5 leading-snug">
+                  Envoie des statistiques anonymes (les fonctions utilisées). Jamais votre planning, ni qui vous êtes.{' '}
                   <Link href="/privacy#statistiques" className="underline hover:text-slate-700">
                     En savoir plus
                   </Link>
                 </div>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={statsEnabled}
-                aria-labelledby="stats-toggle-label"
-                onClick={toggleStats}
-                className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${statsEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
-              >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${statsEnabled ? 'left-[22px]' : 'left-0.5'}`}
-                />
-              </button>
+              <div className="justify-self-end flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={statsEnabled}
+                  aria-labelledby="stats-toggle-label"
+                  onClick={toggleStats}
+                  className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${statsEnabled ? 'bg-teal-600' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${statsEnabled ? 'left-[22px]' : 'left-0.5'}`}
+                  />
+                </button>
+                <span className={`text-[11px] font-semibold ${statsEnabled ? 'text-teal-700' : 'text-slate-500'}`} aria-hidden="true">
+                  {statsEnabled ? 'Activé' : 'Désactivé'}
+                </span>
+              </div>
             </div>
-          </section>
+          </Section>
 
           {/* Zone danger */}
-          <section className="space-y-2.5">
-            <SectionLabel icon={<AlertTriangle className="w-3 h-3 text-rose-500" />} label="Zone de danger" />
+          <Section teinte="rouge" icon={<AlertTriangle className="w-4 h-4" />} titre="Zone de danger">
             <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
               <DialogTrigger asChild>
-                <button className="flex items-center gap-3 px-4 py-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 w-full text-left transition-all duration-150">
-                  <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-rose-700">Réinitialiser l&apos;application</div>
-                    <div className="text-xs text-rose-400">Supprime toutes les données — irréversible</div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-rose-300 shrink-0" />
+                <button className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 w-full px-3 py-3 rounded-xl border border-rose-200 bg-white shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 text-center">
+                  <Pastille degrade={D.rouge}><Trash2 className="w-5 h-5" /></Pastille>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold leading-snug text-rose-700">Réinitialiser l&apos;application</span>
+                    <span className="block text-xs mt-0.5 leading-snug text-rose-500">Supprime toutes les données — irréversible</span>
+                  </span>
+                  <ChevronRight className="justify-self-end w-5 h-5 text-rose-300" aria-hidden="true" />
                 </button>
               </DialogTrigger>
               <DialogContent className="w-[92vw] max-w-sm rounded-2xl border-0 shadow-2xl p-0 overflow-y-auto overscroll-contain">
@@ -387,33 +442,33 @@ export function Settings({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </section>
+          </Section>
 
           {/* Sauvegarde — en dernier : transfert vers un nouvel appareil */}
-          <section className="space-y-2.5">
-            <SectionLabel icon={<Database className="w-3 h-3 text-emerald-600" />} label="Sauvegarde" />
+          <Section teinte="vert" icon={<DatabaseBackup className="w-4 h-4" />} titre="Sauvegarde">
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleExport}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all duration-150"
+                className="flex items-center justify-center gap-2 h-12 rounded-xl text-[15px] font-semibold text-white shadow-md active:scale-[0.99] transition-all duration-150"
+                style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-5 h-5" />
                 Exporter
               </button>
               <button
                 onClick={handleImportClick}
                 disabled={isImporting}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all duration-150 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-emerald-500 bg-white text-[15px] font-semibold text-emerald-700 shadow-sm active:scale-[0.99] transition-all duration-150 disabled:opacity-50"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="w-5 h-5" />
                 {isImporting ? 'Import...' : 'Importer'}
               </button>
             </div>
-            <p className="text-xs text-slate-400 px-1">
+            <p className="text-xs text-emerald-900/70 px-1 text-center">
               Exportez votre planning pour le réimporter sur un nouvel appareil (nouveau téléphone, etc.).
             </p>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
-          </section>
+          </Section>
 
           {/* Version */}
           <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-500">

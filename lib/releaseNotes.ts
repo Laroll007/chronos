@@ -17,6 +17,8 @@ export interface ReleaseItem {
   note?: string;
   /** Raccourci vers l'écran concerné. */
   action?: { label: string; target: ReleaseAction };
+  /** Message mis en avant (soutien…) : encadré centré, plus grand ; pas une nouveauté. */
+  enAvant?: boolean;
 }
 
 export interface ReleaseNote {
@@ -25,6 +27,62 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '1.20.0',
+    items: [
+      {
+        emoji: '💪',
+        title: 'Soutien à tous les collègues',
+        text: 'Courage en cette période difficile.',
+        enAvant: true,
+      },
+      {
+        emoji: '🩹',
+        title: 'Blessure en service (BS)',
+        text: 'En marquant un arrêt, choisis « Blessure en service (BS) » : contrairement à un arrêt maladie (CMO), elle ne réduit ni ton ARTT ni tes CF.',
+      },
+      {
+        emoji: '🗓️',
+        title: 'Tes congés lisibles d’un coup d’œil',
+        text: 'Chaque jour du planning affiche son type : CA, RTC, CF + HS, RTC 4h… mais aussi CMO, BS, astreinte ou absence. Une case sous le planning permet de revenir à l’affichage d’avant.',
+      },
+      {
+        emoji: '🏝️',
+        title: 'Congés bonifiés',
+        text: 'Ils se décomptent en jours calendaires, repos et fériés compris (31 jours au plus), comme dans GesTT.',
+      },
+      {
+        emoji: '🏛️',
+        title: 'Tu es élu ?',
+        text: 'Conseiller municipal, départemental ou régional : pose tes séances (AME), ton crédit d’heures (CME, en journée ou en heures) et ta formation d’élu. Ton crédit CME du trimestre est suivi dans tes compteurs.',
+      },
+      {
+        emoji: '🎓',
+        title: 'Élève ou stagiaire ?',
+        text: 'Pas encore de CET ? Coche « Je n’ai pas encore de CET » dans Gérer mes compteurs : l’appli te propose d’abord les congés qui se perdent au 31 décembre.',
+      },
+      {
+        emoji: '🧮',
+        title: 'Simulateur de départ à la retraite plus juste',
+        text: 'Pour un départ dans plusieurs années, il considère maintenant que tu poses tes congés chaque année : seuls ton CET, tes HS et tes RPS s’accumulent jusqu’au départ.',
+      },
+      {
+        emoji: '➕',
+        title: 'CA HP à ajouter',
+        text: 'La carte « CA Hors Période » est toujours visible dans tes compteurs : touche-la pour saisir des CA HP déjà obtenus.',
+      },
+      {
+        emoji: '🌙',
+        title: 'Avance de RPS',
+        text: 'Comme dans GesTT, tu peux poser plus de RPS que ton solde (avance accordée par ton service) : dans « Poser librement mes congés », ton solde passe en négatif au lieu d’être complété par tes HS.',
+      },
+      {
+        emoji: '🎨',
+        title: 'Paramètres plus lisibles',
+        text: 'Chaque partie a sa couleur, les boutons sont plus clairs. Dans ton profil, « Je choisis ce que j’épargne » ouvre ton plan d’épargne CET.',
+      },
+    ],
+  },
   {
     version: '1.19.0',
     items: [

@@ -39,6 +39,6 @@ export async function GET(req: NextRequest) {
   const version = await versionAppStore();
   if (!version) return NextResponse.json({ ios: null }, { headers });
   // Titre de la première nouveauté de cette version (« Quoi de neuf ? »), s'il y en a une.
-  const note = RELEASE_NOTES.find((n) => n.version.replace(/\.0$/, '') === version.replace(/\.0$/, ''))?.items[0]?.title;
+  const note = RELEASE_NOTES.find((n) => n.version.replace(/\.0$/, '') === version.replace(/\.0$/, ''))?.items.find((i) => !i.enAvant)?.title; // 1re vraie nouveauté (pas le message de soutien)
   return NextResponse.json({ ios: { version, ...(note && { note }) } }, { headers: { ...headers, 'Cache-Control': 'public, max-age=600' } });
 }

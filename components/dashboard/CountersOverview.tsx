@@ -101,20 +101,19 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       description: COUNTER_LABELS.ca.description,
     });
 
-    // CA HP
-    if (counters.caHP > 0) {
-      result.push({
-        id: 'caHP',
-        label: 'CA Hors Période',
-        value: counters.caHP,
-        max: 2,
-        unit: 'jours',
-        deadline: new Date(year, 11, 31),
-        status: 'ok',
-        description: 'Bonus obtenus !',
-        highlight: true,
-      });
-    }
+    // CA HP : affiché même à 0, sinon impossible d'ouvrir la carte pour saisir
+    // des CA HP obtenus avant l'inscription (ou posés hors de l'app).
+    result.push({
+      id: 'caHP',
+      label: 'CA Hors Période',
+      value: counters.caHP,
+      max: 2,
+      unit: 'jours',
+      deadline: new Date(year, 11, 31),
+      status: 'ok',
+      description: counters.caHP > 0 ? 'Bonus obtenus !' : 'Touchez pour ajouter vos CA HP',
+      highlight: counters.caHP > 0,
+    });
 
     // CF Semestre courant (masqué si l'agent n'a pas de CF)
     if (counters.hasCF !== false) {

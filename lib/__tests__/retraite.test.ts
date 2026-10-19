@@ -243,7 +243,10 @@ describe('Détail par provenance', () => {
   });
 
   it('épuise les soldes actuels avant les dotations futures', () => {
-    const caActuel = groupe('soldes')!.lignes.find((l) => l.type === 'ca')!;
+    // Radiation proche : l'absence commence dès cette année, les CA actuels comptent.
+    const proche = calculerDepartRetraite(new Date(2027, 2, 31), PROFIL, cfg, [], {}, AUJOURDHUI);
+    expect(proche.premierJourConge!.getFullYear()).toBe(2026);
+    const caActuel = proche.parOrigine.find((g) => g.origine === 'soldes')!.lignes.find((l) => l.type === 'ca')!;
     expect(caActuel.utilise).toBe(caActuel.acquis);
     for (const g of r.parOrigine) {
       for (const l of g.lignes) expect(l.utilise).toBeLessThanOrEqual(l.acquis);
@@ -259,8 +262,46 @@ describe('Détail par provenance', () => {
   });
 
   it('range les CA antérieurs à part', () => {
-    const r3 = calculerDepartRetraite(RADIATION, C({ ...PROFIL, caAnterieur: 5 }), cfg, [], {}, AUJOURDHUI);
+    const r3 = calculerDepartRetraite(new Date(2027, 2, 31), C({ ...PROFIL, caAnterieur: 5 }), cfg, [], {}, AUJOURDHUI);
     expect(r3.parOrigine[0].origine).toBe('anterieur');
     expect(r3.parOrigine[0].lignes[0]).toMatchObject({ type: 'caAnterieur', acquis: 5, utilise: 5 });
+  });
+});
+
+describe('Départ lointain : les congés des années travaillées sont posés dans l’année', () => {
+  const LOINTAINE = new Date(2041, 5, 30);
+  const r = calculerDepartRetraite(LOINTAINE, PROFIL, cfg, [], {}, AUJOURDHUI);
+  const debut = r.premierJourConge!.getFullYear();
+
+  it('ne cumule pas quinze ans de dotations', () => {
+    expect(debut).toBeGreaterThanOrEqual(2039);
+    expect(r.dotationsFutures.map((d) => d.annee)).toEqual(
+      Array.from({ length: 2041 - debut + 1 }, (_, i) => debut + i)
+    );
+  });
+
+  it('les CA, CF et RTC de cette année ne sont pas reportés, le CET, les HS et les RPS si', () => {
+    const soldes = r.parOrigine.find((g) => g.origine === 'soldes')!.lignes.map((l) => l.type);
+    expect(soldes).not.toContain('ca');
+    expect(soldes).not.toContain('caHP');
+    expect(soldes).not.toContain('cf');
+    expect(soldes).not.toContain('rtc');
+    expect(soldes).toEqual(expect.arrayContaining(['cet', 'hs', 'rps']));
+  });
+
+  it('les RPS à venir ne couvrent que l’année où l’absence commence', () => {
+    const rps = r.parOrigine.find((g) => g.origine === 'rpsAVenir')!.lignes[0]!.acquis;
+    // Moins d'un an de RPS (quelques dizaines d'heures), pas quinze ans.
+    expect(rps).toBeGreaterThan(0);
+    expect(rps).toBeLessThan(200 * 60);
+  });
+
+  it('partir en 2041 ou en 2040 libère à peu près autant de jours', () => {
+    const r2040 = calculerDepartRetraite(new Date(2040, 5, 30), PROFIL, cfg, [], {}, AUJOURDHUI);
+    expect(Math.abs(r.joursCouverts - r2040.joursCouverts)).toBeLessThan(15);
+  });
+
+  it('l’absence commence l’année retenue pour les dotations (point fixe)', () => {
+    expect(r.dotationsFutures[0]!.annee).toBe(debut);
   });
 });

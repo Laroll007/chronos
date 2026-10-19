@@ -767,6 +767,12 @@ export interface PoseContext {
   hpDays?: number;
   /** Minutes de la pose imputables au 1er semestre (cf. getCFS1Share). */
   cfS1Minutes?: number;
+  /**
+   * Avance de RPS acceptée : le solde peut devenir négatif. Guide APORTT,
+   * « Temps compensés » : « des avances peuvent être consenties dès le début
+   * de l'année » (sur accord du service, donc jamais par défaut).
+   */
+  avanceRPS?: boolean;
 }
 
 export function simulatePose(
@@ -776,7 +782,7 @@ export function simulatePose(
   date: Date,
   context: PoseContext = {}
 ): SimulationResult {
-  const { hpDays, cfS1Minutes } = context;
+  const { hpDays, cfS1Minutes, avanceRPS } = context;
   const newCounters = { ...counters };
   const alerts: Alert[] = [];
 
@@ -892,7 +898,7 @@ export function simulatePose(
     }
 
     case 'rps': {
-      if (amount > counters.rps) {
+      if (amount > counters.rps && !avanceRPS) {
         return {
           newCounters: counters,
           alerts: [{ id: '1', type: 'error', priority: 'high', message: 'RPS insuffisants' }],
@@ -1056,6 +1062,8 @@ export function simulatePose(
  * Formate des minutes en heures:minutes
  */
 export function formatMinutes(minutes: number): string {
+  // Solde négatif possible (avance de RPS) : « -4h48 », pas « -5h-48 ».
+  if (minutes < 0) return `-${formatMinutes(-minutes)}`;
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
   return `${hours}h${mins.toString().padStart(2, '0')}`;

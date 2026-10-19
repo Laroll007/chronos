@@ -73,7 +73,20 @@ export function WhatsNewModal({ onAction }: WhatsNewModalProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-5 bg-white space-y-4">
-          {items.map((item) => (
+          {items.map((item) =>
+            item.enAvant ? (
+              // Message mis en avant (soutien) : encadré centré, plus grand
+              <div
+                key={item.title}
+                className="rounded-2xl px-5 py-5 text-center text-white shadow-md"
+                style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0d2347 50%, #0055A4 100%)' }}
+              >
+                <span className="block text-4xl leading-none" aria-hidden="true">{item.emoji}</span>
+                <p className="mt-3 text-lg font-bold leading-snug">{item.title}</p>
+                <p className="mt-1 text-base text-blue-100">{item.text}</p>
+                <div className="mx-auto mt-4 h-[3px] w-24 rounded-full" style={{ background: 'linear-gradient(90deg, #0055A4 33%, #ffffff 33%, #ffffff 66%, #EF4135 66%)' }} aria-hidden="true" />
+              </div>
+            ) : (
             <div key={item.title} className="flex gap-3">
               {item.logo === 'discord' ? (
                 <DiscordLogo className="w-7 h-7 shrink-0" />
@@ -98,7 +111,8 @@ export function WhatsNewModal({ onAction }: WhatsNewModalProps) {
                 )}
               </div>
             </div>
-          ))}
+            )
+          )}
         </div>
 
         <div className="shrink-0 px-6 pb-6 pt-2 bg-white">

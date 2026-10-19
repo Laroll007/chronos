@@ -550,7 +550,7 @@ export default function DashboardPage() {
     const soldes = options.decompte === 'differe' ? compteursAnneeSuivante(userData) : counters;
     const affordable = options.decompte === 'anterieur'
       ? { ok: true as const }
-      : canAfford(combination.items, soldes, jourMinutesGuard);
+      : canAfford(combination.items, soldes, jourMinutesGuard, options.avanceRPS);
     if (!affordable.ok) {
       toast.error('Solde insuffisant — rien n\'a été posé', {
         description: formatShortfalls(affordable),

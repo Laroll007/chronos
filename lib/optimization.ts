@@ -161,7 +161,8 @@ export interface AffordabilityResult {
 export function canAfford(
   items: CombinationItem[],
   counters: Counters,
-  dayMinutes: number = HEURES_PAR_JOUR
+  dayMinutes: number = HEURES_PAR_JOUR,
+  avanceRPS = false
 ): AffordabilityResult {
   // Cumul par type : une combinaison ne devrait pas répéter un compteur,
   // mais on ne veut pas que ce garde-fou dépende de cette hypothèse.
@@ -173,7 +174,7 @@ export function canAfford(
   const shortfalls: AffordabilityResult['shortfalls'] = [];
   for (const [type, need] of required) {
     const available = getRawBalance(counters, type);
-    if (need > available) {
+    if (need > available && !(avanceRPS && type === 'rps')) {
       shortfalls.push({ type, required: need, available, missing: need - available });
     }
   }

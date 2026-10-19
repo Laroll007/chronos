@@ -322,8 +322,10 @@ export function RetraiteCalculator({
           )}
 
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Estimation à titre indicatif. Les dotations des années à venir sont calculées sur les
-            quotas standards de votre régime, et celle de l&apos;année de radiation est proratisée.
+            Estimation à titre indicatif. Les années où vous travaillez encore, vos congés sont
+            considérés comme posés dans l&apos;année : seuls le CET, les HS et les RPS se reportent.
+            Les dotations des années d&apos;absence sont calculées sur les quotas standards de votre
+            régime, et celle de l&apos;année de radiation est proratisée.
             Seul votre service peut valider les dates définitives.
           </p>
         </div>
