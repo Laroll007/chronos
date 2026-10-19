@@ -268,6 +268,9 @@ export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig): C
   // Remplace et n'additionne pas : le report de l'année précédente a expiré.
   n.caAnterieur = c.ca;
   n.caHPAnterieur = c.caHP;
+  // Les RPS se conservent : le solde de fin d'année devient le « report année
+  // précédente » affiché dans le détail de la carte RPS.
+  n.rpsAnneePrec = c.rps;
   // Les CA « sécurisés pour le CET » visaient les jours de l'année écoulée,
   // qui viennent de basculer en report.
   n.caReservesCET = 0;
