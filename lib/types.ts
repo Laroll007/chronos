@@ -188,6 +188,12 @@ export interface Counters {
 
   // Congés bonifiés (fonctionnaires DOM/TOM, décret 2020-851)
   hasCongesBonifies: boolean;
+  // Pas encore de CET (élève, stagiaire : exclus du CET ; ouverture possible une
+  // fois titulaire avec un an de service). Date de titularisation prévue
+  // ('YYYY-MM-DD') : si elle tombe avant la campagne de janvier, les jours
+  // épargnables restent protégés (cf. cetPourCampagne).
+  sansCET?: boolean;
+  dateTitularisation?: string;
   // Crédit d'heures d'élu (CME) par trimestre, en minutes (cf. lib/creditCME.ts).
   cmeTrimestre?: number;
   congesBonifies?: number; // 31j/24 mois (nouveau régime)

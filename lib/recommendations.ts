@@ -24,6 +24,7 @@ import {
   aujourdhuiISO,
   calculateUrgencyPercent,
   reserveRTC,
+  cetPourCampagne,
 } from './calculations';
 import { generateId } from './storage';
 
@@ -243,7 +244,9 @@ function checkRTCLibres(
       id: generateId(),
       priority: urgency >= 80 ? 'high' : urgency >= 50 ? 'medium' : 'low',
       action: `Consommer ${formatMinutes(rtcLibres)} de RTC libres`,
-      reason: `À poser avant le 31/12, ou à verser au CET en janvier pour vous les faire payer. Sinon, perdus (${formatMinutes(reserveRTC(counters))} conseillés à garder pour le CET)`,
+      reason: cetPourCampagne(counters)
+        ? `À poser avant le 31/12, ou à verser au CET en janvier pour vous les faire payer. Sinon, perdus (${formatMinutes(reserveRTC(counters))} conseillés à garder pour le CET)`
+        : 'À poser avant le 31/12 : sans CET, ils sont perdus.',
       deadline: `${year}-12-31`,
       counterType: 'rtc',
       amountToConsume: rtcLibres,

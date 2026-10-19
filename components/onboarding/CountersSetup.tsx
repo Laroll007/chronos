@@ -308,6 +308,9 @@ export function CountersSetup({
     cf: selectedKeys.has('cf') ? counters.cf : 0,
     rtc: selectedKeys.has('rtc') ? counters.rtc : 0,
     rtt: selectedKeys.has('rtt') ? counters.rtt : undefined,
+    // Un CET coché : l'agent en a un, l'option « pas encore de CET » tombe.
+    sansCET: selectedKeys.has('cet') ? undefined : counters.sansCET,
+    dateTitularisation: selectedKeys.has('cet') || !counters.sansCET ? undefined : counters.dateTitularisation,
   });
 
   const handleFinish = () => onNext(buildFinalCounters());
@@ -518,6 +521,46 @@ export function CountersSetup({
         </div>
 
         {/* CET */}
+        {/* Élève, stagiaire : exclus du CET (guide DNPAF) */}
+        {!selectedKeys.has('cet') && (
+          <div className={cardClass}>
+            <div className="px-6 space-y-3">
+              <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-blue-600"
+                  checked={!!counters.sansCET}
+                  onChange={(e) =>
+                    setCounters((prev) => ({ ...prev, sansCET: e.target.checked || undefined, ...(!e.target.checked && { dateTitularisation: undefined }) }))
+                  }
+                />
+                <span>
+                  <strong>Je n’ai pas encore de CET</strong> (élève, stagiaire). L’app ne garde rien pour le CET : elle vous
+                  propose d’abord les congés qui se perdent au 31 décembre, et garde ceux qui se conservent (RPS, HS).
+                </span>
+              </label>
+              {counters.sansCET && (
+                <div className="pl-6 space-y-1">
+                  <label htmlFor="date-titularisation" className="block text-xs font-medium text-slate-600">
+                    Date de titularisation prévue (facultatif)
+                  </label>
+                  <input
+                    id="date-titularisation"
+                    type="date"
+                    value={counters.dateTitularisation ?? ''}
+                    onChange={(e) => setCounters((prev) => ({ ...prev, dateTitularisation: e.target.value || undefined }))}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Le CET s’ouvre une fois titulaire, avec au moins un an de service. Titularisé d’ici au 31 janvier, vous
+                    pourrez épargner les jours de l’année à la campagne de janvier : l’app les garde alors pour le CET.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {selectedKeys.has('cet') && (
           <div className={cardClass}>
             <div className="px-6 mb-4">

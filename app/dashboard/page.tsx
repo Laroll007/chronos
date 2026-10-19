@@ -66,7 +66,7 @@ import { useRecommendations } from '@/hooks/useRecommendations';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCycle } from '@/hooks/useCycle';
 import { Combination, HistoryEntry, CounterType, CycleConfig, PersonalEvent } from '@/lib/types';
-import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getWeeklyMinutes, formatMinutes, clearCalculationCaches, getPartialMinutesOnDate } from '@/lib/calculations';
+import { countWorkingDays, countWorkingMinutes, dureesJoursTravailles, isWorkingDay, getWeeklyMinutes, formatMinutes, clearCalculationCaches, getPartialMinutesOnDate, cetPourCampagne } from '@/lib/calculations';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization';
 import { Loader2, User, X } from 'lucide-react';
@@ -376,7 +376,11 @@ export default function DashboardPage() {
 
   // ─── Épargne CET ───────────────────────────────────────────────────────────
   // Recalculé avec les données : en janvier, alimente le bandeau de rappel.
-  const planCET = useMemo(() => (userData ? planEpargneCET(userData) : null), [userData]);
+  // Sans CET à la prochaine campagne (élève, stagiaire) : pas de plan d'épargne ni de rappel en janvier.
+  const planCET = useMemo(
+    () => (userData && cetPourCampagne(userData.counters) ? planEpargneCET(userData) : null),
+    [userData]
+  );
 
   const openCETPlan = useCallback(() => {
     setShowCETPlan(true);

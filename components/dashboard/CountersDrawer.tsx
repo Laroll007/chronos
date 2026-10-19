@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, BarChart3, ChevronRight, Clock, ListChecks, PiggyBank, X } from 'lucide-react';
-import { formatMinutes, jourLocal } from '@/lib/calculations';
+import { cetPourCampagne, formatMinutes, jourLocal } from '@/lib/calculations';
 
 interface CountersDrawerProps {
   isOpen: boolean;
@@ -111,7 +111,13 @@ export function CountersDrawer({
             <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes} creditCME={creditCME}
             cycleConfig={cycleConfig}
             onUpdateCycle={onUpdateCycle} />
-            {onOpenCETPlan && (
+            {onOpenCETPlan && !cetPourCampagne(counters) && (
+              <p className="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-600">
+                <strong>Pas encore de CET</strong> (élève, stagiaire) : il s’ouvre une fois titulaire, avec au moins un an de
+                service. D’ici là, l’app vous propose d’abord les congés qui se perdent au 31 décembre.
+              </p>
+            )}
+            {onOpenCETPlan && cetPourCampagne(counters) && (
               <button
                 type="button"
                 onClick={onOpenCETPlan}

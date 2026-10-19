@@ -645,7 +645,23 @@ export function getDaysUntilSemesterDeadline(date: Date): number {
  * Calcule les RTC libres disponibles (après réserve CET)
  */
 /** Minutes de RTC protégées pour le CET : choix de l'agent, sinon 83h30. */
-export function reserveRTC(c: Pick<Counters, 'rtcJoursCET' | 'rtcReservesCET'>): number {
+/**
+ * L'agent pourra-t-il alimenter un CET à la campagne de janvier prochain ?
+ * Non s'il n'a pas encore de CET (élève, stagiaire), sauf titularisation prévue
+ * d'ici au 31 janvier : les jours de l'année pourront alors être épargnés.
+ */
+export function cetPourCampagne(
+  c: Pick<Counters, 'sansCET' | 'dateTitularisation'>,
+  date: Date = new Date()
+): boolean {
+  if (!c.sansCET) return true;
+  const finCampagne = `${date.getFullYear() + (date.getMonth() === 0 ? 0 : 1)}-01-31`;
+  return !!c.dateTitularisation && c.dateTitularisation <= finCampagne;
+}
+
+export function reserveRTC(c: Pick<Counters, 'rtcJoursCET' | 'rtcReservesCET' | 'sansCET' | 'dateTitularisation'>): number {
+  // Sans CET à la prochaine campagne : rien à garder, les RTC se perdent au 31/12.
+  if (!cetPourCampagne(c)) return 0;
   if (c.rtcJoursCET !== undefined) return Math.max(0, c.rtcJoursCET) * RTC_COUT_PAR_JOUR_CET;
   // Réglage conseillé, fixé selon le cycle (cf. reserveRTCConseillee) ; 83h30 à défaut.
   return c.rtcReservesCET > 0 ? c.rtcReservesCET : RTC_RESERVES_CET;
@@ -683,7 +699,8 @@ export function conseilRTCCET(cycleConfig: CycleConfig | undefined): ConseilRTCC
 }
 
 /** Minutes d'HS gardées pour le CET (0 sans choix de l'agent). */
-export function reserveHS(c: Pick<Counters, 'hsJoursCET'>): number {
+export function reserveHS(c: Pick<Counters, 'hsJoursCET' | 'sansCET' | 'dateTitularisation'>): number {
+  if (!cetPourCampagne(c)) return 0;
   return Math.max(0, c.hsJoursCET ?? 0) * HS_COUT_PAR_JOUR_CET;
 }
 

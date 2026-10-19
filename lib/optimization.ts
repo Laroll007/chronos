@@ -16,6 +16,7 @@ import {
 } from './constants';
 import {
   getRTCLibres,
+  cetPourCampagne,
   getCANeededForHP,
   isInCAHPPeriod,
   reserveRTC,
@@ -603,7 +604,8 @@ export function generateAllCombinations(
   // fériés inclus »). Absent = pas de proposition en congés bonifiés.
   joursCalendaires?: number
 ): Combination[] {
-  const reserve = Math.max(0, counters.caReservesCET ?? 0);
+  // CA gardés pour le CET : sans CET à la prochaine campagne, rien à garder.
+  const reserve = cetPourCampagne(counters) ? Math.max(0, counters.caReservesCET ?? 0) : 0;
 
   // 1re passe : on met de côté les CA que l'agent a sécurisés pour son CET.
   const sansReserve = buildCombinations(workingDays, counters, date, workingMinutes, reserve, joursCalendaires);

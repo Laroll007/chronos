@@ -77,8 +77,8 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       unlimited?: boolean;
     }> = [];
 
-    // CET
-    result.push({
+    // CET (pas de carte pour un agent qui n'en a pas encore : élève, stagiaire)
+    if (!counters.sansCET || counters.cet > 0) result.push({
       id: 'cet',
       label: 'CET',
       value: counters.cet,

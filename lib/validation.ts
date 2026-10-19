@@ -202,6 +202,11 @@ function checkCounters(v: unknown): string[] {
       errors.push('choixCET: { annee, ca, caHP, rtc, artt, rtt, hs } attendu');
   }
   if (v.rpsDernierCredit !== undefined && !isStr(v.rpsDernierCredit)) errors.push('rpsDernierCredit: date attendue');
+  // Élève / stagiaire sans CET, crédit d'heures d'élu
+  if (v.sansCET !== undefined && !isBool(v.sansCET)) errors.push('sansCET: boolean attendu');
+  if (v.dateTitularisation !== undefined && (!isStr(v.dateTitularisation) || !DATE_RE.test(v.dateTitularisation as string)))
+    errors.push('dateTitularisation: YYYY-MM-DD attendu');
+  if (v.cmeTrimestre !== undefined && !isNum(v.cmeTrimestre as unknown, 0)) errors.push('cmeTrimestre: nombre >= 0 attendu');
   return errors;
 }
 
