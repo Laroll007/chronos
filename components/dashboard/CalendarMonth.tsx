@@ -519,7 +519,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         {/* Types affichés dans les cases : la légende des couleurs devient inutile */}
         {!afficherTypes && <CalendarLegend flags={legendFlags} shape="square" />}
         {(legendFlags.conge || legendFlags.heures || legendFlags.cmo || legendFlags.astreinte || legendFlags.absence) && (
-          <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+          <label className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={afficherTypes}
