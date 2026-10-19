@@ -281,7 +281,8 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {uniqueTypes.slice(0, 3).map((t) => {
                           const isCET = t === 'cet' && group.items.some((it) => it.action === 'transfer_cet');
-                          const label = isCET ? 'CET ↑' : TYPE_LABELS[t].label;
+                          const bs = t === 'cmo' && group.items.some((it) => it.imputableService);
+                          const label = isCET ? 'CET ↑' : bs ? 'BS' : TYPE_LABELS[t].label;
                           const color = isCET
                             ? 'bg-blue-100 text-blue-700 border-blue-200'
                             : TYPE_LABELS[t].color;
@@ -365,7 +366,7 @@ export function LeaveList({ history, onDelete, onEdit, focusDate, onFocusHandled
                           : activeDetail.items[0].action === 'transfer_cet'
                             ? 'Épargne CET'
                             : isCMO
-                              ? 'Arrêt maladie (CMO)'
+                              ? activeDetail.items[0].imputableService ? 'Blessure en service (BS)' : 'Arrêt maladie (CMO)'
                               : isAstreinte
                                 ? 'Astreinte / permanence'
                                 : absence

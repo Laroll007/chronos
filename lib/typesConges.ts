@@ -57,7 +57,8 @@ export function etiquetteCongeDuJour(date: Date, history: HistoryEntry[]): { tex
 export function etiquetteDuJour(date: Date, history: HistoryEntry[]): { texte: string; couleur: string } | null {
   const conge = etiquetteCongeDuJour(date, history);
   if (conge) return conge;
-  if (history.some((e) => dateMatchesEntry(date, e, 'cmo'))) return { texte: 'CMO', couleur: TYPE_LABELS.cmo.color };
+  const arret = history.find((e) => dateMatchesEntry(date, e, 'cmo'));
+  if (arret) return { texte: arret.imputableService ? 'BS' : 'CMO', couleur: TYPE_LABELS.cmo.color };
   if (history.some((e) => dateMatchesEntry(date, e, 'astreinte'))) return { texte: 'Astreinte', couleur: TYPE_LABELS.astreinte.color };
   const absence = history.find((e) => dateMatchesEntry(date, e, 'absence'));
   if (absence) {

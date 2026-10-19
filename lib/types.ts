@@ -301,6 +301,8 @@ export interface HistoryEntry {
   // Versement au CET multi-sources (action 'transfer_cet'). Absent sur les
   // épargnes plus anciennes, qui ne portaient que sur des CA de l'année en cours.
   cetDetail?: DetailEpargneCET;
+  /** Arrêt (action 'cmo') imputable au service : blessure en service (BS). */
+  imputableService?: boolean;
   /** Absence sans compteur (action 'absence') : motif, cf. lib/absences.ts. */
   motif?: string;
   /** Congé déposé au plan prévisionnel du service (ne peut plus être rappelé). */

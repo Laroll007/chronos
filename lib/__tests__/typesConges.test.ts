@@ -17,6 +17,7 @@ const H: HistoryEntry[] = [
   e(17, null, 'pose', 'rtc', 95, { partialDay: true }),
   e(20, 21, 'cmo', 'cmo'),
   e(23, null, 'astreinte', 'astreinte'),
+  e(24, null, 'cmo', 'cmo', 1, { imputableService: true }),
   e(26, null, 'absence', 'absence', 1, { motif: 'asa_naissance' }),
   e(27, null, 'absence', 'absence', 1),
 ];
@@ -24,7 +25,7 @@ const H: HistoryEntry[] = [
 describe('Étiquette du jour sur le planning', () => {
   it.each([
     [2, 'CA'], [3, 'CA'], [8, 'CF + HS'], [9, 'CA +2'], [16, 'RTC 4h'], [17, 'RTC 1h35'],
-    [20, 'CMO'], [23, 'Astreinte'], [26, 'NAI'], [27, 'Absence'],
+    [20, 'CMO'], [23, 'Astreinte'], [24, 'BS'], [26, 'NAI'], [27, 'Absence'],
   ])('%i octobre → %s', (jour, texte) => {
     expect(etiquetteDuJour(d(jour), H)?.texte).toBe(texte);
   });

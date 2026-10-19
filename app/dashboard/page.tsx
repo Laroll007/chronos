@@ -442,13 +442,13 @@ export default function DashboardPage() {
     [deleteEvent]
   );
 
-  const handleMarkCMO = useCallback(() => {
+  const handleMarkCMO = useCallback((imputableService = false) => {
     if (!selectedRange) return;
-    const result = poseCMO(selectedRange.start, selectedRange.end);
+    const result = poseCMO(selectedRange.start, selectedRange.end, imputableService);
     if (result.success) {
-      track('cmo_mark');
-      toast.success('Arrêt maladie marqué', {
-        description: 'La période est marquée en CMO sur le calendrier (sans impact sur vos compteurs).',
+      track(imputableService ? 'bs_mark' : 'cmo_mark');
+      toast.success(imputableService ? 'Blessure en service marquée' : 'Arrêt maladie marqué', {
+        description: `La période est marquée en ${imputableService ? 'BS' : 'CMO'} sur le calendrier (sans impact sur vos compteurs).`,
       });
       setShowOptimization(false);
       setSelectedRange(null);

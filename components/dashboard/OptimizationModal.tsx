@@ -56,7 +56,8 @@ interface OptimizationModalProps {
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
   onApply: (combination: Combination, options: OptionsPose) => boolean | void;
-  onMarkCMO?: () => void;
+  /** Arrêt maladie (CMO), ou blessure en service (BS) si `imputableService`. */
+  onMarkCMO?: (imputableService?: boolean) => void;
   /** ASA, Art. 13, CFS, EXN, repos décalé : jours non travaillés, sans compteur. */
   onMarkAbsence?: (motif: MotifAbsence) => void;
   onMarkAstreinte?: () => void;
@@ -727,25 +728,37 @@ export function OptimizationModal({
                   className="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
                 >
                   <Thermometer className="w-4 h-4" />
-                  {showCMO ? "Masquer l'arrêt maladie" : 'Marquer un arrêt maladie (CMO)'}
+                  {showCMO ? "Masquer l'arrêt" : 'Marquer un arrêt maladie (CMO) ou une blessure en service'}
                 </button>
 
                 {showCMO && (
                   <div className="mt-4 p-4 rounded-lg bg-violet-50 border border-violet-200 space-y-3">
                     <p className="text-xs text-violet-700 flex items-start gap-1.5">
                       <Thermometer className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                      <span>L&apos;arrêt maladie (CMO) marque la période sur le calendrier <strong>sans toucher à vos compteurs</strong>. Les jours travaillés correspondants sont déduits du calcul des jours réellement travaillés.</span>
+                      <span>L&apos;arrêt marque la période sur le calendrier <strong>sans toucher à vos compteurs</strong>. Les jours travaillés correspondants sont déduits du calcul des jours réellement travaillés.</span>
                     </p>
-                    <div className="flex justify-end">
+                    <p className="text-xs text-violet-700">
+                      <strong>Blessure en service (BS)</strong> : imputable au service (ou accident de trajet), elle ne réduit ni votre crédit ARTT ni vos CF, contrairement à un arrêt maladie ordinaire (CMO).
+                    </p>
+                    <div className="flex flex-wrap justify-end gap-2">
                       <button
                         onClick={() => {
-                          onMarkCMO();
+                          onMarkCMO(true);
+                          onClose();
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-violet-700 bg-white border border-violet-300 hover:bg-violet-100 transition-colors"
+                      >
+                        Blessure en service (BS)
+                      </button>
+                      <button
+                        onClick={() => {
+                          onMarkCMO(false);
                           onClose();
                         }}
                         className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 transition-colors flex items-center gap-2"
                       >
                         <Thermometer className="w-4 h-4" />
-                        Marquer en arrêt maladie
+                        Arrêt maladie (CMO)
                       </button>
                     </div>
                   </div>

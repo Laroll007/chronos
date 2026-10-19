@@ -509,9 +509,11 @@ export function useCounters() {
     [save]
   );
 
-  // Marquer un arrêt maladie (CMO) — aucun impact compteur, marquage calendrier
+  // Marquer un arrêt maladie (CMO) ou une blessure en service (BS) — aucun
+  // impact compteur, marquage calendrier. Une BS (imputable au service) ne
+  // réduit ni l'ARTT ni les CF, contrairement au CMO (guide DNPAF).
   const poseCMO = useCallback(
-    (dateStart: Date, dateEnd?: Date) => {
+    (dateStart: Date, dateEnd?: Date, imputableService = false) => {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
 
@@ -526,7 +528,8 @@ export function useCounters() {
         action: 'cmo',
         type: 'cmo',
         amount,
-        description: 'Arrêt maladie (CMO)',
+        description: imputableService ? 'Blessure en service (BS)' : 'Arrêt maladie (CMO)',
+        ...(imputableService && { imputableService: true }),
         countersSnapshot: {},
       };
 
