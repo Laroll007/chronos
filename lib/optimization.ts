@@ -597,17 +597,21 @@ export function generateAllCombinations(
   // Minutes réelles à couvrir sur la période (somme des durées des jours travaillés).
   // Permet de dimensionner les compteurs horaires selon le régime (ex. hebdo ≈ 8h/jour)
   // au lieu du forfait 12h08. Si absent, on retombe sur workingDays × 12h08.
-  workingMinutes?: number
+  workingMinutes?: number,
+  // Jours calendaires de la période (repos compris) : les congés bonifiés se
+  // décomptent ainsi (guide DNPAF : « 31 jours consécutifs, repos de cycle et
+  // fériés inclus »). Absent = pas de proposition en congés bonifiés.
+  joursCalendaires?: number
 ): Combination[] {
   const reserve = Math.max(0, counters.caReservesCET ?? 0);
 
   // 1re passe : on met de côté les CA que l'agent a sécurisés pour son CET.
-  const sansReserve = buildCombinations(workingDays, counters, date, workingMinutes, reserve);
+  const sansReserve = buildCombinations(workingDays, counters, date, workingMinutes, reserve, joursCalendaires);
   if (reserve === 0 || sansReserve.length > 0) return sansReserve;
 
   // Aucune solution sans y toucher → on repropose en entamant la réserve, mais
   // en le disant clairement sur chaque option (l'agent garde la décision).
-  const avecReserve = buildCombinations(workingDays, counters, date, workingMinutes, 0);
+  const avecReserve = buildCombinations(workingDays, counters, date, workingMinutes, 0, joursCalendaires);
   for (const combo of avecReserve) {
     if (combo.items.some((it) => it.type === 'ca')) {
       combo.disadvantages = [
@@ -628,7 +632,8 @@ function buildCombinations(
   counters: Counters,
   date: Date,
   workingMinutes: number | undefined,
-  caReserve: number
+  caReserve: number,
+  joursCalendaires?: number
 ): Combination[] {
   // Soldes utilisés pour décider de ce qu'on PROPOSE. Le scoring, l'impact et la
   // vérification de faisabilité continuent d'utiliser les soldes réels.
@@ -649,6 +654,13 @@ function buildCombinations(
 
   // 1. Combinaisons pures (1 seul type)
   for (const type of priorities) {
+    // Congés bonifiés : toute la période en jours calendaires, jamais mélangés.
+    if (type === 'congesBonifies') {
+      if (joursCalendaires && getAvailableAmount(dispo, type, repDayMinutes) >= joursCalendaires) {
+        combinations.push(createCombination([{ type, amount: joursCalendaires }], counters, date, repDayMinutes));
+      }
+      continue;
+    }
     const available = getAvailableAmount(dispo, type, repDayMinutes);
     if (available >= workingDays) {
       combinations.push(
@@ -672,6 +684,7 @@ function buildCombinations(
     for (let j = i + 1; j < priorities.length; j++) {
       const type1 = priorities[i];
       const type2 = priorities[j];
+      if (type1 === 'congesBonifies' || type2 === 'congesBonifies') continue;
       const avail1 = getAvailableAmount(dispo, type1, repDayMinutes);
       const avail2 = getAvailableAmount(dispo, type2, repDayMinutes);
 

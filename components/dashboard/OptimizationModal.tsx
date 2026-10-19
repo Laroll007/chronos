@@ -168,7 +168,8 @@ export function OptimizationModal({
       { type: 'rps', label: 'RPS' },
       { type: 'hs', label: 'HS' },
       { type: 'hsHistorique', label: 'HS historiques' },
-      { type: 'congesBonifies', label: 'Congés bonifiés' },
+      // Congés bonifiés : pas en pose libre (décompte en jours calendaires de
+      // toute la période, proposé parmi les meilleures options).
       { type: 'cet2008', label: 'CET 2008' },
       { type: 'cet', label: 'CET (utiliser)' },
     ];
@@ -275,6 +276,7 @@ export function OptimizationModal({
     workingDays: number;
     countersHash: string;
     startTime: number;
+    endTime: number;
   } | null>(null);
 
   // Créer un hash stable des compteurs pour comparaison
@@ -310,7 +312,9 @@ export function OptimizationModal({
       lastCalc &&
       lastCalc.workingDays === workingDaysCount &&
       lastCalc.countersHash === countersHash &&
-      lastCalc.startTime === startTime
+      lastCalc.startTime === startTime &&
+      // Fin de période : change les jours calendaires (congés bonifiés)
+      lastCalc.endTime === endDate.getTime()
     ) {
       return; // Pas besoin de recalculer
     }
@@ -319,11 +323,18 @@ export function OptimizationModal({
 
     // Délai court pour l'effet visuel de calcul
     const timeoutId = setTimeout(() => {
+      // Jours calendaires de la période (congés bonifiés : repos compris)
+      const joursCalendaires =
+        Math.round(
+          (new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime() -
+            new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime()) / 86_400_000
+        ) + 1;
       const results = generateAllCombinations(
         workingDaysCount,
         counters,
         startDate,
-        workingMinutesCount
+        workingMinutesCount,
+        joursCalendaires
       );
       setCombinations(results);
       setIsCalculating(false);
@@ -333,6 +344,7 @@ export function OptimizationModal({
         workingDays: workingDaysCount,
         countersHash,
         startTime,
+        endTime: endDate.getTime(),
       };
     }, 150); // Réduit de 300ms à 150ms
 
