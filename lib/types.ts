@@ -188,6 +188,8 @@ export interface Counters {
 
   // Congés bonifiés (fonctionnaires DOM/TOM, décret 2020-851)
   hasCongesBonifies: boolean;
+  // Crédit d'heures d'élu (CME) par trimestre, en minutes (cf. lib/creditCME.ts).
+  cmeTrimestre?: number;
   congesBonifies?: number; // 31j/24 mois (nouveau régime)
   congesBonifiesDateOuverture?: string; // ISO date - début du cycle 24 mois
 
@@ -301,6 +303,8 @@ export interface HistoryEntry {
   // Versement au CET multi-sources (action 'transfer_cet'). Absent sur les
   // épargnes plus anciennes, qui ne portaient que sur des CA de l'année en cours.
   cetDetail?: DetailEpargneCET;
+  /** Heures d'élu décomptées du crédit CME (absence motif 'elu_cme'). */
+  minutes?: number;
   /** Arrêt (action 'cmo') imputable au service : blessure en service (BS). */
   imputableService?: boolean;
   /** Absence sans compteur (action 'absence') : motif, cf. lib/absences.ts. */

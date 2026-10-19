@@ -223,6 +223,7 @@ function checkHistoryEntry(v: unknown, i: number): string[] {
   if (v.anneeDecompte !== undefined && !isNum(v.anneeDecompte as unknown, 2000, 2200)) errors.push(`history[${i}].anneeDecompte: année attendue`);
   if (v.decompteApplique !== undefined && !isBool(v.decompteApplique)) errors.push(`history[${i}].decompteApplique: boolean attendu`);
   if (v.imputableService !== undefined && !isBool(v.imputableService)) errors.push(`history[${i}].imputableService: boolean attendu`);
+  if (v.minutes !== undefined && !isNum(v.minutes as unknown, 0)) errors.push(`history[${i}].minutes: nombre >= 0 attendu`);
   return errors;
 }
 

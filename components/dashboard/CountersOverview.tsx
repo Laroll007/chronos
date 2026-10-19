@@ -1,5 +1,6 @@
 'use client';
 
+import type { CreditCME } from '@/lib/creditCME';
 import { droitsAnnee } from '@/lib/changementCycle';
 import { useMemo, useState } from 'react';
 import { CounterDetailsModal } from './CounterDetailsModal';
@@ -34,6 +35,8 @@ import {
 } from '@/lib/calculations';
 
 interface CountersOverviewProps {
+  /** Élu : crédit d'heures CME du trimestre (carte affichée s'il est renseigné). */
+  creditCME?: CreditCME | null;
   counters: Counters;
   onUpdateCounters: (updates: Partial<Counters>) => void;
   caTotal?: number; // nombre de CA annuels selon le cycle (hebdo = 25)
@@ -42,7 +45,7 @@ interface CountersOverviewProps {
   dayMinutes?: number; // durée d'un jour du régime (minutes) pour l'équivalent « ≈ Xj »
 }
 
-export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL, dayMinutes, cycleConfig, onUpdateCycle }: CountersOverviewProps) {
+export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTAL_ANNUEL, dayMinutes, cycleConfig, onUpdateCycle, creditCME }: CountersOverviewProps) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [helpKey, setHelpKey] = useState<string | null>(null);
 
@@ -273,6 +276,20 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       });
     }
 
+    // Élu : crédit d'heures CME du trimestre (non reportable)
+    if (creditCME) {
+      result.push({
+        id: 'cme',
+        label: 'Crédit CME (élu)',
+        value: creditCME.reste,
+        max: creditCME.dotation,
+        unit: 'heures',
+        deadline: creditCME.finTrimestre,
+        status: getStatus(getDaysUntil(creditCME.finTrimestre, now), creditCME.reste > 0),
+        description: 'Trimestre en cours, sans report',
+      });
+    }
+
     // HS Historique (compte gelé depuis 2020)
     if (counters.hsHistorique > 0) {
       result.push({
@@ -287,13 +304,13 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
     }
 
     return result;
-  }, [counters, caTotal]);
+  }, [counters, caTotal, creditCME, cycleConfig]);
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-stagger-in">
         {cards.map((card) => (
-          <CounterCard key={card.id} {...card} dayMinutes={dayMinutes} onDetails={setDetailsId} onHelp={setHelpKey} />
+          <CounterCard key={card.id} {...card} dayMinutes={dayMinutes} onDetails={card.id === 'cme' ? undefined : setDetailsId} onHelp={card.id === 'cme' ? undefined : setHelpKey} />
         ))}
       </div>
       <CounterDetailsModal

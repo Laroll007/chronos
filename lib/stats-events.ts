@@ -36,6 +36,7 @@ const EVENTS_BASE = {
   leave_pose_partiel: { label: 'Heures posées (partiel)', group: 'Poses' },
   cmo_mark: { label: 'Arrêt maladie (CMO)', group: 'Poses' },
   bs_mark: { label: 'Marque une blessure en service (BS)', group: 'Poses' },
+  cme_credit_set: { label: 'Élu : renseigne son crédit d’heures CME', group: 'Poses' },
   astreinte_mark: { label: 'Astreinte', group: 'Poses' },
   leave_edit: { label: 'Modification d’un congé', group: 'Poses' },
   leave_delete: { label: 'Suppression d’un congé', group: 'Poses' },

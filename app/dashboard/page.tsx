@@ -76,6 +76,7 @@ import { track, setStatsProfile } from '@/lib/analytics';
 import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
 import { isNativeApp, plateformeNative } from '@/lib/api';
 import { droitsAnnee, type ParamsChangement } from '@/lib/changementCycle';
+import { creditCME } from '@/lib/creditCME';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
 // La sélection contient-elle au moins un jour de repos (week-end / repos de cycle) ?
@@ -245,6 +246,12 @@ export default function DashboardPage() {
     if (ok) track('leave_delete');
     return ok;
   }, [deleteHistoryEntry]);
+
+  // Élu : crédit d'heures CME du trimestre en cours (null si non renseigné)
+  const creditCMEActuel = useMemo(
+    () => (userData ? creditCME(userData.counters, userData.history) : null),
+    [userData]
+  );
 
   const handleUpdateCounters = useCallback((updates: Parameters<typeof updateCounters>[0]) => {
     track('counters_edit');
@@ -458,9 +465,9 @@ export default function DashboardPage() {
     }
   }, [poseCMO, selectedRange]);
 
-  const handleMarkAbsence = useCallback((motif: MotifAbsence) => {
+  const handleMarkAbsence = useCallback((motif: MotifAbsence, minutesPartielles?: number) => {
     if (!selectedRange) return;
-    const result = poseAbsence(motif, selectedRange.start, selectedRange.end);
+    const result = poseAbsence(motif, selectedRange.start, selectedRange.end, minutesPartielles);
     if (result.success) {
       toast.success(`${MOTIFS_ABSENCE[motif].court} marqué`, {
         description: 'Jours marqués non travaillés sur le calendrier, sans impact sur vos compteurs.',
@@ -793,6 +800,11 @@ export default function DashboardPage() {
             previsionnelInitial={selectedRange?.previsionnel}
             onMarkCMO={handleMarkCMO}
             onMarkAbsence={handleMarkAbsence}
+            creditCME={creditCMEActuel}
+            onSetCreditCME={(minutes) => {
+              handleUpdateCounters({ cmeTrimestre: minutes });
+              track('cme_credit_set');
+            }}
             onMarkAstreinte={handleMarkAstreinte}
             onPosePartiel={handlePosePartiel}
             hasRestDays={selectedRange?.hasRestDays}
@@ -869,6 +881,7 @@ export default function DashboardPage() {
           onUpdateCycle={handleUpdateCycle}
           onOpenCETPlan={() => { setShowCounters(false); openCETPlan(); }}
           posesAnneeSuivante={posesDifferees(history, new Date().getFullYear() + 1)}
+          creditCME={creditCMEActuel}
           onManageCounters={() => {
             track('counters_manage_open');
             setShowCounters(false);

@@ -15,7 +15,10 @@ export type MotifAbsence =
   | 'art15'
   | 'cfs'
   | 'exn'
-  | 'repos_decale';
+  | 'repos_decale'
+  | 'elu_ame'
+  | 'elu_cme'
+  | 'elu_formation';
 
 export interface InfoMotif {
   label: string;
@@ -87,6 +90,24 @@ export const MOTIFS_ABSENCE: Record<MotifAbsence, InfoMotif> = {
     code: 'EXN',
     aide: 'Exemption de vacation, par exemple la nuit qui précède un stage pour garantir le repos minimum. Aucun compteur débité.',
   },
+  elu_ame: {
+    label: 'Élu : séance du conseil (AME)',
+    court: 'AME',
+    code: 'AME',
+    aide: 'Élu municipal, départemental ou régional : séances du conseil, commissions, organismes où vous représentez la collectivité, trajet compris. De droit : prévenez par écrit dès que vous connaissez les dates. Non rémunéré, sur un jour travaillé seulement ; réduit le crédit ARTT. AME + CME : 803h30 par an au plus.',
+  },
+  elu_cme: {
+    label: 'Élu : crédit d’heures (CME)',
+    court: 'CME',
+    code: 'CME',
+    aide: 'Crédit d’heures trimestriel (selon la taille de la commune), non reportable d’un trimestre à l’autre. Prévenez par écrit 3 jours avant. Non rémunéré, sur un jour travaillé seulement ; réduit le crédit ARTT.',
+  },
+  elu_formation: {
+    label: 'Élu : formation (FHP)',
+    court: 'Formation élu',
+    code: 'FHP',
+    aide: '18 jours par mandat, non rémunérés, renouvelables en cas de réélection. Peut être refusé pour nécessités de service (avis motivé). Réduit le crédit ARTT.',
+  },
   repos_decale: {
     label: 'Repos décalé (RC/RL)',
     court: 'Repos décalé',
@@ -98,7 +119,11 @@ export const MOTIFS_ABSENCE: Record<MotifAbsence, InfoMotif> = {
 export const ORDRE_MOTIFS: MotifAbsence[] = [
   'asa_mariage', 'asa_naissance', 'asa_deces', 'asa_maladie_grave', 'asa_garde_enfant', 'asa_autre',
   'art13', 'art15', 'cfs', 'exn', 'repos_decale',
+  'elu_ame', 'elu_cme', 'elu_formation',
 ];
+
+/** Motifs qui peuvent se poser en heures sur un jour travaillé (le reste de la journée est travaillé). */
+export const MOTIFS_EN_HEURES: ReadonlySet<MotifAbsence> = new Set(['elu_ame', 'elu_cme']);
 
 export function estMotifAbsence(v: unknown): v is MotifAbsence {
   return typeof v === 'string' && v in MOTIFS_ABSENCE;

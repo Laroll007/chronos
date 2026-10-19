@@ -11,7 +11,7 @@ import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/typ
 import { jourModifieDu } from '@/lib/journees';
 import { estFerie } from '@/lib/feries';
 import { useMonthCalendar } from '@/hooks/useCycle';
-import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
+import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, hasAbsencePartielleOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
@@ -339,7 +339,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isAstreinte = !isPosted && !isCMO && hasAstreinteOnDate(day.date, history);
             const isAbsence = !isPosted && !isCMO && !isAstreinte && hasAbsenceOnDate(day.date, history);
             const partialMin = !isPosted && !isCMO && !isAstreinte && !isAbsence ? getPartialMinutesOnDate(day.date, history) : 0;
-            const isPartial = partialMin > 0;
+            // Heures posées, ou absence d'élu en heures : le jour reste travaillé.
+            const isPartial = partialMin > 0 || (!isPosted && !isCMO && !isAbsence && hasAbsencePartielleOnDate(day.date, history));
             const dayEvents = eventsOnDate(day.date, events);
             const jourModifie = jourModifieDu(day.date, joursModifies);
             const layout = eventLayout.get(toDayKey(day.date));

@@ -2,6 +2,7 @@
 
 'use client';
 
+import type { CreditCME } from '@/lib/creditCME';
 import { Counters, CounterType, CycleConfig, Recommendation } from '@/lib/types';
 import { isDayBasedType } from '@/lib/optimization';
 import { CountersOverview } from './CountersOverview';
@@ -32,6 +33,8 @@ interface CountersDrawerProps {
   onManageCounters?: () => void;
   /** Congés posés pour l'année suivante, pas encore décomptés (par compteur). */
   posesAnneeSuivante?: Partial<Record<CounterType, number>>;
+  /** Élu : crédit d'heures CME du trimestre. */
+  creditCME?: CreditCME | null;
 }
 
 const NOMS: Partial<Record<CounterType, string>> = {
@@ -52,6 +55,7 @@ export function CountersDrawer({
   onOpenCETPlan,
   onManageCounters,
   posesAnneeSuivante,
+  creditCME,
 }: CountersDrawerProps) {
   const highPriority = recommendations.filter((r) => r.priority === 'high');
   const mediumPriority = recommendations.filter((r) => r.priority === 'medium');
@@ -104,7 +108,7 @@ export function CountersDrawer({
                   .join(' · ')}
               </p>
             )}
-            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes}
+            <CountersOverview counters={counters} onUpdateCounters={onUpdateCounters} caTotal={caTotal} dayMinutes={dayMinutes} creditCME={creditCME}
             cycleConfig={cycleConfig}
             onUpdateCycle={onUpdateCycle} />
             {onOpenCETPlan && (

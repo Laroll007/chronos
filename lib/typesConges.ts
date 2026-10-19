@@ -60,10 +60,17 @@ export function etiquetteDuJour(date: Date, history: HistoryEntry[]): { texte: s
   const arret = history.find((e) => dateMatchesEntry(date, e, 'cmo'));
   if (arret) return { texte: arret.imputableService ? 'BS' : 'CMO', couleur: TYPE_LABELS.cmo.color };
   if (history.some((e) => dateMatchesEntry(date, e, 'astreinte'))) return { texte: 'Astreinte', couleur: TYPE_LABELS.astreinte.color };
-  const absence = history.find((e) => dateMatchesEntry(date, e, 'absence'));
+  // Journée entière d'abord, sinon absence en heures (élu : « CME 3h »).
+  const absences = history.filter((e) => dateMatchesEntry(date, e, 'absence'));
+  const absence = absences.find((e) => !e.partialDay) ?? absences[0];
   if (absence) {
     const motif = absence.motif && absence.motif in MOTIFS_ABSENCE ? MOTIFS_ABSENCE[absence.motif as MotifAbsence] : null;
-    return { texte: motif?.code ?? 'Absence', couleur: TYPE_LABELS.absence.color };
+    const code = motif?.code ?? 'Absence';
+    if (absence.partialDay) {
+      const m = absence.amount;
+      return { texte: `${code} ${m % 60 === 0 ? `${m / 60}h` : formatMinutes(m)}`, couleur: TYPE_LABELS.absence.color };
+    }
+    return { texte: code, couleur: TYPE_LABELS.absence.color };
   }
   return null;
 }

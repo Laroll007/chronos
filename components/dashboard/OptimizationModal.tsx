@@ -2,13 +2,14 @@
 
 'use client';
 
+import type { CreditCME } from '@/lib/creditCME';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Counters, Combination, CounterType, PersonalEvent } from '@/lib/types';
 import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, formatEventWhen } from '@/lib/events';
 import { generateAllCombinations, createCombination, getRawBalance, isDayBasedType } from '@/lib/optimization';
 import { formatMinutes } from '@/lib/calculations';
 import { repartirSurJours } from '@/lib/repartition';
-import { MOTIFS_ABSENCE, ORDRE_MOTIFS, type MotifAbsence } from '@/lib/absences';
+import { MOTIFS_ABSENCE, MOTIFS_EN_HEURES, ORDRE_MOTIFS, type MotifAbsence } from '@/lib/absences';
 import { HEURES_PAR_JOUR } from '@/lib/constants';
 import { anterieurParDefaut, periodeACheval, periodeAnneeSuivante, periodeAnterieure } from '@/lib/previsionnel';
 import type { OptionsPose } from '@/hooks/useCounters';
@@ -59,7 +60,11 @@ interface OptimizationModalProps {
   /** Arrêt maladie (CMO), ou blessure en service (BS) si `imputableService`. */
   onMarkCMO?: (imputableService?: boolean) => void;
   /** ASA, Art. 13, CFS, EXN, repos décalé : jours non travaillés, sans compteur. */
-  onMarkAbsence?: (motif: MotifAbsence) => void;
+  onMarkAbsence?: (motif: MotifAbsence, minutesPartielles?: number) => void;
+  /** Élu : crédit d'heures CME du trimestre (null si non renseigné). */
+  creditCME?: CreditCME | null;
+  /** Élu : enregistre la dotation CME par trimestre (minutes). */
+  onSetCreditCME?: (minutes: number) => void;
   onMarkAstreinte?: () => void;
   // Pose fractionnée (départ anticipé / prise retardée) — uniquement pour 1 jour sélectionné.
   onPosePartiel?: (type: CounterType, minutes: number, options: OptionsPose) => void;
@@ -90,6 +95,8 @@ export function OptimizationModal({
   onApply,
   onMarkCMO,
   onMarkAbsence,
+  creditCME,
+  onSetCreditCME,
   onMarkAstreinte,
   onPosePartiel,
   hasRestDays = false,
@@ -129,6 +136,11 @@ export function OptimizationModal({
   const [showCMO, setShowCMO] = useState(false);
   const [showAbsence, setShowAbsence] = useState(false);
   const [motif, setMotif] = useState<MotifAbsence>('asa_mariage');
+  // Élu : absence en heures (un seul jour) et dotation CME saisie ici
+  const [enHeures, setEnHeures] = useState(false);
+  const [heuresAbs, setHeuresAbs] = useState(0);
+  const [dotationCME, setDotationCME] = useState(0);
+  const unSeulJour = !!startDate && !!endDate && startDate.toDateString() === endDate.toDateString();
   const [showAstreinte, setShowAstreinte] = useState(false);
   const [showPartial, setShowPartial] = useState(false);
   const [partialType, setPartialType] = useState<CounterType | null>(null);
@@ -793,13 +805,61 @@ export function OptimizationModal({
                     <p className="text-xs text-cyan-800">
                       {MOTIFS_ABSENCE[motif].aide} Le jour est marqué non travaillé, <strong>sans toucher à vos compteurs</strong>.
                     </p>
+                    {MOTIFS_EN_HEURES.has(motif) && unSeulJour && (
+                      <div className="space-y-2 rounded-lg bg-white border border-cyan-200 p-3">
+                        {([false, true] as const).map((h) => (
+                          <label key={String(h)} className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+                            <input type="radio" name="duree-absence" checked={enHeures === h} onChange={() => setEnHeures(h)} />
+                            {h ? 'Quelques heures (le reste de la journée est travaillé)' : 'Journée entière'}
+                          </label>
+                        ))}
+                        {enHeures && (
+                          <div className="flex items-center gap-2 pl-6">
+                            <input type="number" min={0} max={23} inputMode="numeric" aria-label="Durée de l’absence — heures"
+                              value={Math.floor(heuresAbs / 60) || ''} placeholder="0"
+                              onChange={(e) => setHeuresAbs((parseInt(e.target.value) || 0) * 60 + (heuresAbs % 60))}
+                              className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-center" />
+                            <span className="text-xs text-slate-500">h</span>
+                            <input type="number" min={0} max={59} inputMode="numeric" aria-label="Durée de l’absence — minutes"
+                              value={heuresAbs % 60 || ''} placeholder="0"
+                              onChange={(e) => setHeuresAbs(Math.floor(heuresAbs / 60) * 60 + Math.min(59, parseInt(e.target.value) || 0))}
+                              className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-center" />
+                            <span className="text-xs text-slate-500">min</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {motif === 'elu_cme' && (
+                      creditCME ? (
+                        <p className="text-xs text-cyan-900 rounded-lg bg-white border border-cyan-200 p-2.5">
+                          Crédit CME du trimestre : <strong>{formatMinutes(creditCME.reste)}</strong> restantes sur {formatMinutes(creditCME.dotation)}
+                          {' '}(jusqu’au {creditCME.finTrimestre.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}, sans report).
+                        </p>
+                      ) : onSetCreditCME && (
+                        <div className="rounded-lg bg-white border border-cyan-200 p-2.5 space-y-2">
+                          <p className="text-xs text-cyan-900">Votre crédit d’heures CME par trimestre (selon la taille de votre commune), pour suivre ce qu’il vous reste :</p>
+                          <div className="flex items-center gap-2">
+                            <input type="number" min={0} max={999} inputMode="numeric" aria-label="Crédit CME par trimestre — heures"
+                              value={Math.floor(dotationCME / 60) || ''} placeholder="0"
+                              onChange={(e) => setDotationCME((parseInt(e.target.value) || 0) * 60)}
+                              className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-center" />
+                            <span className="text-xs text-slate-500">h par trimestre</span>
+                            <button type="button" disabled={dotationCME <= 0} onClick={() => onSetCreditCME(dotationCME)}
+                              className="ml-auto px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-cyan-700 disabled:opacity-50">
+                              Enregistrer
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    )}
                     <div className="flex justify-end">
                       <button
+                        disabled={MOTIFS_EN_HEURES.has(motif) && unSeulJour && enHeures && heuresAbs <= 0}
                         onClick={() => {
-                          onMarkAbsence(motif);
+                          onMarkAbsence(motif, MOTIFS_EN_HEURES.has(motif) && unSeulJour && enHeures ? heuresAbs : undefined);
                           onClose();
                         }}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-cyan-700 hover:bg-cyan-800 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-cyan-700 hover:bg-cyan-800 transition-colors flex items-center gap-2 disabled:opacity-50"
                       >
                         <CalendarX className="w-4 h-4" />
                         Marquer : {MOTIFS_ABSENCE[motif].court}

@@ -1150,7 +1150,13 @@ export function getPartialMinutesOnDate(
  */
 /** Absence sans compteur (ASA, Art. 13, CFS, EXN, repos décalé) ce jour-là. */
 export function hasAbsenceOnDate(date: Date, history: HistoryEntry[]): boolean {
-  return history.some((entry) => dateMatchesEntry(date, entry, 'absence'));
+  // Une absence en heures (élu : AME, CME) laisse le reste de la journée travaillé.
+  return history.some((entry) => !entry.partialDay && dateMatchesEntry(date, entry, 'absence'));
+}
+
+/** Absence posée en heures ce jour-là (le jour reste travaillé). */
+export function hasAbsencePartielleOnDate(date: Date, history: HistoryEntry[]): boolean {
+  return history.some((entry) => entry.partialDay === true && dateMatchesEntry(date, entry, 'absence'));
 }
 
 export function hasCMOOnDate(

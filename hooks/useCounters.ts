@@ -18,6 +18,7 @@ import { compteursAnneeSuivante } from '@/lib/previsionnel';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
 import { annulerChangement, appliquerChangement, type ParamsChangement } from '@/lib/changementCycle';
+import { horairesDuJour } from '@/lib/horaires';
 import { effetJournee, formuleCorrespondante, sanitizeJoursModifies, type ChoixRappel } from '@/lib/journees';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
 
@@ -548,17 +549,34 @@ export function useCounters() {
   // Absence sans compteur (ASA, Art. 13, CFS, EXN, repos décalé) : marque les
   // jours comme non travaillés, sans débit ni RPS. Cf. lib/absences.ts.
   const poseAbsence = useCallback(
-    (motif: MotifAbsence, dateStart: Date, dateEnd?: Date) => {
+    (motif: MotifAbsence, dateStart: Date, dateEnd?: Date, minutesPartielles?: number) => {
       const current = userDataRef.current;
       if (!current) return { success: false, error: 'Données non chargées' };
       const end = dateEnd ?? dateStart;
+      // Élu : AME / CME en heures sur un jour travaillé (le reste est travaillé).
+      const partiel = minutesPartielles !== undefined && minutesPartielles > 0;
+      // CME : heures décomptées du crédit trimestriel (journée entière = durée
+      // des vacations couvertes).
+      let minutesCME: number | undefined;
+      if (motif === 'elu_cme') {
+        if (partiel) {
+          minutesCME = minutesPartielles;
+        } else {
+          minutesCME = 0;
+          for (const d = new Date(dateStart.getFullYear(), dateStart.getMonth(), dateStart.getDate()); d <= end; d.setDate(d.getDate() + 1)) {
+            if (isWorkingDay(d, current.cycleConfig)) minutesCME += horairesDuJour(d, current.cycleConfig).duree;
+          }
+        }
+      }
       const historyEntry: HistoryEntry = {
         id: generateId(),
         date: dateStart.toISOString(),
         dateEnd: dateEnd ? dateEnd.toISOString() : undefined,
         action: 'absence',
         type: 'absence',
-        amount: Math.max(0, countWorkingDays(dateStart, end, current.cycleConfig)),
+        amount: partiel ? minutesPartielles! : Math.max(0, countWorkingDays(dateStart, end, current.cycleConfig)),
+        ...(partiel && { partialDay: true }),
+        ...(minutesCME !== undefined && { minutes: minutesCME }),
         motif,
         description: MOTIFS_ABSENCE[motif].label,
         countersSnapshot: {},
