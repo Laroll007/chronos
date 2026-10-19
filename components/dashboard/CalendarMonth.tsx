@@ -21,6 +21,17 @@ import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
 import { jeuHorairesDuJour } from '@/lib/horaires';
 import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { BadgeHoraires, LegendeHoraires, libelleJeu } from './HorairesBadge';
+import { etiquetteDuJour } from '@/lib/typesConges';
+
+// Préférence de l'agent : afficher le type de congé (CA, RTC…) sur le planning.
+const CLE_TYPES = 'chronos_planning_types';
+const lireAfficherTypes = () => {
+  try {
+    return localStorage.getItem(CLE_TYPES) !== '0';
+  } catch {
+    return true;
+  }
+};
 
 interface CalendarMonthProps {
   cycleConfig: CycleConfig;
@@ -62,6 +73,16 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
     const sundays = days.filter((d) => d.isWorking && d.isSunday).length;
     return { working, sundays };
   }, [days, history]);
+
+  const [afficherTypes, setAfficherTypes] = useState(lireAfficherTypes);
+  const basculerTypes = (v: boolean) => {
+    setAfficherTypes(v);
+    try {
+      localStorage.setItem(CLE_TYPES, v ? '1' : '0');
+    } catch {
+      /* préférence non mémorisée : sans gravité */
+    }
+  };
 
   // Placement des événements (barres continues, lignes alignées par semaine)
   const eventLayout = useMemo(
@@ -327,6 +348,11 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const isFerie = cycleConfig.type === 'hebdo' && estFerie(day.date);
             // Horaires qui changent (soirée / matinée…) : pastille sur les jours travaillés.
             const jeu = day.isWorking && !isPosted && !isCMO && !isAbsence ? jeuHorairesDuJour(day.date, cycleConfig) : null;
+            // Type de congé (CA, RTC, CF + HS, RTC 4h…) affiché dans la case
+            const etiquette =
+              afficherTypes && isCurrentMonth && (isPosted || isPartial || isCMO || isAstreinte || isAbsence)
+                ? etiquetteDuJour(day.date, history)
+                : null;
 
             // Construire le label accessible
             const dateLabel = day.date.toLocaleDateString('fr-FR', {
@@ -340,6 +366,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
             else statusParts.push(isFerie ? 'jour férié' : 'jour de repos');
             if (isPosted) statusParts.push(isPrevisionnel ? 'congé posé, prévisionnel' : 'congé posé');
+            if (etiquette) statusParts.push(etiquette.texte);
             if (isCMO) statusParts.push('arrêt maladie');
             if (isAstreinte) statusParts.push('astreinte');
             if (isAbsence) statusParts.push('absence (ASA, Art. 13…)');
@@ -444,6 +471,18 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
                 )}
                 </div>
 
+                {etiquette && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mx-0.5 mt-0.5 block truncate rounded border px-0.5 text-center text-[10px] md:text-[11px] font-bold leading-4',
+                      etiquette.couleur
+                    )}
+                  >
+                    {etiquette.texte}
+                  </span>
+                )}
+
                 {/* Événements : lignes alignées sur la semaine, 2 au plus puis « +N » */}
                 {layout && isCurrentMonth && (
                   <div className="mt-1 space-y-0.5">
@@ -477,7 +516,19 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
 
         {/* Légende : uniquement ce qui apparaît ce mois-ci (pastilles carrées,
             comme les cases) */}
-        <CalendarLegend flags={legendFlags} shape="square" />
+        {/* Types affichés dans les cases : la légende des couleurs devient inutile */}
+        {!afficherTypes && <CalendarLegend flags={legendFlags} shape="square" />}
+        {(legendFlags.conge || legendFlags.heures || legendFlags.cmo || legendFlags.astreinte || legendFlags.absence) && (
+          <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={afficherTypes}
+              onChange={(e) => basculerTypes(e.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
+            Afficher le type de congé (CA, RTC, CMO…) dans les cases
+          </label>
+        )}
         <LegendeHoraires
           cycleConfig={cycleConfig}
           dates={days.filter((d) => d.isWorking && d.date.getMonth() === month).map((d) => d.date)}

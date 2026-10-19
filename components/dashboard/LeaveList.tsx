@@ -1,5 +1,6 @@
 'use client';
 
+import { TYPE_LABELS } from '@/lib/typesConges';
 import { useMemo, useState } from 'react';
 import { HistoryEntry, CounterType, PersonalEvent } from '@/lib/types';
 import { EVENT_CATEGORIES, EVENT_COLORS, eventColor, eventsInRange, formatEventWhen } from '@/lib/events';
@@ -57,25 +58,6 @@ function badgesPeriode(items: HistoryEntry[]): { cle: string; texte: string; cla
   return out;
 }
 
-const TYPE_LABELS: Record<CounterType, { label: string; color: string }> = {
-  ca: { label: 'CA', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  caHP: { label: 'CA HP', color: 'bg-red-100 text-red-700 border-red-200' },
-  cf: { label: 'CF', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  rtc: { label: 'RTC', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  rtt: { label: 'RTT', color: 'bg-teal-100 text-teal-700 border-teal-200' },
-  rps: { label: 'RPS', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  hs: { label: 'HS', color: 'bg-rose-100 text-rose-700 border-rose-200' },
-  cet: { label: 'CET', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  artt: { label: 'ARTT', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  caAnterieur: { label: 'CA Ant.', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  caHPAnterieur: { label: 'CA HP Ant.', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  cet2008: { label: 'CET 2008', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  congesBonifies: { label: 'Congés Bon.', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  hsHistorique: { label: 'HS Hist.', color: 'bg-rose-100 text-rose-700 border-rose-200' },
-  cmo: { label: 'CMO', color: 'bg-violet-100 text-violet-700 border-violet-200' },
-  astreinte: { label: 'Astreinte', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  absence: { label: 'Absence', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
-};
 
 interface LeaveGroup {
   key: string;

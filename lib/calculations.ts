@@ -1101,7 +1101,7 @@ export function getUrgencyColor(percent: number): 'success' | 'warning' | 'error
 /**
  * Vérifie si une date est couverte par une entrée d'historique d'une action donnée
  */
-function dateMatchesEntry(date: Date, entry: HistoryEntry, action: HistoryEntry['action']): boolean {
+export function dateMatchesEntry(date: Date, entry: HistoryEntry, action: HistoryEntry['action']): boolean {
   if (entry.action !== action) return false;
 
   const normalized = new Date(date);
