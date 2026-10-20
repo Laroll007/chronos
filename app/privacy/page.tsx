@@ -139,6 +139,34 @@ export default function PrivacyPage() {
                   </em>
                 </p>
               </div>
+              <div
+                id="sondage"
+                className="p-3 rounded-lg bg-sky-50 border border-sky-200 scroll-mt-4"
+              >
+                <p className="font-semibold text-sky-900 mb-1">
+                  D) Sondage «&nbsp;Préparons 2027&nbsp;» (facultatif, jusqu&apos;au 31 décembre 2026)
+                </p>
+                <p className="text-sky-900/90">
+                  Si vous y répondez, et si les statistiques anonymes sont
+                  activées, l&apos;application envoie à notre serveur
+                  (OVHcloud, France)&nbsp;: votre <strong>type de cycle</strong>{" "}
+                  (ex. «&nbsp;2/2/3, nuit, 12h08&nbsp;»), votre réponse
+                  («&nbsp;c&apos;est bien ça&nbsp;», «&nbsp;je corrige&nbsp;»,
+                  «&nbsp;je ne sais pas&nbsp;»), les{" "}
+                  <strong>dotations annuelles</strong> que vous corrigez (CA,
+                  RTC, CF, ARTT, RTT), la raison d&apos;un écart si vous la
+                  choisissez, la plateforme et la version de l&apos;application.
+                  Aucun identifiant, aucune adresse IP enregistrée, aucun texte
+                  libre, aucune date de congé&nbsp;: la réponse ne peut pas être
+                  reliée à une personne. Elle sert uniquement à vérifier les
+                  droits recrédités au 1er janvier pour chaque cycle&nbsp;;
+                  elle est conservée jusqu&apos;au 31 décembre 2027 au plus.
+                  Votre réponse est aussi gardée sur votre appareil pour
+                  appliquer vos chiffres au 1er janvier.{" "}
+                  <em>Base légale&nbsp;: consentement (art. 6.1.a RGPD) — rien
+                  n&apos;est envoyé si vous ne répondez pas.</em>
+                </p>
+              </div>
             </div>
           </section>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useMemo, lazy, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -72,9 +72,11 @@ import { isDayBasedType, canAfford, formatShortfalls } from '@/lib/optimization'
 import { Loader2, User, X } from 'lucide-react';
 import { DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { track, setStatsProfile } from '@/lib/analytics';
+import { track, setStatsProfile, isStatsEnabled } from '@/lib/analytics';
 import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
-import { isNativeApp, plateformeNative } from '@/lib/api';
+import { apiUrl, isNativeApp, plateformeNative } from '@/lib/api';
+import { Sondage2027 } from '@/components/dashboard/Sondage2027';
+import { profilSondage, sondageAProposer } from '@/lib/sondage2027';
 import { droitsAnnee, type ParamsChangement } from '@/lib/changementCycle';
 import { creditCME } from '@/lib/creditCME';
 import { MOTIFS_ABSENCE, type MotifAbsence } from '@/lib/absences';
@@ -173,6 +175,8 @@ export default function DashboardPage() {
     marquerPrevisionnel,
     basculeAnnuelleAConfirmer,
     confirmerBasculeAnnuelle,
+    repondreSondage,
+    reporterSondage,
     compteursARenseigner,
     completerCompteurs,
     masquerRappelCompteurs,
@@ -272,18 +276,47 @@ export default function DashboardPage() {
     }
   }, [isLoading, isOnboarded]);
 
+  // Sondage « Préparons 2027 » : proposé une fois à l'ouverture (jamais en même
+  // temps que la bienvenue, « Quoi de neuf ? » ou le rappel de sauvegarde), et
+  // seulement si le serveur a encore besoin de réponses pour ce profil de cycle.
+  const [showSondage, setShowSondage] = useState(false);
+  const sondageVerifie = useRef(false);
+  useEffect(() => {
+    if (isLoading || !userData || sondageVerifie.current) return;
+    if (showWelcome || !hasSeenWelcome() || nouveautesAuDemarrage || sauvegardeAuDemarrage) return;
+    sondageVerifie.current = true;
+    if (!isStatsEnabled() || !sondageAProposer(userData)) return;
+    let annule = false;
+    fetch(apiUrl(`/api/sondage?profil=${encodeURIComponent(profilSondage(userData.cycleConfig))}`))
+      .then((r) => r.json())
+      .then((j: { besoin?: boolean }) => {
+        if (!annule && j.besoin) setShowSondage(true);
+      })
+      .catch(() => {
+        /* hors ligne : proposé à une prochaine ouverture */
+      });
+    return () => {
+      annule = true;
+    };
+  }, [isLoading, userData, showWelcome, nouveautesAuDemarrage, sauvegardeAuDemarrage]);
+
   // Nouvelle année : les soldes ont été recrédités aux quotas STANDARDS du régime.
   // Un agent à temps partiel, arrivé en cours d'année ou en zone DOM doit les
   // corriger — on ne le laisse pas le découvrir par hasard. Prévenu une seule fois.
   useEffect(() => {
     if (isLoading || !basculeAnnuelleAConfirmer) return;
+    // Agent en cycle avec un compteur ARTT, sans réponse « deux compteurs » au
+    // sondage : ses ARTT ne sont pas recrédités (ce sont ses RTC).
+    const arttNonCredite = !!userData && userData.cycleConfig.type !== 'hebdo' && userData.counters.hasARTT && userData.counters.artt === 0;
     toast.info(`Bonne année ${basculeAnnuelleAConfirmer} !`, {
       duration: 12000,
       description:
-        'Vos compteurs ont été renouvelés et le reliquat de CA basculé en « CA antérieurs » (à poser avant le 30 avril). Les quotas appliqués sont ceux du régime standard : vérifiez-les sur votre relevé (GesTT ou service de gestion) et corrigez-les si besoin.',
+        'Vos compteurs ont été renouvelés et le reliquat de CA basculé en « CA antérieurs » (à poser avant le 30 avril). Les quotas appliqués sont ceux du régime standard : vérifiez-les sur votre relevé (GesTT ou service de gestion) et corrigez-les si besoin.' +
+        (arttNonCredite ? ' En cycle, vos « ARTT » sont vos RTC : votre compteur ARTT n’a pas été recrédité.' : ''),
       action: { label: 'Compris', onClick: () => confirmerBasculeAnnuelle() },
       onDismiss: () => confirmerBasculeAnnuelle(),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message affiché une seule fois, à la bascule
   }, [isLoading, basculeAnnuelleAConfirmer, confirmerBasculeAnnuelle]);
 
   // Durée de chaque jour travaillé de la sélection (choix libre en heures).
@@ -1077,6 +1110,8 @@ export default function DashboardPage() {
               setShowSettings(true);
             } else if (target === 'communaute') {
               ouvrirCommunaute();
+            } else if (target === 'sondage') {
+              setShowSondage(true);
             } else {
               openCETPlan();
             }
@@ -1109,6 +1144,7 @@ export default function DashboardPage() {
         !sauvegardeAuDemarrage &&
         cycleConfig.type === 'alterne' &&
         counters.hasARTT &&
+        !showSondage &&
         !(cycleConfig.heureDebut === undefined && rappelHorairesAuDemarrage) && (
           <ArttCyclePrompt
             onGerer={() => {
@@ -1117,6 +1153,16 @@ export default function DashboardPage() {
             }}
           />
         )}
+
+      {showSondage && (
+        <Sondage2027
+          cycleConfig={cycleConfig}
+          counters={counters}
+          onRepondre={repondreSondage}
+          onPlusTard={reporterSondage}
+          onClose={() => setShowSondage(false)}
+        />
+      )}
 
       {showAvis && (
         <AvisPrompt plateforme={plateforme()} onRecommander={() => setShowRecommander(true)} onClose={() => setShowAvis(false)} />

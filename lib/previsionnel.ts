@@ -10,6 +10,7 @@
 
 import type { Counters, CounterType, HistoryEntry, UserData } from './types';
 import { appliquerDecomptesDifferes, compteursNouvelleAnnee } from './storage';
+import { optionsBascule } from './sondage2027';
 
 const jour = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
@@ -40,8 +41,8 @@ export function periodeACheval(debut: Date, fin: Date, aujourdhui: Date = new Da
  * c'est sur eux que se calculent les options d'une pose « prévisionnel de
  * l'année prochaine ». Les CA restants deviennent des CA reportés.
  */
-export function compteursAnneeSuivante(data: Pick<UserData, 'counters' | 'cycleConfig' | 'history'>, aujourdhui: Date = new Date()): Counters {
-  const base = compteursNouvelleAnnee(data.counters, data.cycleConfig);
+export function compteursAnneeSuivante(data: Pick<UserData, 'counters' | 'cycleConfig' | 'history' | 'sondage2027'>, aujourdhui: Date = new Date()): Counters {
+  const base = compteursNouvelleAnnee(data.counters, data.cycleConfig, optionsBascule(data, aujourdhui.getFullYear() + 1));
   return appliquerDecomptesDifferes(base, data.history, data.cycleConfig, aujourdhui.getFullYear() + 1, false).counters;
 }
 

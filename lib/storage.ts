@@ -15,6 +15,7 @@ import { mirrorToNative, clearNative } from './native-backup';
 import { noterSauvegarde } from './sauvegarde';
 import { baremeRPSDepuisHoraires, baremeRPSNuit, estAncienBaremeNuit } from './rps';
 import { plateformeNative } from './api';
+import { optionsBascule, type OptionsNouvelleAnnee } from './sondage2027';
 
 /**
  * Version du schéma de données. À incrémenter pour introduire une migration
@@ -231,7 +232,7 @@ export function migrateUserData(data: UserData): UserData {
     }
 
     // 1 à 3. Report des CA, remise à zéro des consommations, nouvelles dotations.
-    data.counters = compteursNouvelleAnnee(c, data.cycleConfig);
+    data.counters = compteursNouvelleAnnee(c, data.cycleConfig, optionsBascule(data, currentYear));
 
     // Congés de l'année posés à l'avance (« prévisionnel de l'année prochaine ») :
     // déduits maintenant des nouveaux droits.
@@ -261,8 +262,11 @@ export function migrateUserData(data: UserData): UserData {
  * les compteurs activés. RPS, HS, CET, CET 2008, HS historiques et congés
  * bonifiés se conservent. Sert à la bascule et à l'estimation des droits de
  * l'année suivante (congés posés à l'avance).
+ *
+ * `options` (sondage « Préparons 2027 ») : dotations corrigées par l'agent, et
+ * sort de son compteur ARTT s'il est en cycle.
  */
-export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig): Counters {
+export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig, options: OptionsNouvelleAnnee = {}): Counters {
   const n: Counters = { ...c };
   // Report du reliquat (règle APORTT : consommable jusqu'au 30 avril).
   // Remplace et n'additionne pas : le report de l'année précédente a expiré.
@@ -279,11 +283,26 @@ export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig): C
   n.cfConsoS1 = 0;
   n.cfConsoS2 = 0;
   n.caConsommes = 0;
-  n.ca = getCATotalForCycle(cycleConfig);
-  if (c.hasCF !== false) n.cf = CF_TOTAL_ANNUEL;
-  if (c.hasRTC !== false) n.rtc = getRTCAnnuel(cycleConfig);
-  if (c.hasARTT) n.artt = ARTT_QUOTA_ANNUEL;
-  if (c.hasRTT) n.rtt = RTT_QUOTA_HEBDO;
+  const perso = options.perso ?? {};
+  n.ca = perso.ca ?? getCATotalForCycle(cycleConfig);
+  if (c.hasCF !== false) n.cf = perso.cf ?? CF_TOTAL_ANNUEL;
+  if (c.hasRTC !== false) n.rtc = perso.rtc ?? getRTCAnnuel(cycleConfig);
+  if (c.hasRTT) n.rtt = perso.rtt ?? RTT_QUOTA_HEBDO;
+  if (c.hasARTT) {
+    if (cycleConfig.type === 'hebdo') {
+      n.artt = perso.artt ?? ARTT_QUOTA_ANNUEL;
+    } else if (options.arttCycle === 'meme') {
+      // L'agent l'a confirmé : son compteur ARTT, c'étaient ses RTC.
+      n.hasARTT = false;
+      n.artt = 0;
+    } else if (options.arttCycle === 'distinct') {
+      n.artt = options.arttJours ?? ARTT_QUOTA_ANNUEL;
+    } else {
+      // En cycle, les « ARTT » de la grille SONT les RTC (APORTT) : sans réponse
+      // contraire de l'agent, on ne crédite pas 20 jours en plus des RTC.
+      n.artt = 0;
+    }
+  }
   return n;
 }
 

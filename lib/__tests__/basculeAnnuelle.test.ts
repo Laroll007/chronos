@@ -57,8 +57,11 @@ describe('Bascule d’année', () => {
 
     expect(apres.ca).toBe(getCATotalForCycle(DEFAULT_CYCLE_CONFIG));
     expect(apres.cf).toBe(CF_TOTAL_ANNUEL);
-    expect(apres.artt).toBe(ARTT_QUOTA_ANNUEL);
+    // Cycle (configuration par défaut) : les « ARTT » sont les RTC, pas recrédités
+    // en plus sans réponse contraire au sondage (cf. sondage2027.test.ts).
+    expect(apres.artt).toBe(0);
     expect(apres.rtt).toBe(RTT_QUOTA_HEBDO);
+    expect(ARTT_QUOTA_ANNUEL).toBe(20);
   });
 
   it('recrédite la dotation RTC complète, sans journée de solidarité (même avec l’ancien drapeau)', () => {

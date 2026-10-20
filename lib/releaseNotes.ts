@@ -5,7 +5,7 @@
 
 import { APP_VERSION } from './constants';
 
-export type ReleaseAction = 'cycle' | 'cet' | 'communaute';
+export type ReleaseAction = 'cycle' | 'cet' | 'communaute' | 'sondage';
 
 export interface ReleaseItem {
   emoji: string;
@@ -27,6 +27,27 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '1.21.0',
+    items: [
+      {
+        emoji: '🎆',
+        title: 'Préparons 2027 ensemble',
+        text: 'En 1 minute, vérifie les congés que l’app te créditera au 1er janvier pour ton cycle (CA, RTC, CF…), ou corrige-les avec ton relevé GesTT : tes chiffres seront appliqués pour toi. Tes réponses, anonymes, aident tous les collègues.',
+        action: { label: 'Répondre (1 minute)', target: 'sondage' },
+      },
+      {
+        emoji: '🔁',
+        title: 'En cycle, tes « ARTT » sont tes RTC',
+        text: 'La grille appelle les RTC « ARTT ». Au 1er janvier, l’app ne créditera plus 20 jours d’ARTT en plus de tes RTC, sauf si tu indiques dans le sondage que ce sont deux compteurs différents.',
+      },
+      {
+        emoji: '🌙',
+        title: 'Report de RPS',
+        text: 'Au 1er janvier, le détail de tes RPS affichera bien ton report de l’année précédente.',
+      },
+    ],
+  },
   {
     version: '1.20.0',
     items: [

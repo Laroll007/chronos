@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'crypto';
 import { summarize } from '@/lib/server/stats-store';
+import { lireReponses, resumer, sondageClos } from '@/lib/server/sondage-store';
 
 export const runtime = 'nodejs';
 
@@ -64,5 +65,7 @@ export async function POST(req: NextRequest) {
   const from = shiftDay(to, -(days - 1));
 
   const summary = await summarize(from, to);
-  return NextResponse.json(summary, { headers: { 'Cache-Control': 'no-store' } });
+  // Sondage « Préparons 2027 » : toutes les réponses, quelle que soit la période.
+  const sondage = resumer(await lireReponses(), sondageClos());
+  return NextResponse.json({ ...summary, sondage }, { headers: { 'Cache-Control': 'no-store' } });
 }

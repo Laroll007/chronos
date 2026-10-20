@@ -238,6 +238,35 @@ export interface UserData {
   isOnboarded: boolean;
   /** Jour de l'inscription ('YYYY-MM-DD') : propose « congés antérieurs » le premier mois. */
   dateInscription?: string;
+  /** Sondage « Préparons 2027 » : réponse de l'agent (cf. lib/sondage2027.ts). */
+  sondage2027?: Sondage2027;
+}
+
+/** Compteurs dont la dotation du 1er janvier est vérifiée par le sondage. */
+export type CompteurSondage = 'ca' | 'rtc' | 'cf' | 'artt' | 'rtt';
+/** Raison d'un écart avec la grille, au choix (jamais de texte libre : anonymat). */
+export type MotifEcartSondage = 'arrivee' | 'temps_partiel' | 'maladie' | 'autre';
+
+export interface ReponseSondage {
+  /** Les chiffres prévus sont ceux de GesTT / l'agent les corrige / ne sait pas. */
+  reponse: 'confirme' | 'corrige' | 'nsp';
+  /** Crédit GesTT du 1er janvier 2026 (jours ou minutes selon le compteur), si corrigé. */
+  dotations?: Partial<Record<CompteurSondage, number>>;
+  /** Créditer ces chiffres au 1er janvier 2027 plutôt que la grille. */
+  appliquer?: boolean;
+  motif?: MotifEcartSondage;
+  /** Agent en cycle avec un compteur ARTT : le même que ses RTC, distinct, ou ne sait pas. */
+  artt?: 'meme' | 'distinct' | 'nsp';
+  /** Jours d'ARTT au 1er janvier, si le compteur est distinct. */
+  arttJours?: number;
+  /** Jour de la réponse ('YYYY-MM-DD'). */
+  date: string;
+}
+
+export interface Sondage2027 {
+  reponse?: ReponseSondage;
+  /** « Plus tard » : nombre de reports et jour du dernier ('YYYY-MM-DD'). */
+  plusTard?: { fois: number; dernier: string };
 }
 
 export interface JourModifie {

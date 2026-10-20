@@ -306,6 +306,7 @@ export function validateUserData(data: unknown): ValidationResult<UserData> {
   if (!isBool(data.isOnboarded)) errors.push('isOnboarded: boolean attendu');
   if (data.dateInscription !== undefined && !(typeof data.dateInscription === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.dateInscription)))
     errors.push('dateInscription: YYYY-MM-DD attendu');
+  if (data.sondage2027 !== undefined && !isObj(data.sondage2027)) errors.push('sondage2027: objet attendu');
 
   if (errors.length > 0) {
     return {

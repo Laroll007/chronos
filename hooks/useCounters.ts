@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { UserData, Counters, CycleConfig, HistoryEntry, CounterType, PersonalEvent, JourModifie } from '@/lib/types';
+import { UserData, Counters, CycleConfig, HistoryEntry, CounterType, PersonalEvent, JourModifie, ReponseSondage } from '@/lib/types';
+import { aujourdhuiCle } from '@/lib/sondage2027';
 import {
   loadUserData,
   saveUserData,
@@ -139,6 +140,28 @@ export function useCounters() {
     if (!current?.basculeAConfirmer) return;
     const { basculeAConfirmer: _vu, ...reste } = current;
     save(reste as typeof current);
+  }, [save]);
+
+  // Sondage « Préparons 2027 » : réponse gardée dans les données (sauvegarde,
+  // transfert), appliquée à la bascule du 1er janvier (cf. compteursNouvelleAnnee).
+  const repondreSondage = useCallback(
+    (reponse: ReponseSondage) => {
+      const current = userDataRef.current;
+      if (!current) return false;
+      return save({ ...current, sondage2027: { ...current.sondage2027, reponse }, lastUpdated: new Date().toISOString() });
+    },
+    [save]
+  );
+
+  const reporterSondage = useCallback(() => {
+    const current = userDataRef.current;
+    if (!current) return false;
+    const fois = (current.sondage2027?.plusTard?.fois ?? 0) + 1;
+    return save({
+      ...current,
+      sondage2027: { ...current.sondage2027, plusTard: { fois, dernier: aujourdhuiCle() } },
+      lastUpdated: new Date().toISOString(),
+    });
   }, [save]);
 
   // Onboarding terminé sans les soldes GesTT : compteurs encore à saisir.
@@ -926,6 +949,8 @@ export function useCounters() {
     deleteHistoryEntry,
     marquerPrevisionnel,
     confirmerBasculeAnnuelle,
+    repondreSondage,
+    reporterSondage,
     completerCompteurs,
     masquerRappelCompteurs,
     poseAbsence,

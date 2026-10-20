@@ -154,9 +154,9 @@ describe('1er janvier 2027 : dotations de chaque cycle utilisé', () => {
 });
 
 describe('Agent en cycle ayant gardé un compteur ARTT (≈ 16 % des agents en cycle, octobre 2026)', () => {
-  it('constat : il reçoit 20 jours d’ARTT EN PLUS des RTC (les mêmes heures, appelées ARTT dans la grille)', () => {
+  it('sans réponse au sondage : ses ARTT (ce sont ses RTC) ne sont pas recrédités en plus des RTC', () => {
     const c = ouvrirLe1erJanvier(PROFILS[0]!.cfg, finAnnee(false, { hasARTT: true, artt: 5 })).counters;
     expect(c.rtc).toBe(RTC_12H08);
-    expect(c.artt).toBe(20);
+    expect(c.artt).toBe(0);
   });
 });

@@ -17,6 +17,9 @@ import {
   YAxis,
 } from 'recharts';
 import type { StatsSummary } from '@/lib/server/stats-store';
+import type { ResumeSondage } from '@/lib/server/sondage-store';
+
+type Resume = StatsSummary & { sondage?: ResumeSondage };
 import { STATS_EVENTS } from '@/lib/stats-events';
 
 const PASSWORD_KEY = 'chronos_stats_admin';
@@ -59,7 +62,7 @@ const PLATFORMS = [
 ] as const;
 
 /** Regroupe « web installé » (PWA) et navigateur sous « Site web ». */
-function fusionnerSiteWeb(s: StatsSummary): StatsSummary {
+function fusionnerSiteWeb(s: Resume): Resume {
   const fusion = <T extends Record<string, number>>(p: T): T => ({ ...p, web: (p.web ?? 0) + (p.pwa ?? 0), pwa: 0 });
   return {
     ...s,
@@ -90,6 +93,71 @@ function Tile({ label, value, hint }: { label: string; value: string | number; h
       <div className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{value}</div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
     </div>
+  );
+}
+
+const minutesLisibles = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`;
+const LIBELLES_COMPTEURS: Record<string, string> = { ca: 'CA', rtc: 'RTC', cf: 'CF', artt: 'ARTT', rtt: 'RTT' };
+const MOTIFS_SONDAGE: Record<string, string> = { arrivee: 'arrivée', temps_partiel: 'temps partiel', maladie: 'maladie', autre: 'autre' };
+
+/** Sondage « Préparons 2027 » : réponses par profil de cycle. */
+function SondageCard({ s }: { s: ResumeSondage }) {
+  return (
+    <Card
+      title="Sondage « Préparons 2027 »"
+      subtitle={`${s.total} réponse${s.total > 1 ? 's' : ''} · un profil n'est plus interrogé après ${s.seuil} réponses (« c'est bien ça » ou « je corrige »)${s.clos ? ' · sondage fermé' : ''}`}
+    >
+      {s.profils.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucune réponse pour l&apos;instant</p>
+      ) : (
+        <div className="max-h-[32rem] overflow-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-white text-xs text-slate-500">
+              <tr>
+                <th className="py-1.5 pr-2 font-medium">Profil</th>
+                <th className="py-1.5 pr-2 text-right font-medium">✓ Confirme</th>
+                <th className="py-1.5 pr-2 text-right font-medium">✎ Corrige</th>
+                <th className="py-1.5 pr-2 text-right font-medium">? NSP</th>
+                <th className="py-1.5 pr-2 font-medium">Valeurs corrigées (nb)</th>
+                <th className="py-1.5 pr-2 font-medium">ARTT en cycle</th>
+                <th className="py-1.5 font-medium">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.profils.map((p) => (
+                <tr key={p.profil} className="border-t border-slate-100 align-top">
+                  <td className="py-1.5 pr-2 font-mono text-xs text-slate-700">{p.profil.replace(/\|/g, ' · ')}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums">{p.confirme}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums">{p.corrige}</td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums text-slate-500">{p.nsp}</td>
+                  <td className="py-1.5 pr-2 text-xs text-slate-700">
+                    {Object.entries(p.corrections).map(([k, vals]) => (
+                      <div key={k}>
+                        <strong>{LIBELLES_COMPTEURS[k] ?? k}</strong>{' '}
+                        {vals!.map(([v, n]) => `${['ca', 'artt', 'rtt'].includes(k) ? `${v} j` : minutesLisibles(v)} (${n})`).join(', ')}
+                      </div>
+                    ))}
+                    {Object.keys(p.motifs).length > 0 && (
+                      <div className="text-slate-500">
+                        {Object.entries(p.motifs).map(([m, n]) => `${MOTIFS_SONDAGE[m] ?? m} ${n}`).join(' · ')}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-1.5 pr-2 text-xs text-slate-700">
+                    {p.artt.meme + p.artt.distinct + p.artt.nsp > 0
+                      ? `même ${p.artt.meme} · distinct ${p.artt.distinct} · ? ${p.artt.nsp}`
+                      : '—'}
+                  </td>
+                  <td className="py-1.5 text-xs font-medium">
+                    {p.ouvert ? <span className="text-amber-700">Ouvert</span> : <span className="text-emerald-700">Couvert</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -144,7 +212,7 @@ export default function StatsPage() {
   const [remember, setRemember] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
-  const [data, setData] = useState<StatsSummary | null>(null);
+  const [data, setData] = useState<Resume | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -166,7 +234,7 @@ export default function StatsPage() {
         }
         return;
       }
-      setData(fusionnerSiteWeb(json as StatsSummary));
+      setData(fusionnerSiteWeb(json as Resume));
       setAuthed(true);
       savePassword(pwd, remember);
     } catch {
@@ -485,6 +553,8 @@ export default function StatsPage() {
             )}
           </Card>
         </div>
+
+        {data.sondage && <SondageCard s={data.sondage} />}
 
         <Card title="Données par jour" subtitle="Table complète (relais des graphiques)">
           <details>
