@@ -22,7 +22,7 @@ import {
   type StatsPayload,
   type StatsPlatform,
 } from '../stats-events';
-import { INSTALLATIONS_ANDROID_AVANT_STATS } from './installations-avant-stats';
+import { INSTALLATIONS_ANDROID_AVANT_STATS, INSTALLATIONS_IOS_AVANT_STATS } from './installations-avant-stats';
 
 /** Durée de conservation (recommandation CNIL pour la mesure d'audience). */
 export const RETENTION_MONTHS = 25;
@@ -339,12 +339,14 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
     if (mois.has(m)) mois.set(m, Math.max(0, mois.get(m)! - c.mois));
   }
 
-  // Installations Android d'avant les statistiques (export Play Console).
-  for (const [day, n] of Object.entries(INSTALLATIONS_ANDROID_AVANT_STATS)) {
-    const js = jours.get(day);
-    if (!js) continue;
-    js.nouveaux += n;
-    js.nouveauxParPlateforme.android += n;
+  // Installations d'avant les statistiques (exports Play Console et App Store Connect).
+  for (const [plateforme, historique] of [['android', INSTALLATIONS_ANDROID_AVANT_STATS], ['ios', INSTALLATIONS_IOS_AVANT_STATS]] as const) {
+    for (const [day, n] of Object.entries(historique)) {
+      const js = jours.get(day);
+      if (!js) continue;
+      js.nouveaux += n;
+      js.nouveauxParPlateforme[plateforme] += n;
+    }
   }
 
   const joursArr = [...jours.values()];

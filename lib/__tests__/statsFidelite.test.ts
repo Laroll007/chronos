@@ -121,11 +121,11 @@ describe('Côté serveur', () => {
     days: { [JOUR]: { opens: 1, events, errors: {}, active: { firstOfWeek: true, firstOfMonth: true, isNew: true, profile: [] } } },
   });
 
-  it('installations Android d’avant les statistiques (Play Console) comptées dans les nouveaux', async () => {
+  it('installations d’avant les statistiques (Play Console, App Store Connect) comptées dans les nouveaux', async () => {
     const s = await summarize('2026-04-01', '2026-09-23');
-    expect(s.totaux.nouveaux).toBe(108);
+    expect(s.totaux.nouveaux).toBe(108 + 211);
     expect(s.jours.find((j) => j.day === '2026-06-06')).toMatchObject({ nouveaux: 10, nouveauxParPlateforme: expect.objectContaining({ android: 10, ios: 0 }), actifs: 0 });
-    expect(s.jours.find((j) => j.day === '2026-09-01')?.nouveaux).toBe(21);
+    expect(s.jours.find((j) => j.day === '2026-09-01')).toMatchObject({ nouveaux: 21 + 49, nouveauxParPlateforme: expect.objectContaining({ android: 21, ios: 49 }) });
     // À partir du 24/09, seules nos statistiques comptent
     expect((await summarize('2026-09-24', '2026-09-24')).totaux.nouveaux).toBe(0);
   });
