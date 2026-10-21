@@ -38,7 +38,7 @@ const formatLong = (d: Date) =>
   d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 const LIBELLE: Partial<Record<CounterType, string>> = {
-  ca: 'CA', caHP: 'CA HP', caAnterieur: 'CA antérieurs', caHPAnterieur: 'CA HP antérieurs',
+  ca: 'CA', caHP: 'CA HP', caAnterieur: 'CA antérieurs', caHPAnterieur: 'CA HP antérieurs', caReporte: 'CA reportés (CAM)',
   cf: 'CF', rtc: 'RTC', rtt: 'RTT', artt: 'ARTT', rps: 'RPS', hs: 'HS',
   hsHistorique: 'HS historiques', cet: 'CET', cet2008: 'CET 2008',
   congesBonifies: 'Congés bonifiés',
@@ -100,6 +100,7 @@ export function RetraiteCalculator({
         case 'caHP': return counters.caHP > 0;
         case 'caAnterieur': return counters.caAnterieur > 0;
         case 'caHPAnterieur': return counters.caHPAnterieur > 0;
+        case 'caReporte': return (counters.caReporte ?? 0) > 0;
         case 'artt': return counters.hasARTT && (counters.artt ?? 0) > 0;
         case 'rtt': return counters.hasRTT && (counters.rtt ?? 0) > 0;
         case 'congesBonifies': return counters.hasCongesBonifies && (counters.congesBonifies ?? 0) > 0;

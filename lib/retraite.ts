@@ -56,7 +56,7 @@ const COMPTEURS_REPORTABLES = new Set<CounterType>(['cet', 'cet2008', 'hs', 'hsH
 /** Compteurs mobilisables pour un départ, dans l'ordre de consommation. */
 export const COMPTEURS_RETRAITE: CounterType[] = [
   // Périmés en premier : ils seraient perdus autrement.
-  'caAnterieur', 'caHPAnterieur',
+  'caAnterieur', 'caHPAnterieur', 'caReporte',
   'ca', 'caHP', 'artt', 'rtt', 'congesBonifies',
   'cf', 'rtc', 'rps', 'hs', 'hsHistorique',
   // Le CET en dernier : c'est le seul dont le reliquat est indemnisé.
@@ -176,6 +176,7 @@ function soldeCourant(counters: Counters, type: CounterType): number {
     case 'caHP': return counters.caHP;
     case 'caAnterieur': return counters.caAnterieur;
     case 'caHPAnterieur': return counters.caHPAnterieur;
+    case 'caReporte': return counters.caReporte ?? 0;
     case 'artt': return counters.hasARTT ? counters.artt ?? 0 : 0;
     case 'rtt': return counters.hasRTT ? counters.rtt ?? 0 : 0;
     case 'congesBonifies': return counters.hasCongesBonifies ? counters.congesBonifies ?? 0 : 0;
@@ -253,7 +254,7 @@ export function calculerDepartRetraite(
 
       if (isDayBasedType(type)) stockJours.set(type, solde);
       else stockMinutes.set(type, solde);
-      const origine = type === 'caAnterieur' || type === 'caHPAnterieur' ? 'anterieur' : 'soldes';
+      const origine = type === 'caAnterieur' || type === 'caHPAnterieur' || type === 'caReporte' ? 'anterieur' : 'soldes';
       // Pour le CET, `acquis` garde le solde réel : l'écart avec `stock` est la
       // part indemnisée.
       lots.push({ origine, type, acquis: soldeReel, stock: solde });

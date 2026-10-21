@@ -79,7 +79,7 @@ function DaysInput({
 type CounterKey =
   | 'ca' | 'cf' | 'rtc' | 'rps' | 'hs' | 'cet'
   | 'rtt' | 'artt'
-  | 'caAnterieur' | 'caHPAnterieur'
+  | 'caAnterieur' | 'caHPAnterieur' | 'caReporte'
   | 'cet2008' | 'congesBonifies' | 'hsHistorique';
 
 interface CounterOption {
@@ -112,6 +112,7 @@ const COUNTER_GROUPS: { title: string; subtitle: string; items: CounterOption[] 
     items: [
       { key: 'caAnterieur', name: 'CA Antérieurs', short: 'Report CA N-1, deadline 30 avril', helpKey: 'caAnterieur' },
       { key: 'caHPAnterieur', name: 'CA HP Antérieurs', short: 'Report CA HP N-1, deadline 30 avril', helpKey: 'caHPAnterieur' },
+      { key: 'caReporte', name: 'CA reportés (CAM)', short: 'Après congé maternité, maladie ou congé familial', helpKey: 'caReporte' },
     ],
   },
   {
@@ -192,6 +193,7 @@ function selectionDepuisCompteurs(c: Counters): CounterKey[] {
     ['cet', c.cet > 0],
     ['caAnterieur', (c.caAnterieur ?? 0) > 0],
     ['caHPAnterieur', (c.caHPAnterieur ?? 0) > 0],
+    ['caReporte', (c.caReporte ?? 0) > 0],
     ['cet2008', c.hasCET2008],
     ['congesBonifies', c.hasCongesBonifies],
     ['hsHistorique', (c.hsHistorique ?? 0) > 0],
@@ -280,6 +282,12 @@ export function CountersSetup({
           return isAdding ? prev : { ...prev, caAnterieur: 0 };
         case 'caHPAnterieur':
           return isAdding ? prev : { ...prev, caHPAnterieur: 0 };
+        case 'caReporte':
+          // Date limite par défaut : 31 mars de l'année prochaine (CA de l'an
+          // dernier, acquis pendant l'absence), à corriger d'après GesTT.
+          return isAdding
+            ? { ...prev, caReporteLimite: prev.caReporteLimite ?? `${new Date().getFullYear() + 1}-03-31` }
+            : { ...prev, caReporte: 0, caReporteLimite: undefined };
         case 'hsHistorique':
           return isAdding ? prev : { ...prev, hsHistorique: 0 };
         default:
@@ -663,6 +671,33 @@ export function CountersSetup({
             </div>
             <div className="px-6">
               <DaysInput label="CA HP Antérieurs" value={counters.caHPAnterieur} onChange={(v) => updateCounter('caHPAnterieur', v)} max={4} hint="À consommer avant le 30/04" colorKey="caHP" />
+            </div>
+          </div>
+        )}
+
+        {/* CA reportés (CAM) */}
+        {selectedKeys.has('caReporte') && (
+          <div className={cardClass}>
+            <div className="px-6 mb-4">
+              <div className="flex items-center">
+                <span className={titleClass}>CA reportés (CAM)</span>
+                <HelpButton onClick={() => setHelpKey('caReporte')} />
+              </div>
+              <div className={`${subClass} mt-1`}>{COUNTER_LABELS.caReporte.description}</div>
+            </div>
+            <div className="px-6 space-y-3">
+              <DaysInput label="CA reportés" value={counters.caReporte ?? 0} onChange={(v) => updateCounter('caReporte', v)} max={25} hint="4 semaines au plus (code GesTT : CAM)" colorKey="caReporte" />
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <label htmlFor="ca-reporte-limite" className="text-sm font-medium text-sky-700">À poser avant le</label>
+                <p className="text-xs text-slate-400 mt-1 mb-2">Date indiquée par GesTT (au plus tard le 31 mars de N+2)</p>
+                <input
+                  id="ca-reporte-limite"
+                  type="date"
+                  value={counters.caReporteLimite ?? ''}
+                  onChange={(e) => setCounters((prev) => ({ ...prev, caReporteLimite: e.target.value || undefined }))}
+                  className="h-9 rounded-md border border-slate-200 bg-white px-2 text-slate-800 text-base"
+                />
+              </div>
             </div>
           </div>
         )}

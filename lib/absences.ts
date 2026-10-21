@@ -18,7 +18,10 @@ export type MotifAbsence =
   | 'repos_decale'
   | 'elu_ame'
   | 'elu_cme'
-  | 'elu_formation';
+  | 'elu_formation'
+  | 'maternite'
+  | 'pathologique'
+  | 'paternite';
 
 export interface InfoMotif {
   label: string;
@@ -108,6 +111,24 @@ export const MOTIFS_ABSENCE: Record<MotifAbsence, InfoMotif> = {
     code: 'FHP',
     aide: '18 jours par mandat, non rémunérés, renouvelables en cas de réélection. Peut être refusé pour nécessités de service (avis motivé). Réduit le crédit ARTT.',
   },
+  maternite: {
+    label: 'Congé maternité (MAT)',
+    court: 'Maternité',
+    code: 'MAT',
+    aide: '1er ou 2e enfant : 16 semaines (6 avant la date présumée d’accouchement, 10 après). À partir du 3e : 26 semaines (8 + 18). Jumeaux : 34 semaines (12 + 22) ; triplés ou plus : 46 (24 + 22). Sans effet sur l’ARTT ni les CF. Les CA que vous n’avez pas pu prendre se reportent (CAM, 4 semaines au plus) ; à la fin du congé, vous pouvez utiliser votre CET de plein droit.',
+  },
+  pathologique: {
+    label: 'Congé pathologique (PAT)',
+    court: 'Pathologique',
+    code: 'PAT',
+    aide: 'Sur certificat médical : 2 semaines au plus pendant la grossesse (continues ou non), et 4 semaines au plus juste après le congé maternité. Assimilé au congé maternité : sans effet sur l’ARTT ni les CF.',
+  },
+  paternite: {
+    label: 'Congé de paternité (CPA)',
+    court: 'Paternité',
+    code: 'CPA',
+    aide: '25 jours calendaires (32 en cas de naissances multiples), repos et fériés compris : 4 jours juste après les 3 jours de naissance (NAI), puis 21 jours fractionnables en 2 périodes d’au moins 5 jours, dans les 6 mois. Sans effet sur l’ARTT ni sur les CA.',
+  },
   repos_decale: {
     label: 'Repos décalé (RC/RL)',
     court: 'Repos décalé',
@@ -119,6 +140,7 @@ export const MOTIFS_ABSENCE: Record<MotifAbsence, InfoMotif> = {
 export const ORDRE_MOTIFS: MotifAbsence[] = [
   'asa_mariage', 'asa_naissance', 'asa_deces', 'asa_maladie_grave', 'asa_garde_enfant', 'asa_autre',
   'art13', 'art15', 'cfs', 'exn', 'repos_decale',
+  'maternite', 'pathologique', 'paternite',
   'elu_ame', 'elu_cme', 'elu_formation',
 ];
 

@@ -206,6 +206,22 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
       });
     }
 
+    // CA reportés (CAM) : congé maternité, maladie, congé familial ; date limite propre
+    if ((counters.caReporte ?? 0) > 0) {
+      const limite = counters.caReporteLimite ? jourLocal(counters.caReporteLimite) : new Date(year + 1, 2, 31);
+      result.push({
+        id: 'caReporte',
+        label: 'CA reportés (CAM)',
+        value: counters.caReporte ?? 0,
+        max: 20,
+        unit: 'jours',
+        deadline: limite,
+        status: getStatus(getDaysUntil(limite, now), true),
+        description: `À poser avant le ${limite.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        highlight: true,
+      });
+    }
+
     // CA HP Antérieurs (report HP N-1, deadline 30 avril)
     if (counters.caHPAnterieur > 0) {
       const deadline30Avril = new Date(year, 3, 30);

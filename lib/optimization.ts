@@ -43,7 +43,7 @@ function generateId(): string {
  * tout type absent de cette liste est exprimé en minutes (cf, rtc, rps, hs, hsHistorique).
  */
 export const DAY_BASED_COUNTER_TYPES: CounterType[] = [
-  'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies',
+  'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'caReporte', 'cet2008', 'congesBonifies',
 ];
 
 export function isDayBasedType(type: CounterType): boolean {
@@ -102,6 +102,8 @@ function getAvailableAmount(counters: Counters, type: CounterType, dayMinutes: n
       return counters.caAnterieur;
     case 'caHPAnterieur':
       return counters.caHPAnterieur;
+    case 'caReporte':
+      return counters.caReporte ?? 0;
     case 'cet2008':
       return counters.hasCET2008 ? (counters.cet2008 ?? 0) : 0;
     case 'congesBonifies':
@@ -125,6 +127,7 @@ export function getRawBalance(counters: Counters, type: CounterType): number {
     case 'cet': return counters.cet;
     case 'caAnterieur': return counters.caAnterieur;
     case 'caHPAnterieur': return counters.caHPAnterieur;
+    case 'caReporte': return counters.caReporte ?? 0;
     case 'artt': return counters.hasARTT ? (counters.artt ?? 0) : 0;
     case 'rtt': return counters.hasRTT ? (counters.rtt ?? 0) : 0;
     case 'cet2008': return counters.hasCET2008 ? (counters.cet2008 ?? 0) : 0;
@@ -220,6 +223,7 @@ function getCounterLabel(type: CounterType): string {
     artt: 'ARTT',
     caAnterieur: 'CA Ant.',
     caHPAnterieur: 'CA HP Ant.',
+    caReporte: 'CA reportés (CAM)',
     cet2008: 'CET 2008',
     congesBonifies: 'Congés Bon.',
     hsHistorique: 'HS Hist.',
@@ -301,6 +305,13 @@ function getPriorityWeight(
     case 'caHPAnterieur': {
       const month = date.getMonth() + 1;
       return (month >= 1 && month <= 4) ? 36 : 5;
+    }
+    case 'caReporte': {
+      // CAM : à poser avant leur date limite (jusqu'au 31 mars de N+2) ; en
+      // tête dans les 4 derniers mois, sinon juste avant les CA de l'année.
+      const limite = counters.caReporteLimite ? new Date(`${counters.caReporteLimite}T23:59:59`) : null;
+      if (!limite) return 34;
+      return limite.getTime() - date.getTime() <= 120 * 86_400_000 ? 40 : 34;
     }
     case 'artt':
       // Perdus au 31/12, priorité similaire aux RTC libres
@@ -645,6 +656,7 @@ function buildCombinations(
   const combinations: Combination[] = [];
   const priorities: CounterType[] = [
     'caAnterieur', 'caHPAnterieur', // deadline 30 avril — toujours en tête si Jan-Avr
+    'caReporte', // CAM : date limite propre (jusqu'au 31 mars de N+2)
     'cf', 'ca', 'caHP',
     'artt', 'rtt', 'rtc', 'rps', 'hs',
     'congesBonifies', 'cet2008', 'hsHistorique',

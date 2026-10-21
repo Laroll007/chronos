@@ -174,6 +174,7 @@ export function OptimizationModal({
       { type: 'caHP', label: 'CA HP' },
       { type: 'caAnterieur', label: 'CA antérieurs' },
       { type: 'caHPAnterieur', label: 'CA HP antérieurs' },
+      { type: 'caReporte', label: 'CA reportés (CAM)' },
       { type: 'cf', label: 'CF' },
       { type: 'rtc', label: 'RTC' },
       { type: 'rtt', label: 'RTT' },
@@ -807,7 +808,7 @@ export function OptimizationModal({
                   className="flex items-center gap-2 text-left text-sm font-medium text-cyan-700 hover:text-cyan-800 transition-colors"
                 >
                   <CalendarX className="w-4 h-4 shrink-0" />
-                  {showAbsence ? 'Masquer les absences' : 'Autre absence (ASA, Art. 13, CFS, EXN, repos décalé)'}
+                  {showAbsence ? 'Masquer les absences' : 'Autre absence (ASA, maternité, paternité, élus, Art. 13…)'}
                 </button>
 
                 {showAbsence && (

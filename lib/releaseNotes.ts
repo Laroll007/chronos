@@ -37,6 +37,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         action: { label: 'Répondre (1 minute)', target: 'sondage' },
       },
       {
+        emoji: '👶',
+        title: 'Congé maternité et CA reportés (CAM)',
+        text: 'Dans « Autre absence » : congé maternité, congé pathologique et congé de paternité, sans effet sur tes CF ni ton ARTT. Les CA que tu n’as pas pu prendre se reportent en CAM (4 semaines au plus, avant le 31 mars de N+2) : nouveau compteur dans « Gérer mes compteurs », et l’app te le propose au 1er janvier.',
+      },
+      {
         emoji: '🔁',
         title: 'En cycle, tes « ARTT » sont tes RTC',
         text: 'La grille appelle les RTC « ARTT ». Au 1er janvier, l’app ne créditera plus 20 jours d’ARTT en plus de tes RTC, sauf si tu indiques dans le sondage que ce sont deux compteurs différents.',

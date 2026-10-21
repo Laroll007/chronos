@@ -71,6 +71,7 @@ export function generateRecommendations(
 
   // 9. CA HP ANTÉRIEURS (deadline 30 avril)
   recommendations.push(...checkCAHPAnterieurs(counters, currentDate, year));
+  recommendations.push(...checkCAReportes(counters, currentDate));
 
   // 10. ARTT (perdus au 31/12)
   if (counters.hasARTT && counters.artt !== undefined && counters.artt > 0) {
@@ -362,6 +363,35 @@ function checkCAAnterieurs(
     });
   }
   return recommendations;
+}
+
+/** CA reportés (CAM) : à poser avant leur date limite (jusqu'au 31 mars de N+2). */
+function checkCAReportes(counters: Counters, currentDate: Date): Recommendation[] {
+  const solde = counters.caReporte ?? 0;
+  if (solde <= 0 || !counters.caReporteLimite) return [];
+  const [a, m, j] = counters.caReporteLimite.split('-').map(Number);
+  const limite = new Date(a!, m! - 1, j!);
+  const libelle = limite.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const daysRemaining = getDaysUntil(limite, currentDate);
+  if (daysRemaining < 0) {
+    return [{
+      id: generateId(),
+      priority: 'high',
+      action: `CA reportés (CAM) expirés (${solde}j)`,
+      reason: `La date limite du ${libelle} est dépassée. Vérifiez sur GesTT et remettez le compteur à 0 si besoin.`,
+      counterType: 'caReporte',
+    }];
+  }
+  if (daysRemaining > 120) return [];
+  return [{
+    id: generateId(),
+    priority: daysRemaining <= 30 ? 'high' : 'medium',
+    action: `Poser ${solde} CA reportés (CAM) avant le ${libelle}`,
+    reason: `Report après congé maternité, maladie ou congé familial — perdus après le ${libelle} (${daysRemaining}j restants). Non convertibles au CET.`,
+    deadline: counters.caReporteLimite,
+    counterType: 'caReporte',
+    amountToConsume: solde,
+  }];
 }
 
 function checkCAHPAnterieurs(

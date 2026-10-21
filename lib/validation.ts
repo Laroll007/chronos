@@ -33,7 +33,7 @@ const CYCLE_PATTERNS = ['4/2', '2/2', '3/3', '2/2/3/2/2/3', 'vacation_forte'] as
 const HISTORY_ACTIONS = ['pose', 'credit', 'transfer_cet', 'correction', 'cmo', 'astreinte', 'absence'] as const;
 const COUNTER_TYPES = [
   'ca', 'caHP', 'cf', 'rtc', 'rtt', 'rps', 'hs', 'cet',
-  'artt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies', 'hsHistorique',
+  'artt', 'caAnterieur', 'caHPAnterieur', 'caReporte', 'cet2008', 'congesBonifies', 'hsHistorique',
   'cmo', 'astreinte', 'absence',
 ] as const;
 
@@ -188,6 +188,9 @@ function checkCounters(v: unknown): string[] {
   if (v.artt !== undefined && !isNum(v.artt as unknown, 0)) errors.push('artt: nombre >= 0 attendu');
   if (v.caAnterieur !== undefined && !isNum(v.caAnterieur as unknown, 0)) errors.push('caAnterieur: nombre >= 0 attendu');
   if (v.caHPAnterieur !== undefined && !isNum(v.caHPAnterieur as unknown, 0)) errors.push('caHPAnterieur: nombre >= 0 attendu');
+  if (v.caReporte !== undefined && !isNum(v.caReporte as unknown, 0)) errors.push('caReporte: nombre >= 0 attendu');
+  if (v.caReporteLimite !== undefined && !(typeof v.caReporteLimite === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.caReporteLimite)))
+    errors.push('caReporteLimite: YYYY-MM-DD attendu');
   if (v.hasCET2008 !== undefined && !isBool(v.hasCET2008)) errors.push('hasCET2008: boolean attendu');
   if (v.cet2008 !== undefined && !isNum(v.cet2008 as unknown, 0)) errors.push('cet2008: nombre >= 0 attendu');
   if (v.hasCongesBonifies !== undefined && !isBool(v.hasCongesBonifies)) errors.push('hasCongesBonifies: boolean attendu');
@@ -307,6 +310,7 @@ export function validateUserData(data: unknown): ValidationResult<UserData> {
   if (data.dateInscription !== undefined && !(typeof data.dateInscription === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.dateInscription)))
     errors.push('dateInscription: YYYY-MM-DD attendu');
   if (data.sondage2027 !== undefined && !isObj(data.sondage2027)) errors.push('sondage2027: objet attendu');
+  if (data.reportCAM !== undefined && !isObj(data.reportCAM)) errors.push('reportCAM: objet attendu');
 
   if (errors.length > 0) {
     return {

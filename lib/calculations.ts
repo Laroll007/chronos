@@ -983,6 +983,20 @@ export function simulatePose(
       break;
     }
 
+    case 'caReporte': {
+      const solde = counters.caReporte ?? 0;
+      if (amount > solde) {
+        return {
+          newCounters: counters,
+          alerts: [{ id: '1', type: 'error', priority: 'high', message: 'CA reportés insuffisants' }],
+          isValid: false,
+          errorMessage: `Vous n'avez que ${solde}j de CA reportés (CAM) disponibles`,
+        };
+      }
+      newCounters.caReporte = solde - amount;
+      break;
+    }
+
     case 'cet2008': {
       if (!counters.hasCET2008 || counters.cet2008 === undefined) {
         return {

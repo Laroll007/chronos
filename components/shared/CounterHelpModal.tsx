@@ -102,6 +102,16 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     ],
     warning: 'Posez ces jours en priorité — ils ne sont pas transférables au CET et expirent au 30 avril.',
   },
+  caReporte: {
+    title: 'CA reportés (CAM)',
+    bullets: [
+      'CA que vous n’avez pas pu prendre à cause d’un congé maternité, d’un arrêt maladie (CMO, BS) ou d’un congé familial (paternité, adoption, parental…).',
+      'Reportés sur l’année suivante dans la limite de 4 semaines (code GesTT : CAM).',
+      'À poser dans les 15 mois : au plus tard avant le 31 mars de N+2 pour les CA acquis pendant l’absence. Recopiez la date limite indiquée par GesTT.',
+      'Seuls les CA se reportent : les CA HP non pris sont perdus. Les CAM ne peuvent pas aller au CET.',
+    ],
+    warning: 'Posez-les avant leur date limite : l’app les propose en priorité quand elle approche.',
+  },
   caHPAnterieur: {
     title: 'CA HP Antérieurs (bonus N-1)',
     bullets: [

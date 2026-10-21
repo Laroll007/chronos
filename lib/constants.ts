@@ -219,6 +219,11 @@ export const COUNTER_LABELS: Record<string, { name: string; description: string;
     description: 'Report CA HP N-1. Deadline : 30 avril. Non convertibles en CET.',
     unit: 'jours',
   },
+  caReporte: {
+    name: 'CA reportés (CAM)',
+    description: 'CA non pris pour congé maternité, maladie ou congé familial : 4 semaines au plus, avant le 31 mars de N+2. Non convertibles en CET.',
+    unit: 'jours',
+  },
   cet2008: {
     name: 'CET 2008',
     description: 'Stock historique gelé (constitué avant 2010). Pas de deadline.',
@@ -323,6 +328,13 @@ export const COUNTER_COLORS: Record<string, { gradient: string; bg: string; text
     text: 'text-orange-700',
     ring: 'ring-orange-500/30',
     glow: 'shadow-orange-500/20',
+  },
+  caReporte: {
+    gradient: 'from-sky-600 to-sky-500',
+    bg: 'bg-sky-50',
+    text: 'text-sky-700',
+    ring: 'ring-sky-500/30',
+    glow: 'shadow-sky-500/20',
   },
   cet2008: {
     gradient: 'from-blue-700 to-blue-500',

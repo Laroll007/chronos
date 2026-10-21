@@ -76,6 +76,7 @@ import { track, setStatsProfile, isStatsEnabled } from '@/lib/analytics';
 import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
 import { apiUrl, isNativeApp, plateformeNative } from '@/lib/api';
 import { Sondage2027 } from '@/components/dashboard/Sondage2027';
+import { ReportCAMPrompt } from '@/components/dashboard/ReportCAMPrompt';
 import { profilSondage, sondageAProposer } from '@/lib/sondage2027';
 import { droitsAnnee, type ParamsChangement } from '@/lib/changementCycle';
 import { creditCME } from '@/lib/creditCME';
@@ -177,6 +178,7 @@ export default function DashboardPage() {
     confirmerBasculeAnnuelle,
     repondreSondage,
     reporterSondage,
+    repondreReportCAM,
     compteursARenseigner,
     completerCompteurs,
     masquerRappelCompteurs,
@@ -1153,6 +1155,20 @@ export default function DashboardPage() {
             }}
           />
         )}
+
+      {/* Après la bascule : CA restants reportés en CAM ? (congé maternité,
+          arrêt maladie ou congé familial dans l'année écoulée) */}
+      {userData?.reportCAM && !showWelcome && hasSeenWelcome() && (
+        <ReportCAMPrompt
+          annee={userData.reportCAM.annee}
+          jours={userData.reportCAM.jours}
+          onRepondre={(reporter) => {
+            if (repondreReportCAM(reporter) && reporter) {
+              toast.success('CA reportés en CAM', { description: `À poser avant le 31 mars ${userData.reportCAM!.annee + 2}.` });
+            }
+          }}
+        />
+      )}
 
       {showSondage && (
         <Sondage2027

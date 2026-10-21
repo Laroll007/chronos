@@ -231,6 +231,15 @@ export function migrateUserData(data: UserData): UserData {
       delete data.reliquatCET;
     }
 
+    // CAM : après un congé maternité, un arrêt maladie ou un congé familial dans
+    // l'année, les CA restants peuvent être reportés en CAM (APORTT art. 40) ;
+    // l'agent le confirme d'après GesTT (cf. ReportCAMPrompt).
+    if (data.lastResetYear === currentYear - 1 && c.ca > 0 && absenceOuvrantCAM(data.history ?? [], currentYear - 1)) {
+      data.reportCAM = { annee: currentYear - 1, jours: Math.min(c.ca, CAM_MAX_JOURS) };
+    } else {
+      delete data.reportCAM;
+    }
+
     // 1 à 3. Report des CA, remise à zéro des consommations, nouvelles dotations.
     data.counters = compteursNouvelleAnnee(c, data.cycleConfig, optionsBascule(data, currentYear));
 
@@ -304,6 +313,20 @@ export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig, op
     }
   }
   return n;
+}
+
+/** Report de CA en CAM : 4 semaines au plus (jours de CA). */
+export const CAM_MAX_JOURS = 20;
+const MOTIFS_CAM = new Set(['maternite', 'pathologique', 'paternite']);
+
+/** L'année a-t-elle compté un congé maternité, un arrêt maladie ou un congé familial ? */
+export function absenceOuvrantCAM(history: HistoryEntry[], annee: number): boolean {
+  return history.some((e) => {
+    if (e.action !== 'cmo' && !(e.action === 'absence' && e.motif && MOTIFS_CAM.has(e.motif))) return false;
+    const debut = new Date(e.date).getFullYear();
+    const fin = new Date(e.dateEnd ?? e.date).getFullYear();
+    return debut <= annee && fin >= annee;
+  });
 }
 
 /**

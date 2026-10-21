@@ -30,8 +30,8 @@ export const CET_ALIMENTATION_MOIS = 0;
 /** Fraction de la dotation annuelle de CA à avoir consommée pour pouvoir épargner. */
 export const CET_FRACTION_CA_REQUISE = 4 / 5;
 
-/** Types de congés comptant dans le seuil (CA, HP, CAA, HPA). */
-const TYPES_CA: CounterType[] = ['ca', 'caHP', 'caAnterieur', 'caHPAnterieur'];
+/** Types de congés comptant dans le seuil (CA, HP, CAA, HPA et CAM, guide APORTT). */
+const TYPES_CA: CounterType[] = ['ca', 'caHP', 'caAnterieur', 'caHPAnterieur', 'caReporte'];
 
 /** Sommes-nous dans la fenêtre d'alimentation (1er → 31 janvier) ? */
 export function isPeriodeAlimentationCET(date: Date = new Date()): boolean {

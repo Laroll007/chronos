@@ -38,7 +38,7 @@ interface CountersDrawerProps {
 }
 
 const NOMS: Partial<Record<CounterType, string>> = {
-  ca: 'CA', caHP: 'CA HP', caAnterieur: 'CA reportés', caHPAnterieur: 'CA HP reportés', cf: 'CF', rtc: 'RTC',
+  ca: 'CA', caHP: 'CA HP', caAnterieur: 'CA antérieurs', caHPAnterieur: 'CA HP antérieurs', caReporte: 'CA reportés (CAM)', cf: 'CF', rtc: 'RTC',
   rtt: 'RTT', artt: 'ARTT', rps: 'RPS', hs: 'HS', cet: 'CET', congesBonifies: 'congés bonifiés',
 };
 

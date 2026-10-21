@@ -182,6 +182,13 @@ export interface Counters {
   // CA HP antérieurs (report CA HP N-1, deadline 30 avril de l'année N)
   caHPAnterieur: number;
 
+  // CA reportés (code GesTT CAM) : CA non pris à cause d'un congé maternité,
+  // d'un arrêt maladie ou d'un congé familial, reportés dans la limite de
+  // 4 semaines, à poser avant `caReporteLimite` (au plus tard le 31 mars de
+  // N+2). Non convertibles au CET. APORTT art. 40, décret 2025-564.
+  caReporte?: number;
+  caReporteLimite?: string; // 'YYYY-MM-DD'
+
   // CET 2008 (stock historique gelé avant 2010, décret 2009-1065)
   hasCET2008: boolean;
   cet2008?: number;
@@ -240,6 +247,12 @@ export interface UserData {
   dateInscription?: string;
   /** Sondage « Préparons 2027 » : réponse de l'agent (cf. lib/sondage2027.ts). */
   sondage2027?: Sondage2027;
+  /**
+   * Bascule du 1er janvier après un congé maternité, un arrêt maladie ou un
+   * congé familial : les CA restants peuvent être des CAM (report de 4 semaines,
+   * avant le 31 mars de N+2) plutôt que des CA antérieurs. Question posée une fois.
+   */
+  reportCAM?: { annee: number; jours: number };
 }
 
 /** Compteurs dont la dotation du 1er janvier est vérifiée par le sondage. */
@@ -361,7 +374,7 @@ export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 
 
 export type CounterType =
   | 'ca' | 'caHP' | 'cf' | 'rtc' | 'rtt' | 'rps' | 'hs' | 'cet'
-  | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'cet2008' | 'congesBonifies' | 'hsHistorique'
+  | 'artt' | 'caAnterieur' | 'caHPAnterieur' | 'caReporte' | 'cet2008' | 'congesBonifies' | 'hsHistorique'
   | 'cmo'  // Congé Maladie Ordinaire — n'impacte aucun compteur, marquage calendrier uniquement
   | 'astreinte' // Astreinte / permanence — ajoute un jour travaillé (week-end), pas d'impact compteur auto
   | 'absence'; // ASA, Art. 13, CFS, EXN, repos décalé — jour non travaillé, aucun compteur (cf. lib/absences.ts)

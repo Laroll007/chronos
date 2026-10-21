@@ -131,6 +131,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         case 'rtt': return counters.rtt ?? 0;
         case 'caAnterieur': return counters.caAnterieur;
         case 'caHPAnterieur': return counters.caHPAnterieur;
+        case 'caReporte': return counters.caReporte ?? 0;
         case 'cet2008': return counters.cet2008 ?? 0;
         case 'congesBonifies': return counters.congesBonifies ?? 0;
         default: return 0;
@@ -172,6 +173,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
       else if (counterId === 'rtt') onUpdate({ rtt: newDays });
       else if (counterId === 'caAnterieur') onUpdate({ caAnterieur: newDays });
       else if (counterId === 'caHPAnterieur') onUpdate({ caHPAnterieur: newDays });
+      else if (counterId === 'caReporte') onUpdate({ caReporte: newDays });
       else if (counterId === 'cet2008') onUpdate({ cet2008: newDays });
       else if (counterId === 'congesBonifies') onUpdate({ congesBonifies: newDays });
     }
@@ -355,6 +357,22 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         );
       }
 
+      case 'caReporte': {
+        const limite = counters.caReporteLimite ? jourLocal(counters.caReporteLimite) : null;
+        const daysLeft = limite ? getDaysUntil(limite) : null;
+        return (
+          <>
+            <Row label="CA reportés disponibles" value={`${counters.caReporte ?? 0}j`} bold color="text-sky-700" />
+            <Row label="Origine" value="Congé maternité, maladie ou congé familial" />
+            <Row label="Date limite" value={limite ? limite.toLocaleDateString('fr-FR') : 'À renseigner (Gérer mes compteurs)'} color="text-rose-600" />
+            {daysLeft !== null && (
+              <Row label="Jours restants" value={daysLeft > 0 ? `${daysLeft}j` : 'Expiré !'} color={daysLeft > 0 ? 'text-sky-600' : 'text-rose-600'} />
+            )}
+            <Alert type="info" text="Code GesTT : CAM. Report de 4 semaines au plus, à prendre dans les 15 mois (au plus tard avant le 31 mars de N+2). Non convertibles au CET." />
+          </>
+        );
+      }
+
       case 'caHPAnterieur': {
         const year = new Date().getFullYear();
         const deadline = new Date(year, 3, 30);
@@ -470,6 +488,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
     cet: 'CET',
     caAnterieur: 'CA Antérieurs (N-1)',
     caHPAnterieur: 'CA HP Antérieurs (N-1)',
+    caReporte: 'CA reportés (CAM)',
     artt: 'ARTT',
     cet2008: 'CET 2008',
     congesBonifies: 'Congés Bonifiés',
@@ -494,7 +513,7 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
         </div>
 
         {/* Section modification */}
-        {counterId && ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique', 'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'cet2008', 'congesBonifies'].includes(counterId) && (
+        {counterId && ['cf', 'rtc', 'rtcReserves', 'rps', 'hs', 'hsHistorique', 'ca', 'caHP', 'cet', 'artt', 'rtt', 'caAnterieur', 'caHPAnterieur', 'caReporte', 'cet2008', 'congesBonifies'].includes(counterId) && (
           <div className="pt-3 border-t border-slate-100">
             {!isEditing ? (
               <Button

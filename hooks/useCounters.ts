@@ -164,6 +164,32 @@ export function useCounters() {
     });
   }, [save]);
 
+  // Report en CAM proposé après la bascule (congé maternité, maladie, congé
+  // familial) : oui → les CA antérieurs passent en CA reportés jusqu'au 31 mars
+  // de N+2 ; non → ils restent des CA antérieurs (30 avril).
+  const repondreReportCAM = useCallback(
+    (reporter: boolean) => {
+      const current = userDataRef.current;
+      if (!current?.reportCAM) return false;
+      const { reportCAM, ...reste } = current;
+      if (!reporter) return save({ ...reste, lastUpdated: new Date().toISOString() } as UserData);
+      const c = current.counters;
+      const jours = Math.min(reportCAM.jours, c.caAnterieur);
+      const limite = `${reportCAM.annee + 2}-03-31`;
+      return save({
+        ...reste,
+        counters: {
+          ...c,
+          caAnterieur: c.caAnterieur - jours,
+          caReporte: (c.caReporte ?? 0) + jours,
+          caReporteLimite: c.caReporteLimite && c.caReporteLimite < limite && (c.caReporte ?? 0) > 0 ? c.caReporteLimite : limite,
+        },
+        lastUpdated: new Date().toISOString(),
+      } as UserData);
+    },
+    [save]
+  );
+
   // Onboarding terminé sans les soldes GesTT : compteurs encore à saisir.
   const compteursARenseigner = useMemo(
     () => userData?.compteursARenseigner === true,
@@ -857,6 +883,8 @@ export function useCounters() {
         updatedCounters.caAnterieur += entry.amount;
       } else if (entry.type === 'caHPAnterieur') {
         updatedCounters.caHPAnterieur += entry.amount;
+      } else if (entry.type === 'caReporte') {
+        updatedCounters.caReporte = (updatedCounters.caReporte ?? 0) + entry.amount;
       } else if (entry.type === 'cet2008') {
         updatedCounters.cet2008 = (updatedCounters.cet2008 ?? 0) + entry.amount;
       } else if (entry.type === 'congesBonifies') {
@@ -951,6 +979,7 @@ export function useCounters() {
     confirmerBasculeAnnuelle,
     repondreSondage,
     reporterSondage,
+    repondreReportCAM,
     completerCompteurs,
     masquerRappelCompteurs,
     poseAbsence,
