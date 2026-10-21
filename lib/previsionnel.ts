@@ -65,6 +65,32 @@ export function anterieurParDefaut(dateInscription: string | undefined, fin: Dat
   return jour(fin) < inscription && jour(aujourdhui) - inscription <= 31 * 86_400_000;
 }
 
+/**
+ * Année dont les compteurs ont été débités par une pose, ou null si elle n'a
+ * rien débité (congé antérieur, prévisionnel de l'année suivante pas encore
+ * déduit). Sans date d'enregistrement (poses d'avant la 1.22, toutes faites
+ * avant la bascule de 2027) : l'année du congé.
+ */
+export function anneeDebitee(e: HistoryEntry): number | null {
+  if (e.action !== 'pose') return null;
+  if (e.decompte === 'anterieur') return null;
+  if (e.decompte === 'differe') return e.decompteApplique ? e.anneeDecompte ?? null : null;
+  return Number((e.creeLe ?? jourCle(new Date(e.date))).slice(0, 4));
+}
+
+/**
+ * La pose a débité les compteurs d'une année déjà basculée : la supprimer ne
+ * doit rien rendre aux compteurs de la nouvelle année (ils ont été remplacés
+ * par la dotation au 1er janvier).
+ */
+export function poseDUneAnneeClose(e: HistoryEntry, anneeCompteurs: number): boolean {
+  const annee = anneeDebitee(e);
+  return annee !== null && annee < anneeCompteurs;
+}
+
+const jourCle = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 /** Le jour porte un congé du plan prévisionnel. */
 export function estPrevisionnelLe(date: Date, history: HistoryEntry[]): boolean {
   const t = jour(date);

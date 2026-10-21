@@ -54,6 +54,8 @@ interface OptimizationModalProps {
   dateInscription?: string;
   /** Modification d'une période du plan prévisionnel : case cochée d'office. */
   previsionnelInitial?: boolean;
+  /** Modification d'un congé d'une année déjà basculée : « congé antérieur » coché d'office. */
+  anterieurInitial?: boolean;
   // Retourne false si rien n'a été posé (solde insuffisant) → la modale reste
   // ouverte pour que l'agent puisse choisir une autre option.
   onApply: (combination: Combination, options: OptionsPose) => boolean | void;
@@ -92,6 +94,7 @@ export function OptimizationModal({
   compteursSansDecompte,
   dateInscription,
   previsionnelInitial = false,
+  anterieurInitial = false,
   onApply,
   onMarkCMO,
   onMarkAbsence,
@@ -113,7 +116,7 @@ export function OptimizationModal({
   // Année suivante : cochée d'office (presque toujours prise sur ses droits) ;
   // passé : cochée d'office seulement le premier mois, avant l'inscription.
   const [sansDecompte, setSansDecompte] = useState(
-    () => anneeSuivante || Boolean(anterieure && endDate && anterieurParDefaut(dateInscription, endDate))
+    () => anneeSuivante || Boolean(anterieure && endDate && (anterieurInitial || anterieurParDefaut(dateInscription, endDate)))
   );
   const decompte: OptionsPose['decompte'] =
     compteursSansDecompte && sansDecompte ? (anneeSuivante ? 'differe' : anterieure ? 'anterieur' : undefined) : undefined;

@@ -15,7 +15,7 @@ import { generateRecommendations } from '@/lib/recommendations';
 import { restoreFromNativeIfNeeded, requestPersistentStorage } from '@/lib/native-backup';
 import { computeRPSCredit } from '@/lib/rps';
 import { minutesPourJoursCET, planEpargneCET } from '@/lib/cet';
-import { compteursAnneeSuivante } from '@/lib/previsionnel';
+import { compteursAnneeSuivante, poseDUneAnneeClose } from '@/lib/previsionnel';
 import { track } from '@/lib/analytics';
 import { sanitizeEvents, fromDayKey } from '@/lib/events';
 import { annulerChangement, appliquerChangement, type ParamsChangement } from '@/lib/changementCycle';
@@ -483,6 +483,7 @@ export function useCounters() {
         groupId,
         caHPDays: hpDays,
         cfS1Minutes,
+        creeLe: aujourdhuiCle(),
         ...(options.previsionnel && { previsionnel: true }),
       };
 
@@ -545,6 +546,7 @@ export function useCounters() {
         partialDay: true,
         description: 'Pose à l\'heure',
         countersSnapshot: result.newCounters,
+        creeLe: aujourdhuiCle(),
         ...(options.previsionnel && { previsionnel: true }),
       };
 
@@ -782,6 +784,16 @@ export function useCounters() {
       if (!entry) return false;
 
       const updatedCounters = { ...current.counters };
+
+      // Pose décomptée sur une année déjà basculée (ex. congé de 2026 supprimé en
+      // 2027) : les compteurs ont été remplacés au 1er janvier, rien à rendre.
+      if (poseDUneAnneeClose(entry, current.lastResetYear ?? new Date().getFullYear())) {
+        return save({
+          ...current,
+          history: current.history.filter((h) => h.id !== entryId),
+          lastUpdated: new Date().toISOString(),
+        });
+      }
 
       // Supprimer un arrêt maladie (CMO) ou une astreinte — aucun compteur à restaurer
       if (entry.action === 'cmo' || entry.action === 'astreinte' || entry.action === 'absence') {

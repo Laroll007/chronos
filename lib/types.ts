@@ -368,6 +368,8 @@ export interface HistoryEntry {
   decompte?: 'anterieur' | 'differe';
   anneeDecompte?: number;
   decompteApplique?: boolean;
+  /** Jour de l'enregistrement de la pose ('YYYY-MM-DD') : année dont les compteurs ont été débités. */
+  creeLe?: string;
 }
 
 export type HistoryAction = 'pose' | 'credit' | 'transfer_cet' | 'correction' | 'cmo' | 'astreinte' | 'absence';

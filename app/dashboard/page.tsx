@@ -56,7 +56,7 @@ const CountersSetup = lazy(() =>
   }))
 );
 import { useCounters, type OptionsPose } from '@/hooks/useCounters';
-import { compteursAnneeSuivante, compteursDotation, posesDifferees } from '@/lib/previsionnel';
+import { compteursAnneeSuivante, compteursDotation, posesDifferees, anneeDebitee, poseDUneAnneeClose } from '@/lib/previsionnel';
 import { demanderAvisNatif, noterDemandeAvis, peutDemanderAvis, plateforme } from '@/lib/recommandation';
 import { AvisPrompt } from '@/components/dashboard/AvisPrompt';
 import { SauvegardePrompt } from '@/components/dashboard/SauvegardePrompt';
@@ -133,6 +133,8 @@ export default function DashboardPage() {
     minutesDejaPosees?: number;
     /** Modification d'une période du plan prévisionnel : la case reste cochée. */
     previsionnel?: boolean;
+    /** Modification d'un congé d'une année déjà basculée : reposé sans décompte. */
+    anterieur?: boolean;
   } | null>(null);
   const [calendarResetTrigger, setCalendarResetTrigger] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -248,10 +250,20 @@ export default function DashboardPage() {
   }, [requestPermission]);
 
   const handleDeleteLeave = useCallback((id: string) => {
+    const entry = userData?.history.find((h) => h.id === id);
+    const anneeCompteurs = userData?.lastResetYear ?? new Date().getFullYear();
+    const close = entry ? poseDUneAnneeClose(entry, anneeCompteurs) : false;
     const ok = deleteHistoryEntry(id);
-    if (ok) track('leave_delete');
+    if (ok) {
+      track('leave_delete');
+      if (close) {
+        toast.info(`Congé de ${anneeDebitee(entry!)} supprimé`, {
+          description: `Vos compteurs ${anneeCompteurs} ne changent pas : ceux de ${anneeDebitee(entry!)} ont été remplacés au 1er janvier.`,
+        });
+      }
+    }
     return ok;
-  }, [deleteHistoryEntry]);
+  }, [deleteHistoryEntry, userData]);
 
   // Élu : crédit d'heures CME du trimestre en cours (null si non renseigné)
   const creditCMEActuel = useMemo(
@@ -372,9 +384,14 @@ export default function DashboardPage() {
     const workingMinutes = countWorkingMinutes(start, end, cycleConfig);
     const hasRestDays = rangeHasRestDay(start, end, cycleConfig);
     const previsionnel = entries.every((e) => e.previsionnel);
-    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays, previsionnel });
+    // Congé d'une année déjà basculée : ses jours étaient pris sur les droits de
+    // cette année-là. Reposé en « congé antérieur », il ne touche pas aux
+    // compteurs de la nouvelle année.
+    const anneeCompteurs = userData?.lastResetYear ?? new Date().getFullYear();
+    const anterieur = entries.some((e) => poseDUneAnneeClose(e, anneeCompteurs));
+    setSelectedRange({ start, end, workingDays, workingMinutes, hasRestDays, previsionnel, anterieur });
     setShowOptimization(true);
-  }, [deleteHistoryEntry, cycleConfig]);
+  }, [deleteHistoryEntry, cycleConfig, userData]);
 
   // Changement de cycle : les compteurs et l'historique sont conservés, seul le
   // calendrier est recalculé. On purge les caches de `calculations`, dont les clés
@@ -837,6 +854,7 @@ export default function DashboardPage() {
             compteursSansDecompte={compteursSansDecompte}
             dateInscription={userData?.dateInscription}
             previsionnelInitial={selectedRange?.previsionnel}
+            anterieurInitial={selectedRange?.anterieur}
             onMarkCMO={handleMarkCMO}
             onMarkAbsence={handleMarkAbsence}
             creditCME={creditCMEActuel}
