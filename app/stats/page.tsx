@@ -18,8 +18,10 @@ import {
 } from 'recharts';
 import type { StatsSummary } from '@/lib/server/stats-store';
 import type { ResumeSondage } from '@/lib/server/sondage-store';
+import type { DonneesStores } from '@/lib/server/stores-store';
 
-type Resume = StatsSummary & { sondage?: ResumeSondage };
+type NosNouveaux = { day: string; ios?: number; android?: number; web?: number; pwa?: number };
+type Resume = StatsSummary & { sondage?: ResumeSondage; stores?: DonneesStores & { nosNouveaux: NosNouveaux[] } };
 import { STATS_EVENTS } from '@/lib/stats-events';
 
 const PASSWORD_KEY = 'chronos_stats_admin';
@@ -157,6 +159,128 @@ function SondageCard({ s }: { s: ResumeSondage }) {
           </table>
         </div>
       )}
+    </Card>
+  );
+}
+
+const DEBUT_STATS = '2026-09-24';
+
+/** Lundi de la semaine d'un jour 'YYYY-MM-DD'. */
+function lundi(jour: string): string {
+  const d = new Date(`${jour}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Chiffres des stores (exports CSV importés) : installations depuis la sortie,
+ * y compris avant les statistiques de l'app, et comparaison avec elles.
+ */
+function StoresCard({ s, password, onImporte }: { s: NonNullable<Resume['stores']>; password: string; onImporte: () => void }) {
+  const [message, setMessage] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+
+  const joursAndroid = Object.keys(s.android).sort();
+  const joursIOS = Object.keys(s.ios).sort();
+  const somme = (jours: string[], f: (j: string) => number | undefined) => jours.reduce((t, j) => t + (f(j) ?? 0), 0);
+  const acqAndroid = somme(joursAndroid, (j) => s.android[j]!.acquisitions);
+  const acqAndroidAvant = somme(joursAndroid.filter((j) => j < DEBUT_STATS), (j) => s.android[j]!.acquisitions);
+  const telIOS = somme(joursIOS, (j) => s.ios[j]!.telechargements);
+  const telIOSAvant = somme(joursIOS.filter((j) => j < DEBUT_STATS), (j) => s.ios[j]!.telechargements);
+  const dernierParc = [...joursAndroid].reverse().find((j) => s.android[j]!.installes !== undefined);
+  const nosAndroid = s.nosNouveaux.reduce((t, j) => t + (j.android ?? 0), 0);
+  const nosIOS = s.nosNouveaux.reduce((t, j) => t + (j.ios ?? 0), 0);
+  const playDepuis = somme(joursAndroid.filter((j) => j >= DEBUT_STATS), (j) => s.android[j]!.acquisitions);
+  const appleDepuis = somme(joursIOS.filter((j) => j >= DEBUT_STATS), (j) => s.ios[j]!.telechargements);
+
+  // Installations par semaine depuis le premier jour connu des stores.
+  const semaines = useMemo(() => {
+    const m = new Map<string, { semaine: string; android: number; ios: number; parc?: number }>();
+    const ligne = (jour: string) => {
+      const k = lundi(jour);
+      if (!m.has(k)) m.set(k, { semaine: k, android: 0, ios: 0 });
+      return m.get(k)!;
+    };
+    for (const j of joursAndroid) {
+      const l = ligne(j);
+      l.android += s.android[j]!.acquisitions ?? 0;
+      if (s.android[j]!.installes !== undefined) l.parc = s.android[j]!.installes;
+    }
+    for (const j of joursIOS) ligne(j).ios += s.ios[j]!.telechargements ?? 0;
+    return [...m.values()].sort((a, b) => a.semaine.localeCompare(b.semaine));
+  }, [s, joursAndroid, joursIOS]);
+
+  const importer = async (fichier: File | undefined) => {
+    if (!fichier) return;
+    setEnvoi(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/stats/stores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, csv: await fichier.text() }),
+      });
+      const j = await res.json();
+      if (!res.ok) setMessage(j.error ?? `Erreur ${res.status}`);
+      else {
+        setMessage(`✓ ${j.plateforme === 'ios' ? 'App Store' : 'Play Store'} : ${j.jours} jours importés (${shortDay(j.du)} → ${shortDay(j.au)})`);
+        onImporte();
+      }
+    } catch {
+      setMessage('Erreur réseau');
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  const vide = joursAndroid.length === 0 && joursIOS.length === 0;
+  return (
+    <Card
+      title="Stores : installations depuis la sortie"
+      subtitle={`Exports CSV de la Play Console et d'App Store Connect${s.majLe ? ` · dernier import le ${shortDay(s.majLe)}` : ''} · les statistiques de l'app commencent le ${shortDay(DEBUT_STATS)}`}
+    >
+      {!vide && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Tile label="Installations Android (Play)" value={acqAndroid.toLocaleString('fr-FR')} hint={`dont ${acqAndroidAvant} avant nos stats`} />
+            <Tile label="Parc Android installé" value={dernierParc ? s.android[dernierParc]!.installes!.toLocaleString('fr-FR') : '—'} hint={dernierParc ? `au ${shortDay(dernierParc)}` : undefined} />
+            <Tile label="Téléchargements iPhone (App Store)" value={joursIOS.length ? telIOS.toLocaleString('fr-FR') : 'à importer'} hint={joursIOS.length ? `dont ${telIOSAvant} avant nos stats` : 'Tendances → Unités d’app → CSV'} />
+            {/* Même périmètre des deux côtés : on ne compare que les plateformes dont l'export est importé. */}
+            <Tile
+              label="Depuis le 24/09 : stores / nos stats"
+              value={`${(playDepuis + (joursIOS.length ? appleDepuis : 0)).toLocaleString('fr-FR')} / ${(nosAndroid + (joursIOS.length ? nosIOS : 0)).toLocaleString('fr-FR')}`}
+              hint={joursIOS.length ? `Android ${playDepuis}/${nosAndroid} · iPhone ${appleDepuis}/${nosIOS}` : 'Android seulement (export iPhone à importer)'}
+            />
+          </div>
+          <div className="mt-5 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={semaines} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} barCategoryGap={2}>
+                <CartesianGrid vertical={false} stroke={GRID} />
+                <XAxis dataKey="semaine" tickFormatter={shortDay} tick={{ fontSize: 11, fill: INK_2 }} tickLine={false} axisLine={{ stroke: GRID }} minTickGap={16} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: INK_2 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,23,42,0.05)' }}
+                  labelFormatter={(d) => `Semaine du ${shortDay(String(d))}`}
+                  contentStyle={{ borderRadius: 8, borderColor: GRID, fontSize: 12, color: INK }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, color: INK_2 }} />
+                <Bar dataKey="ios" name="iPhone (App Store)" stackId="s" fill={PLATFORMS[0].color} stroke="#ffffff" strokeWidth={1} isAnimationActive={false} />
+                <Bar dataKey="android" name="Android (Play Store)" stackId="s" fill={PLATFORMS[1].color} stroke="#ffffff" strokeWidth={1} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Installations par semaine. Les stores comptent les téléchargements ; nos stats, le premier lancement de l’app.</p>
+        </>
+      )}
+      <div className={`${vide ? '' : 'mt-4 '}flex flex-wrap items-center gap-3`}>
+        <label className="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-[#0055A4] hover:bg-slate-50">
+          {envoi ? 'Import…' : 'Importer un export CSV'}
+          <input type="file" accept=".csv,text/csv" className="hidden" disabled={envoi}
+            onChange={(e) => { void importer(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        <span className="text-xs text-slate-500">Play Console : Statistiques → audience installée et acquisitions. App Store Connect : Tendances → unités d’app.</span>
+        {message && <span className="w-full text-sm text-slate-700">{message}</span>}
+      </div>
     </Card>
   );
 }
@@ -553,6 +677,8 @@ export default function StatsPage() {
             )}
           </Card>
         </div>
+
+        {data.stores && <StoresCard s={data.stores} password={password} onImporte={() => void load(password, days)} />}
 
         {data.sondage && <SondageCard s={data.sondage} />}
 
