@@ -121,6 +121,15 @@ describe('Côté serveur', () => {
     days: { [JOUR]: { opens: 1, events, errors: {}, active: { firstOfWeek: true, firstOfMonth: true, isNew: true, profile: [] } } },
   });
 
+  it('installations Android d’avant les statistiques (Play Console) comptées dans les nouveaux', async () => {
+    const s = await summarize('2026-04-01', '2026-09-23');
+    expect(s.totaux.nouveaux).toBe(108);
+    expect(s.jours.find((j) => j.day === '2026-06-06')).toMatchObject({ nouveaux: 10, nouveauxParPlateforme: expect.objectContaining({ android: 10, ios: 0 }), actifs: 0 });
+    expect(s.jours.find((j) => j.day === '2026-09-01')?.nouveaux).toBe(21);
+    // À partir du 24/09, seules nos statistiques comptent
+    expect((await summarize('2026-09-24', '2026-09-24')).totaux.nouveaux).toBe(0);
+  });
+
   it('le numéro de lot est conservé à la réception', () => {
     expect(validatePayload(nouveau('ios', {}, 'abc123xyz'), JOUR)?.lot).toBe('abc123xyz');
     expect(validatePayload(nouveau('ios', {}, 'pas un lot !'), JOUR)?.lot).toBeUndefined();

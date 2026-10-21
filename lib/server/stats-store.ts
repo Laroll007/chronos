@@ -22,6 +22,7 @@ import {
   type StatsPayload,
   type StatsPlatform,
 } from '../stats-events';
+import { INSTALLATIONS_ANDROID_AVANT_STATS } from './installations-avant-stats';
 
 /** Durée de conservation (recommandation CNIL pour la mesure d'audience). */
 export const RETENTION_MONTHS = 25;
@@ -336,6 +337,14 @@ export async function summarize(fromDay: string, toDay: string): Promise<StatsSu
     if (semaines.has(w)) semaines.set(w, Math.max(0, semaines.get(w)! - c.semaine));
     const m = day.slice(0, 7);
     if (mois.has(m)) mois.set(m, Math.max(0, mois.get(m)! - c.mois));
+  }
+
+  // Installations Android d'avant les statistiques (export Play Console).
+  for (const [day, n] of Object.entries(INSTALLATIONS_ANDROID_AVANT_STATS)) {
+    const js = jours.get(day);
+    if (!js) continue;
+    js.nouveaux += n;
+    js.nouveauxParPlateforme.android += n;
   }
 
   const joursArr = [...jours.values()];
