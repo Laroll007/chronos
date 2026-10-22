@@ -609,6 +609,20 @@ export async function downloadExport(): Promise<'ok' | 'annule' | 'erreur'> {
       const { ChronosNatif } = await import('./natif-android');
       const { enregistre } = await ChronosNatif.enregistrerFichier({ nom, contenu });
       if (!enregistre) return 'annule';
+    } else if (plateformeNative() === 'ios') {
+      // La WebView de l'iPhone ignore les téléchargements (lien `download`) :
+      // le fichier n'était créé nulle part alors que l'app annonçait « Sauvegarde
+      // enregistrée ». On l'écrit dans le cache de l'app, puis on ouvre la
+      // fenêtre de partage d'iOS (Enregistrer dans Fichiers, AirDrop, Mail…).
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      await Filesystem.writeFile({ path: nom, data: contenu, directory: Directory.Cache, encoding: Encoding.UTF8 });
+      const { uri } = await Filesystem.getUri({ path: nom, directory: Directory.Cache });
+      try {
+        await Share.share({ title: 'Sauvegarde My Chronos', url: uri, dialogTitle: 'Enregistrer la sauvegarde' });
+      } catch {
+        return 'annule'; // fenêtre de partage fermée sans choisir de destination
+      }
     } else {
       const blob = new Blob([contenu], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
