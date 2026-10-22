@@ -26,7 +26,6 @@
 
 import { Counters, CycleConfig, CounterType, HistoryEntry } from './types';
 import {
-  CF_TOTAL_ANNUEL,
   RTC_BRUT_ANNUEL,
   ARTT_QUOTA_ANNUEL,
   RTT_QUOTA_HEBDO,
@@ -35,6 +34,7 @@ import {
 } from './constants';
 import { arrondirDotation, getCATotalForCycle, getJourMinutes, getRTCAnnuel, isWorkingDay } from './calculations';
 import { isDayBasedType } from './optimization';
+import { cfAnnuel } from './zones';
 import { computeRPSCredit, toISODay } from './rps';
 
 /** Indemnisation d'un jour de CET non posé, selon la catégorie (guide APORTT). */
@@ -160,7 +160,7 @@ function dotationAnnuelle(
   jours.ca = arrondirDotation(getCATotalForCycle(cycleConfig) * prorata);
   if (counters.hasARTT) jours.artt = arrondirDotation(ARTT_QUOTA_ANNUEL * prorata);
   if (counters.hasRTT) jours.rtt = arrondirDotation(RTT_QUOTA_HEBDO * prorata);
-  if (counters.hasCF !== false) minutes.cf = Math.round(CF_TOTAL_ANNUEL * prorata);
+  if (counters.hasCF !== false) minutes.cf = Math.round(cfAnnuel(cycleConfig.zone) * prorata);
   if (counters.hasRTC !== false) {
     minutes.rtc = Math.round(getRTCAnnuel(cycleConfig) * prorata);
   }

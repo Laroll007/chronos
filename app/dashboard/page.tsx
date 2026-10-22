@@ -237,6 +237,9 @@ export default function DashboardPage() {
       // Diagnostic des pertes de données (navigateur hôte, stockage protégé).
       profile.push(...profilDiagnostic(plateformeNative()));
       if (counters.hasARTT) profile.push('option:artt');
+      if (cycleConfig.zone && cycleConfig.zone !== 'metropole') {
+        profile.push(cycleConfig.zone === 'alsace_moselle' ? 'zone:alsace_moselle' : 'zone:outre_mer');
+      }
       if (counters.hasCET2008) profile.push('option:cet2008');
       if (counters.hasCongesBonifies) profile.push('option:bonifies');
       return profile;

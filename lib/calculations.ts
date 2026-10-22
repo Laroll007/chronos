@@ -185,7 +185,9 @@ function getWorkingDayConfigHash(cycleConfig: CycleConfig): string {
   const scheduleA = Object.values(cycleConfig.semaineA).join('');
   const scheduleB = cycleConfig.semaineB ? Object.values(cycleConfig.semaineB).join('') : scheduleA;
   const rotation = getRotation(cycleConfig)?.join('-') ?? '';
-  return `${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}|${scheduleA}|${scheduleB}|${rotation}`;
+  // Type et lieu d'affectation : en hebdomadaire, les jours fériés (y compris
+  // locaux) ne sont pas travaillés.
+  return `${cycleConfig.type}|${cycleConfig.zone ?? ''}|${cycleConfig.dateDebutCycle}|${cycleConfig.semaineActuelle}|${scheduleA}|${scheduleB}|${rotation}`;
 }
 
 /**
@@ -235,7 +237,7 @@ export function isWorkingDay(date: Date, cycleConfigIn: CycleConfig): boolean {
 
   // Régime hebdomadaire : un jour férié n'est pas travaillé (guide DNPAF). Les
   // cycles, eux, travaillent les fériés selon leur rotation (compensés en CF).
-  if (cycleConfig.type === 'hebdo' && estFerie(date)) {
+  if (cycleConfig.type === 'hebdo' && estFerie(date, cycleConfig.zone)) {
     pruneCache(workingDayCache);
     workingDayCache.set(cacheKey, false);
     return false;
@@ -619,10 +621,12 @@ export function getCFRemainingForSemester(
   // Sans ce plafond, un agent ayant posé ses 9 CF (dont une partie avant
   // d'utiliser l'app, donc absente de cfConsoS1/S2) se voyait encore demander
   // « Poser 2 jours de CF ».
-  solde: number = Infinity
+  solde: number = Infinity,
+  // Crédit du semestre selon le lieu d'affectation (cf. cfParSemestre).
+  parSemestre: number = CF_PAR_SEMESTRE
 ): number {
   const consumed = semester === 1 ? cfConsoS1 : cfConsoS2;
-  return Math.max(0, Math.min(solde, CF_PAR_SEMESTRE - consumed));
+  return Math.max(0, Math.min(solde, parSemestre - consumed));
 }
 
 /**

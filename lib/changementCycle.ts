@@ -17,7 +17,8 @@
 // fait foi : l'agent peut corriger chaque montant avant de valider.
 
 import type { CompteurDote, Counters, CycleConfig, CycleSimple, DroitsAnnee, HistoryEntry } from './types';
-import { CF_TOTAL_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { cfAnnuel } from './zones';
 import { arrondirDotation, getCATotalForCycle, getRTCAnnuel, reserveRTCConseillee } from './calculations';
 import { getRPSPourJour, isJourOuvrantRPS } from './rps';
 import { cleJour, cycleSimple } from './cycleDuJour';
@@ -55,7 +56,7 @@ export function quotaCycle(cfg: CycleSimple, c: Counters, k: CompteurDote): numb
   const hebdo = cfg.type === 'hebdo';
   switch (k) {
     case 'ca': return getCATotalForCycle(cfg);
-    case 'cf': return hebdo ? 0 : CF_TOTAL_ANNUEL;
+    case 'cf': return hebdo ? 0 : cfAnnuel(cfg.zone);
     case 'rtc': return hebdo ? 0 : getRTCAnnuel(cfg);
     case 'artt': return hebdo ? ARTT_QUOTA_ANNUEL : 0;
     case 'rtt': return hebdo ? RTT_QUOTA_HEBDO : 0;
@@ -96,7 +97,7 @@ export function droitsAnnee(cfg: CycleConfig, c: Counters, k: CompteurDote, anne
   // Sans changement de cycle cette année : quota habituel (comme la bascule annuelle).
   switch (k) {
     case 'ca': return getCATotalForCycle(cfg);
-    case 'cf': return CF_TOTAL_ANNUEL;
+    case 'cf': return cfAnnuel(cfg.zone);
     case 'rtc': return getRTCAnnuel(cfg);
     case 'artt': return ARTT_QUOTA_ANNUEL;
     case 'rtt': return RTT_QUOTA_HEBDO;
@@ -168,6 +169,8 @@ export function apercuChangement(
   ) as Record<CompteurDote, number>;
   const provisoire: CycleConfig = {
     ...p.nouveau,
+    // Le lieu d'affectation se règle à part : un nouveau cycle le garde.
+    ...((p.nouveau.zone ?? ancien.zone) && { zone: p.nouveau.zone ?? ancien.zone }),
     appliqueDepuis: p.premierJour,
     cyclesAnterieurs: [
       ...(ancien.cyclesAnterieurs ?? []),

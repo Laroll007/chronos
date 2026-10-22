@@ -14,12 +14,12 @@ import { Label } from '@/components/ui/label';
 import { Counters, CycleConfig, WeekHours } from '@/lib/types';
 import { RPSBaremeEditor } from './RPSBaremeEditor';
 import { conseilRTCCET, formatMinutes, getDaysUntil, jourLocal, reserveRTC } from '@/lib/calculations';
+import { cfAnnuel, cfParSemestre, libelleZone } from '@/lib/zones';
 import {
   CA_TOTAL_ANNUEL,
   CA_HP_BONUS,
   CA_HP_PALIER_1,
   CA_REQUIS_POUR_HP,
-  CF_TOTAL_ANNUEL,
   RTC_COUT_PAR_JOUR_CET,
   CET_PLAFOND,
   ARTT_QUOTA_ANNUEL,
@@ -184,13 +184,14 @@ export function CounterDetailsModal({ counterId, counters, caTotal = CA_TOTAL_AN
     if (!counterId) return null;
     switch (counterId) {
       case 'cf': {
-        const pris = CF_TOTAL_ANNUEL - counters.cf;
+        const credit = cfAnnuel(cycleConfig?.zone);
+        const pris = credit - counters.cf;
         return (
           <>
-            <Row label="Crédit total annuel" value={formatMinutes(CF_TOTAL_ANNUEL)} />
+            <Row label="Crédit total annuel" value={`${formatMinutes(credit)}${cycleConfig?.zone && cycleConfig.zone !== 'metropole' ? ` (${libelleZone(cycleConfig.zone)})` : ''}`} />
             <Row label="Total consommé" value={formatMinutes(pris)} color="text-emerald-600" />
             <Row label="Solde disponible" value={formatMinutes(counters.cf)} bold color="text-blue-700" separator />
-            <Alert type="info" text="Pensez à les répartir sur les deux semestres (~54h36 chacun) : en cas de mutation ou de départ en cours d'année, seuls les CF du semestre en cours sont pris en compte." />
+            <Alert type="info" text={`Pensez à les répartir sur les deux semestres (~${formatMinutes(cfParSemestre(cycleConfig?.zone))} chacun) : en cas de mutation ou de départ en cours d'année, seuls les CF du semestre en cours sont pris en compte.`} />
             <Alert type="error" text="Les CF sont perdus au 31/12 s'ils ne sont pas consommés." />
           </>
         );

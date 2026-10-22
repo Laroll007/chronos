@@ -327,6 +327,7 @@ export default function StatsPage() {
     horaire: 'Horaires',
     nav: 'Navigateur (Android / web)',
     stockage: 'Stockage protégé (Android / web)',
+    zone: 'Lieu d’affectation (hors métropole)',
   };
 
   return (

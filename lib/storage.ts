@@ -1,7 +1,7 @@
 // LocalStorage helpers pour Chronos
 
 import { UserData, Counters, CycleConfig, HistoryEntry, ExportData } from './types';
-import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_BRUT_ANNUEL, CF_TOTAL_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { STORAGE_KEY, APP_VERSION, HEURES_PAR_JOUR, RTC_RESERVES_CET, RTC_BRUT_ANNUEL, ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
 import {
   DEFAULT_WEEK_SCHEDULE,
   DEFAULT_CYCLE_ALTERNE_A,
@@ -16,6 +16,7 @@ import { noterSauvegarde } from './sauvegarde';
 import { baremeRPSDepuisHoraires, baremeRPSNuit, estAncienBaremeNuit } from './rps';
 import { plateformeNative } from './api';
 import { optionsBascule, type OptionsNouvelleAnnee } from './sondage2027';
+import { cfAnnuel } from './zones';
 
 /**
  * Version du schéma de données. À incrémenter pour introduire une migration
@@ -294,7 +295,7 @@ export function compteursNouvelleAnnee(c: Counters, cycleConfig: CycleConfig, op
   n.caConsommes = 0;
   const perso = options.perso ?? {};
   n.ca = perso.ca ?? getCATotalForCycle(cycleConfig);
-  if (c.hasCF !== false) n.cf = perso.cf ?? CF_TOTAL_ANNUEL;
+  if (c.hasCF !== false) n.cf = perso.cf ?? cfAnnuel(cycleConfig.zone);
   if (c.hasRTC !== false) n.rtc = perso.rtc ?? getRTCAnnuel(cycleConfig);
   if (c.hasRTT) n.rtt = perso.rtt ?? RTT_QUOTA_HEBDO;
   if (c.hasARTT) {

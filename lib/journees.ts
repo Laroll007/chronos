@@ -47,7 +47,7 @@ export function natureDuJour(date: Date, cfg: CycleConfig): NatureJour {
 // fausse l'arrondi final (244,5 devenait 244,4999…).
 /** Coefficient « repos » (centièmes) des heures faites hors vacation ce jour-là. */
 function coefRepos(date: Date, cfg: CycleConfig): number {
-  if (estFerie(date)) return 60;
+  if (estFerie(date, cfg.zone)) return 60;
   const nature = natureDuJour(date, cfg);
   return nature === 'RL' ? 60 : nature === 'RC' ? 25 : 0;
 }
@@ -185,7 +185,7 @@ export function effetJournee(
   choix?: ChoixRappel
 ): EffetJournee {
   const nature = natureDuJour(date, cfg);
-  const ferie = estFerie(date);
+  const ferie = estFerie(date, cfg.zone);
   const prevue = vacationPrevue(date, cfg);
   const dureePrevue = prevue?.duree ?? 0;
 

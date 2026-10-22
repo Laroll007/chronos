@@ -9,7 +9,8 @@
 //   assez de réponses (cf. lib/server/sondage-store.ts).
 
 import type { Counters, CycleConfig, CompteurSondage, ReponseSondage, UserData } from './types';
-import { ARTT_QUOTA_ANNUEL, CF_TOTAL_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { ARTT_QUOTA_ANNUEL, RTT_QUOTA_HEBDO } from './constants';
+import { cfAnnuel } from './zones';
 import { getCATotalForCycle, getRTCAnnuel } from './calculations';
 import { typeDeVacation } from './rps';
 
@@ -68,7 +69,7 @@ export function dotationsPrevues(cfg: CycleConfig, c: Counters): DotationPrevue[
     if (c.hasRTT) d.push({ compteur: 'rtt', valeur: RTT_QUOTA_HEBDO });
   } else {
     if (c.hasRTC !== false) d.push({ compteur: 'rtc', valeur: getRTCAnnuel(cfg) });
-    if (c.hasCF !== false) d.push({ compteur: 'cf', valeur: CF_TOTAL_ANNUEL });
+    if (c.hasCF !== false) d.push({ compteur: 'cf', valeur: cfAnnuel(cfg.zone) });
   }
   return d;
 }

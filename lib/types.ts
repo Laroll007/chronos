@@ -1,3 +1,4 @@
+import type { Zone } from './zones';
 // Types fondamentaux pour Chronos - Gestion des congés policiers
 
 export type CycleType = 'alterne' | 'hebdo';
@@ -55,6 +56,9 @@ export interface CycleConfig {
   // calculer le barème RPS exact (nuit 21h–6h, dimanche). Absent chez les
   // agents inscrits avant l'ajout des horaires : leur barème reste inchangé.
   heureDebut?: number;
+  // Lieu d'affectation : crédit férié (109h12, 123h12 en Alsace-Moselle, 116h12
+  // dans les DOM) et jours fériés locaux. Absent = métropole. Cf. lib/zones.ts.
+  zone?: Zone;
   // Horaires qui changent au fil des cycles (soirée / matinée…). Absent = les
   // horaires ci-dessus valent tous les jours. Cf. lib/horaires.ts.
   horairesRotation?: RotationHoraires;

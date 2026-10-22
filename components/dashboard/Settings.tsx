@@ -42,7 +42,10 @@ import {
   X,
   Share2,
   Star,
+  MapPin,
 } from 'lucide-react';
+import { ZONES, cfAnnuel, libelleZone, type Zone } from '@/lib/zones';
+import { formatMinutes } from '@/lib/calculations';
 import { RecommanderModal } from '@/components/shared/RecommanderModal';
 import { lienAvisStore, ouvrirFicheStore, plateforme } from '@/lib/recommandation';
 import { toast } from 'sonner';
@@ -201,6 +204,18 @@ export function Settings({
   const [isImporting, setIsImporting] = useState(false);
   const [statsEnabled, setStatsEnabledState] = useState(isStatsEnabled);
 
+  // Le crédit de l'année en cours n'est pas modifié : GesTT fait foi (mutation
+  // en cours d'année, crédit déjà attribué). La nouvelle valeur vaut au 1er janvier.
+  const changerZone = (zone: Zone) => {
+    if (!onUpdateCycle) return;
+    const nouvelle = { ...cycleConfig, zone };
+    if (onUpdateCycle(nouvelle)) {
+      toast.success(`Lieu d'affectation : ${libelleZone(zone)}`, {
+        description: `Crédit férié : ${formatMinutes(cfAnnuel(zone))} par an à partir du 1er janvier. Pour cette année, vérifiez votre solde CF avec GesTT et corrigez-le si besoin.`,
+      });
+    }
+  };
+
   const toggleStats = () => {
     const next = !statsEnabled;
     setStatsEnabled(next);
@@ -294,6 +309,24 @@ export function Settings({
                 sublabel="Changement de brigade, de régime ou d'horaires"
                 onClick={() => setShowCycle(true)}
               />
+              {/* Lieu d'affectation : crédit férié et jours fériés locaux */}
+              <label className="grid grid-cols-[2.5rem_1fr] items-center gap-2 w-full px-3 py-3 rounded-xl border bg-white border-slate-200/80 shadow-sm">
+                <Pastille degrade={D.ciel}><MapPin className="w-5 h-5" /></Pastille>
+                <span className="min-w-0 text-center">
+                  <span className="block text-[15px] font-semibold leading-snug text-slate-800">Lieu d&apos;affectation</span>
+                  <span className="block text-xs mt-0.5 leading-snug text-slate-500">
+                    Crédit férié {formatMinutes(cfAnnuel(cycleConfig.zone))}/an et jours fériés locaux
+                  </span>
+                  <select
+                    aria-label="Lieu d'affectation"
+                    value={cycleConfig.zone ?? 'metropole'}
+                    onChange={(e) => changerZone(e.target.value as Zone)}
+                    className="mt-2 w-full h-10 rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-800 text-center"
+                  >
+                    {ZONES.map((z) => <option key={z.cle} value={z.cle}>{z.label}</option>)}
+                  </select>
+                </span>
+              </label>
             </Section>
           )}
 

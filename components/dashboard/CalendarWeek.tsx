@@ -78,7 +78,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
   }, [currentWeekStart, cycleConfig, today]);
 
   const legendFlags = useMemo(
-    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies, cycleConfig.type === 'hebdo'),
+    () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies, cycleConfig.type === 'hebdo', cycleConfig.zone),
     [weekDays, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type]
   );
 
@@ -261,7 +261,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             const statusParts: string[] = [];
             if (day.isToday) statusParts.push("aujourd'hui");
             if (day.isWorking) statusParts.push(jeu ? `jour travaillé, ${libelleJeu(jeu)}` : 'jour travaillé');
-            else if (cycleConfig.type === 'hebdo' && estFerie(day.date)) statusParts.push('jour férié');
+            else if (cycleConfig.type === 'hebdo' && estFerie(day.date, cycleConfig.zone)) statusParts.push('jour férié');
             else statusParts.push('jour de repos');
             if (isPosted) statusParts.push(isPrevisionnel ? 'congé posé, prévisionnel' : 'congé posé');
             if (isCMO) statusParts.push('arrêt maladie');
@@ -317,8 +317,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
                     // État par défaut (non sélectionné)
                     !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isAbsence && !isPartial && {
                       'bg-blue-50 border border-blue-100': day.isWorking,
-                      'bg-slate-200 border border-slate-300': !day.isWorking && cycleConfig.type === 'hebdo' && estFerie(day.date),
-                      'bg-slate-50 border border-slate-100': !day.isWorking && !(cycleConfig.type === 'hebdo' && estFerie(day.date)),
+                      'bg-slate-200 border border-slate-300': !day.isWorking && cycleConfig.type === 'hebdo' && estFerie(day.date, cycleConfig.zone),
+                      'bg-slate-50 border border-slate-100': !day.isWorking && !(cycleConfig.type === 'hebdo' && estFerie(day.date, cycleConfig.zone)),
                     },
                     // Aujourd'hui (non sélectionné)
                     day.isToday && !isInRange && !isInPreview && !isPosted && !isCMO && !isAstreinte && !isAbsence && !isPartial && 'ring-2 ring-blue-500 ring-offset-1',

@@ -2,6 +2,7 @@
 
 import type { CreditCME } from '@/lib/creditCME';
 import { droitsAnnee } from '@/lib/changementCycle';
+import { cfAnnuel, cfParSemestre } from '@/lib/zones';
 import { useMemo, useState } from 'react';
 import { CounterDetailsModal } from './CounterDetailsModal';
 import { CounterCard } from './CounterCard';
@@ -9,8 +10,6 @@ import { CounterHelpModal } from '@/components/shared/CounterHelpModal';
 import { Counters, CycleConfig } from '@/lib/types';
 import {
   CA_TOTAL_ANNUEL,
-  CF_TOTAL_ANNUEL,
-  CF_PAR_SEMESTRE,
   RTC_TOTAL_ANNUEL,
   RTC_BRUT_ANNUEL,
   RTC_RESERVES_CET,
@@ -121,13 +120,14 @@ export function CountersOverview({ counters, onUpdateCounters, caTotal = CA_TOTA
         semester,
         counters.cfConsoS1,
         counters.cfConsoS2,
-        counters.cf
+        counters.cf,
+        cfParSemestre(cycleConfig?.zone)
       );
       result.push({
         id: 'cf',
         label: 'CF',
         value: counters.cf,
-        max: CF_TOTAL_ANNUEL,
+        max: cycleConfig ? droitsAnnee(cycleConfig, counters, 'cf') : cfAnnuel(undefined),
         unit: 'heures',
         deadline: semester === 1 ? new Date(year, 5, 30) : new Date(year, 11, 31),
         status: getStatus(daysUntilSemester, cfRestant > 0),

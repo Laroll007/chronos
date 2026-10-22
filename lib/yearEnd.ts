@@ -7,11 +7,11 @@
 // À l'inverse, les CA que l'agent a explicitement sécurisés (`caReservesCET`) ne
 // doivent jamais apparaître comme « à solder ».
 
+import { cfParSemestre } from './zones';
 import { Counters, CycleConfig, CounterType } from './types';
 import {
   RTC_COUT_PAR_JOUR_CET,
   HEURES_PAR_JOUR,
-  CF_PAR_SEMESTRE,
 } from './constants';
 import { formatMinutes, getCurrentSemester } from './calculations';
 import { repartirApportCET } from './cet';
@@ -107,7 +107,7 @@ export function calculateYearEndBalance(
 
   // ── CF : crédit du semestre en cours, perdu au 31/12 ────────────────────────
   if (counters.hasCF !== false && getCurrentSemester(currentDate) === 2) {
-    const resteS2 = Math.max(0, Math.min(counters.cf, CF_PAR_SEMESTRE - counters.cfConsoS2));
+    const resteS2 = Math.max(0, Math.min(counters.cf, cfParSemestre(cycleConfig.zone) - counters.cfConsoS2));
     if (resteS2 > 0) {
       pushHeures('cf', 'Crédits fériés', resteS2, 0, 'Non reportables — à consommer avant le 31/12');
     }

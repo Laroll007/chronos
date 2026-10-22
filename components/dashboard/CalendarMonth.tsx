@@ -99,9 +99,10 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
         events,
         dateRange.selectedStart !== null,
         joursModifies,
-        cycleConfig.type === 'hebdo'
+        cycleConfig.type === 'hebdo',
+        cycleConfig.zone
       ),
-    [days, month, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type]
+    [days, month, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type, cycleConfig.zone]
   );
 
   // Ref pour les boutons des jours (navigation clavier)
@@ -346,7 +347,7 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             const layout = eventLayout.get(toDayKey(day.date));
             // Hebdo : un jour férié n'est pas travaillé → case grisée, mais
             // toujours sélectionnable (rappel, astreinte, événement…).
-            const isFerie = cycleConfig.type === 'hebdo' && estFerie(day.date);
+            const isFerie = cycleConfig.type === 'hebdo' && estFerie(day.date, cycleConfig.zone);
             // Horaires qui changent (soirée / matinée…) : pastille sur les jours travaillés.
             const jeu = day.isWorking && !isPosted && !isCMO && !isAbsence ? jeuHorairesDuJour(day.date, cycleConfig) : null;
             // Type de congé (CA, RTC, CF + HS, RTC 4h…) affiché dans la case

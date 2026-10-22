@@ -6,6 +6,7 @@ import { HelpCircle, X } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { conseilRTCCET, formatMinutes, getCATotalForCycle } from '@/lib/calculations';
 import { RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
+import { cfAnnuel, cfParSemestre, libelleZone } from '@/lib/zones';
 import type { CycleConfig } from '@/lib/types';
 
 type HelpEntry = { title: string; bullets: string[]; warning?: string; tip?: string };
@@ -183,6 +184,14 @@ export function helpContent(helpKey: string, cycleConfig?: CycleConfig): HelpEnt
           b.startsWith('Conseil') ? `Conseil pour votre cycle : gardez ${reserve} pour alimenter le CET en janvier.` : b
         ),
         tip: gain,
+      };
+    case 'cf':
+      return {
+        ...base,
+        bullets: base.bullets.map((b, i) =>
+          i === 0 ? `Crédit annuel : ${formatMinutes(cfAnnuel(cycleConfig.zone))}${cycleConfig.zone && cycleConfig.zone !== 'metropole' ? ` (${libelleZone(cycleConfig.zone)})` : ''}, attribué en début d'année.`
+            : i === 1 ? `À consommer sur l'année : idéalement ~${formatMinutes(cfParSemestre(cycleConfig.zone))} par semestre.` : b
+        ),
       };
     case 'ca':
       if (cycleConfig.type !== 'alterne') return base;

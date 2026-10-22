@@ -1,8 +1,10 @@
-// Jours fériés de métropole. Module autonome (sans dépendance au moteur de
-// cycle) : `isWorkingDay` s'en sert pour le régime hebdomadaire, où un jour
+// Jours fériés : les 11 nationaux, plus ceux du lieu d'affectation (Alsace-
+// Moselle, DOM : cf. lib/zones.ts). Module autonome (sans dépendance au moteur
+// de cycle) : `isWorkingDay` s'en sert pour le régime hebdomadaire, où un jour
 // férié n'est pas travaillé.
 
 import { toDayKey } from './events';
+import { feriesLocaux, type Zone } from './zones';
 
 
 /** Dimanche de Pâques (algorithme de Meeus / Jones / Butcher). */
@@ -24,23 +26,24 @@ function paques(annee: number): Date {
   return new Date(annee, mois - 1, jour);
 }
 
-const cacheFeries = new Map<number, Set<string>>();
+const cacheFeries = new Map<string, Set<string>>();
 
-/** Les 11 jours fériés de métropole (hors Alsace-Moselle et outre-mer). */
-export function joursFeries(annee: number): Set<string> {
-  const cached = cacheFeries.get(annee);
+/** Les 11 jours fériés nationaux, plus ceux de la zone (Alsace-Moselle, DOM). */
+export function joursFeries(annee: number, zone?: Zone): Set<string> {
+  const cle = `${annee}|${zone ?? 'metropole'}`;
+  const cached = cacheFeries.get(cle);
   if (cached) return cached;
   const p = paques(annee);
   const decale = (n: number) => toDayKey(new Date(p.getFullYear(), p.getMonth(), p.getDate() + n));
   const fixes = ['01-01', '05-01', '05-08', '07-14', '08-15', '11-01', '11-11', '12-25'].map(
     (md) => `${annee}-${md}`
   );
-  const set = new Set([...fixes, decale(1), decale(39), decale(50)]); // lundi de Pâques, Ascension, lundi de Pentecôte
-  cacheFeries.set(annee, set);
+  const set = new Set([...fixes, decale(1), decale(39), decale(50), ...feriesLocaux(zone, annee, p)]); // lundi de Pâques, Ascension, lundi de Pentecôte
+  cacheFeries.set(cle, set);
   return set;
 }
 
-export function estFerie(date: Date): boolean {
-  return joursFeries(date.getFullYear()).has(toDayKey(date));
+export function estFerie(date: Date, zone?: Zone): boolean {
+  return joursFeries(date.getFullYear(), zone).has(toDayKey(date));
 }
 

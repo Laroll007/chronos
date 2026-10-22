@@ -2,7 +2,6 @@
 
 import { Counters, CycleConfig, Recommendation, AlertPriority } from './types';
 import {
-  CF_PAR_SEMESTRE,
   CA_REQUIS_POUR_HP,
   RTC_RESERVES_CET,
   HS_MAX_STOCKABLES,
@@ -27,6 +26,7 @@ import {
   cetPourCampagne,
 } from './calculations';
 import { generateId } from './storage';
+import { cfParSemestre } from './zones';
 
 // ============================================
 // GÉNÉRATION DES RECOMMANDATIONS
@@ -128,7 +128,8 @@ function checkCFSemester(
 
   const semester = getCurrentSemester(currentDate);
   const daysRemaining = getDaysUntilSemesterDeadline(currentDate);
-  const cfRestant = getCFRemainingForSemester(semester, counters.cfConsoS1, counters.cfConsoS2, counters.cf);
+  const parSemestre = cfParSemestre(cycleConfig.zone);
+  const cfRestant = getCFRemainingForSemester(semester, counters.cfConsoS1, counters.cfConsoS2, counters.cf, parSemestre);
   if (cfRestant <= 0) return [];
 
   // 1 CF = 1 journée travaillée du régime (12h08 en cycle APORTT). Objectif : étaler
@@ -141,8 +142,8 @@ function checkCFSemester(
   const month0 = currentDate.getMonth();
   const monthIndex = semester === 1 ? month0 + 1 : month0 - 5;
   const isLastMonth = monthIndex >= CF_MOIS_PAR_SEMESTRE;
-  const consumed = CF_PAR_SEMESTRE - cfRestant;
-  const targetByNow = CF_PAR_SEMESTRE * (monthIndex / CF_MOIS_PAR_SEMESTRE);
+  const consumed = parSemestre - cfRestant;
+  const targetByNow = parSemestre * (monthIndex / CF_MOIS_PAR_SEMESTRE);
 
   // Journées entières à proposer ce mois-ci pour rattraper la cadence idéale.
   // Dernier mois du semestre : on solde tout le restant avant la deadline.

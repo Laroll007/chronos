@@ -5,6 +5,7 @@ import { jourModifieDu } from '@/lib/journees';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { eventsOnDate } from '@/lib/events';
 import { estFerie } from '@/lib/feries';
+import type { Zone } from '@/lib/zones';
 import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +37,9 @@ export function legendFlagsForDays(
   hasSelection: boolean,
   joursModifies?: JourModifie[],
   /** Régime hebdomadaire : les jours fériés (non travaillés) sont grisés. */
-  hebdo = false
+  hebdo = false,
+  /** Lieu d'affectation : jours fériés locaux (Alsace-Moselle, DOM). */
+  zone?: Zone
 ): LegendFlags {
   const flags: LegendFlags = {
     travail: false, conge: false, previsionnel: false, cmo: false, astreinte: false, absence: false, heures: false,
@@ -44,7 +47,7 @@ export function legendFlagsForDays(
   };
   for (const { date, isWorking } of days) {
     if (isWorking) flags.travail = true;
-    if (hebdo && estFerie(date)) flags.ferie = true;
+    if (hebdo && estFerie(date, zone)) flags.ferie = true;
     if (hasPostedLeaveOnDate(date, history)) {
       if (estPrevisionnelLe(date, history)) flags.previsionnel = true;
       else flags.conge = true;

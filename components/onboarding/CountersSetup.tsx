@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { cfAnnuel } from '@/lib/zones';
 import { Counters, CycleConfig, CycleType } from '@/lib/types';
 import { COUNTER_LABELS, COUNTER_COLORS, RTC_COUT_PAR_JOUR_CET } from '@/lib/constants';
 import { getCATotalForCycle, checkCAHPCondition, ajusterSoldeCAHP, getCAHPUtilises, conseilRTCCET, formatMinutes } from '@/lib/calculations';
@@ -713,7 +714,7 @@ export function CountersSetup({
               <div className={`${subClass} mt-1`}>{COUNTER_LABELS.cf.description}</div>
             </div>
             <div className="px-6">
-              <TimeInput label="CF total restant" value={counters.cf} onChange={(v) => updateCounter('cf', v)} hint="109h12/an — à lisser sur l'année" colorKey="cf" />
+              <TimeInput label="CF total restant" value={counters.cf} onChange={(v) => updateCounter('cf', v)} hint={`${formatMinutes(cfAnnuel(cycleConfig.zone))}/an — à lisser sur l'année. Alsace-Moselle : 123h12 ; outre-mer : 116h12 (lieu d'affectation dans Paramètres)`} colorKey="cf" />
             </div>
           </div>
         )}

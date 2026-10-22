@@ -1,3 +1,4 @@
+import { estZone } from './zones';
 // Validation manuelle — remplace zod (~280KB économisés dans le bundle)
 // API publique identique pour ne pas casser les tests et le code existant.
 
@@ -95,6 +96,7 @@ function checkCycleConfig(v: unknown): string[] {
       }
     }
   }
+  if (v.zone !== undefined && !estZone(v.zone)) errors.push('zone: valeur invalide');
   if (v.rpsParJour !== undefined) {
     if (!isObj(v.rpsParJour)) {
       errors.push('rpsParJour: objet attendu');
