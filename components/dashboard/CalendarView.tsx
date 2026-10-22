@@ -49,6 +49,8 @@ interface CalendarViewProps {
   joursModifies?: JourModifie[];
   onAddEvent?: (date?: Date) => void;
   onOpenEvent?: (event: PersonalEvent) => void;
+  /** Ouvre « Partager mon planning ». */
+  onPartager?: () => void;
 }
 
 
@@ -169,7 +171,7 @@ function CaHPBand({ counters }: { counters: Counters }) {
   );
 }
 
-export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, onTogglePrevisionnel, resetTrigger = 0, events, joursModifies, onAddEvent, onOpenEvent }: CalendarViewProps) {
+export function CalendarView({ cycleConfig, counters, onRangeSelected, history, onDeleteLeave, onEditLeave, onTogglePrevisionnel, resetTrigger = 0, events, joursModifies, onAddEvent, onOpenEvent, onPartager }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const prevResetTrigger = useRef(resetTrigger);
   // Date dont on veut ouvrir le détail (édition/suppression) dans la liste des congés.
@@ -281,7 +283,7 @@ export function CalendarView({ cycleConfig, counters, onRangeSelected, history, 
       <div>
         {viewMode === 'month' && (
           <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} onOpenEvent={onOpenEvent} />
+            <CalendarMonth cycleConfig={cycleConfig} dateRange={dateRange} history={history} events={events} joursModifies={joursModifies} onOpenEvent={onOpenEvent} onPartager={onPartager} />
           </div>
         )}
         {viewMode === 'week' && (

@@ -90,6 +90,8 @@ const EVENTS_BASE = {
   restauration_inscription: { label: 'Sauvegarde restaurée depuis l’inscription', group: 'Onboarding' },
   maj_ios_ouverte: { label: 'iPhone : ouvre l’App Store depuis le bandeau de mise à jour', group: 'À propos' },
   sondage_vu: { label: 'Sondage « Préparons 2027 » affiché', group: 'À propos' },
+  partage_image: { label: 'Planning partagé en image', group: 'Outils' },
+  partage_lien: { label: 'Planning partagé par lien', group: 'Outils' },
   sondage_repondu: { label: 'Sondage « Préparons 2027 » : réponse envoyée', group: 'À propos' },
   sondage_plus_tard: { label: 'Sondage « Préparons 2027 » : plus tard', group: 'À propos' },
   // Passage de l'ancienne app Android (TWA) à l'app native

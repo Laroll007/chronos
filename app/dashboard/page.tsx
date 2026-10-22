@@ -77,6 +77,7 @@ import { initDiagnostic, profilDiagnostic } from '@/lib/diagnostic';
 import { apiUrl, isNativeApp, plateformeNative } from '@/lib/api';
 import { Sondage2027 } from '@/components/dashboard/Sondage2027';
 import { ReportCAMPrompt } from '@/components/dashboard/ReportCAMPrompt';
+import { PartagePlanningModal } from '@/components/dashboard/PartagePlanningModal';
 import { profilSondage, sondageAProposer } from '@/lib/sondage2027';
 import { droitsAnnee, type ParamsChangement } from '@/lib/changementCycle';
 import { creditCME } from '@/lib/creditCME';
@@ -297,6 +298,7 @@ export default function DashboardPage() {
   // temps que la bienvenue, « Quoi de neuf ? » ou le rappel de sauvegarde), et
   // seulement si le serveur a encore besoin de réponses pour ce profil de cycle.
   const [showSondage, setShowSondage] = useState(false);
+  const [showPartage, setShowPartage] = useState(false);
   const sondageVerifie = useRef(false);
   useEffect(() => {
     if (isLoading || !userData || sondageVerifie.current) return;
@@ -800,6 +802,7 @@ export default function DashboardPage() {
             joursModifies={joursModifies}
             onAddEvent={(date) => openNewEvent(date)}
             onOpenEvent={(event) => setEventDraft(event)}
+            onPartager={() => setShowPartage(true)}
           />
           {/* Mentions légales — en bas de la zone scrollable, pas en overlay fixe */}
           <footer className="text-center mt-8 pb-safe-plus-2 flex items-center justify-center gap-4">
@@ -1189,6 +1192,10 @@ export default function DashboardPage() {
             }
           }}
         />
+      )}
+
+      {showPartage && (
+        <PartagePlanningModal cycleConfig={cycleConfig} history={history} onClose={() => setShowPartage(false)} />
       )}
 
       {showSondage && (

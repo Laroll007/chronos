@@ -4,7 +4,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
@@ -12,26 +12,15 @@ import { jourModifieDu } from '@/lib/journees';
 import { estFerie } from '@/lib/feries';
 import { useMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, hasAbsencePartielleOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
 import { EventChip } from './EventChip';
-import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
 import { eventsOnDate, layoutMonthEvents, toDayKey } from '@/lib/events';
 import { jeuHorairesDuJour } from '@/lib/horaires';
 import { estPrevisionnelLe } from '@/lib/previsionnel';
 import { BadgeHoraires, LegendeHoraires, libelleJeu } from './HorairesBadge';
 import { etiquetteDuJour } from '@/lib/typesConges';
-
-// Préférence de l'agent : afficher le type de congé (CA, RTC…) sur le planning.
-const CLE_TYPES = 'chronos_planning_types';
-const lireAfficherTypes = () => {
-  try {
-    return localStorage.getItem(CLE_TYPES) !== '0';
-  } catch {
-    return true;
-  }
-};
 
 interface CalendarMonthProps {
   cycleConfig: CycleConfig;
@@ -40,6 +29,8 @@ interface CalendarMonthProps {
   events?: PersonalEvent[];
   joursModifies?: JourModifie[];
   onOpenEvent?: (event: PersonalEvent) => void;
+  /** « Partager mon planning » (image ou lien). */
+  onPartager?: () => void;
 }
 
 const MOIS = [
@@ -59,50 +50,22 @@ const MOIS = [
 
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events, joursModifies, onOpenEvent }: CalendarMonthProps) {
+export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRange, history, events, joursModifies, onOpenEvent, onPartager }: CalendarMonthProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
 
   const days = useMonthCalendar(cycleConfig, year, month);
 
-  const stats = useMemo(() => {
-    // Jours travaillés = jours du cycle + astreintes posées sur des jours de repos
-    const astreinte = days.filter((d) => !d.isWorking && hasAstreinteOnDate(d.date, history)).length;
-    const working = days.filter((d) => d.isWorking).length + astreinte;
-    const sundays = days.filter((d) => d.isWorking && d.isSunday).length;
-    return { working, sundays };
-  }, [days, history]);
-
-  const [afficherTypes, setAfficherTypes] = useState(lireAfficherTypes);
-  const basculerTypes = (v: boolean) => {
-    setAfficherTypes(v);
-    try {
-      localStorage.setItem(CLE_TYPES, v ? '1' : '0');
-    } catch {
-      /* préférence non mémorisée : sans gravité */
-    }
-  };
+  // Le type de congé (CA, RTC…) est toujours affiché dans les cases : la
+  // légende des couleurs n'est donc plus nécessaire.
+  const afficherTypes = true;
 
   // Placement des événements (barres continues, lignes alignées par semaine)
   const eventLayout = useMemo(
     // Jusqu'à 3 événements par jour, puis « +N »
     () => layoutMonthEvents(days.filter((d) => d.date.getMonth() === month).map((d) => d.date), events, 3),
     [days, month, events]
-  );
-
-  const legendFlags = useMemo(
-    () =>
-      legendFlagsForDays(
-        days.filter((d) => d.date.getMonth() === month),
-        history,
-        events,
-        dateRange.selectedStart !== null,
-        joursModifies,
-        cycleConfig.type === 'hebdo',
-        cycleConfig.zone
-      ),
-    [days, month, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type, cycleConfig.zone]
   );
 
   // Ref pour les boutons des jours (navigation clavier)
@@ -188,28 +151,12 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
   return (
     // Sur téléphone, le calendrier prend toute la largeur de l'écran (la carte
     // déborde des marges de la page) : des cases plus larges pour les événements.
-    <Card className="glass h-full flex flex-col gap-1 py-4 -mx-3 sm:mx-0">
+    <Card className="glass h-full flex flex-col gap-1 pt-2.5 pb-4 -mx-3 sm:mx-0">
+      {/* Barre de sélection style Booking (en-tête seulement pendant une sélection,
+          sinon il laissait un espace vide au-dessus du mois) */}
+      {dateRange.selectedStart ? (
       <CardHeader className="pb-0 shrink-0 px-4 sm:px-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-blue-600" />
-            Calendrier
-          </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border border-blue-200">
-              {stats.working}j travaillés
-            </Badge>
-            {stats.sundays > 0 && (
-              <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
-                {stats.sundays} dim
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Barre de sélection style Booking */}
-        {dateRange.selectedStart ? (
-        <div className="mt-3">
+        <div className="mt-1">
           {dateRange.isSelecting ? (
             // Mode sélection en cours
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 animate-in fade-in-0 slide-in-from-top-2 duration-200">
@@ -269,8 +216,8 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
             </div>
           ) : null}
         </div>
-        ) : null}
       </CardHeader>
+      ) : null}
 
       <CardContent className="flex-1 flex flex-col px-1 sm:px-6">
         {/* Navigation */}
@@ -516,20 +463,17 @@ export const CalendarMonth = memo(function CalendarMonth({ cycleConfig, dateRang
           ))}
         </div>
 
-        {/* Légende : uniquement ce qui apparaît ce mois-ci (pastilles carrées,
-            comme les cases) */}
-        {/* Types affichés dans les cases : la légende des couleurs devient inutile */}
-        {!afficherTypes && <CalendarLegend flags={legendFlags} shape="square" />}
-        {(legendFlags.conge || legendFlags.heures || legendFlags.cmo || legendFlags.astreinte || legendFlags.absence) && (
-          <label className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={afficherTypes}
-              onChange={(e) => basculerTypes(e.target.checked)}
-              className="h-4 w-4 accent-blue-600"
-            />
-            Afficher le type de congé (CA, RTC, CMO…) dans les cases
-          </label>
+        {onPartager && (
+          <div className="mt-2.5 flex justify-center">
+            <button
+              type="button"
+              onClick={onPartager}
+              className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-blue-200 bg-white text-xs font-semibold text-[#0055A4] shadow-sm hover:bg-blue-50 active:scale-[0.98] transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
+              Partager mon planning
+            </button>
+          </div>
         )}
         <LegendeHoraires
           cycleConfig={cycleConfig}
