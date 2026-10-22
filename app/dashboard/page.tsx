@@ -1138,6 +1138,8 @@ export default function DashboardPage() {
               ouvrirCommunaute();
             } else if (target === 'sondage') {
               setShowSondage(true);
+            } else if (target === 'partage') {
+              setShowPartage(true);
             } else {
               openCETPlan();
             }

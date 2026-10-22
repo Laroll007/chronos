@@ -5,7 +5,7 @@
 
 import { APP_VERSION } from './constants';
 
-export type ReleaseAction = 'cycle' | 'cet' | 'communaute' | 'sondage';
+export type ReleaseAction = 'cycle' | 'cet' | 'communaute' | 'sondage' | 'partage';
 
 export interface ReleaseItem {
   emoji: string;
@@ -27,6 +27,33 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '1.22.0',
+    items: [
+      {
+        emoji: '📤',
+        title: 'Partage ton planning',
+        text: 'Sous le planning, « Partager mon planning » l’envoie en image ou en lien par WhatsApp, Signal, Telegram, mail… sur 1, 3 ou 6 mois. Par défaut, il affiche « Congé » ou « Absent » sans préciser CA, RTC ou CMO. Tes compteurs ne sont jamais partagés.',
+        action: { label: 'Partager mon planning', target: 'partage' },
+      },
+      {
+        emoji: '📍',
+        title: 'Outre-mer et Alsace-Moselle',
+        text: 'Indique ton lieu d’affectation dans « Mon cycle » : l’app ajoute les jours fériés locaux (abolition de l’esclavage, Vendredi saint, 26 décembre) et ajuste ton crédit férié (CF).',
+        action: { label: 'Indiquer mon lieu', target: 'cycle' },
+      },
+      {
+        emoji: '🗓️',
+        title: 'Planning plus net',
+        text: 'Le planning prend plus de place et affiche toujours le type de chaque jour (CA, RTC, CMO…).',
+      },
+      {
+        emoji: '🛠️',
+        title: 'Corrections',
+        text: 'Supprimer un congé d’une année déjà terminée ne modifie plus les compteurs de la nouvelle année. Sur iPhone, « Exporter » (Paramètres › Sauvegarde) ouvre maintenant la fenêtre de partage pour enregistrer ou envoyer ta sauvegarde.',
+      },
+    ],
+  },
   {
     version: '1.21.0',
     items: [
