@@ -4,14 +4,14 @@
 'use client';
 
 import { useState, useMemo, memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry } from '@/lib/types';
 import { useMonthCalendar, computeMonthCalendar } from '@/hooks/useCycle';
 import { hasPostedLeaveOnDate, hasCMOOnDate, hasAstreinteOnDate, hasAbsenceOnDate, getPartialMinutesOnDate } from '@/lib/calculations';
 import { estPrevisionnelLe } from '@/lib/previsionnel';
-import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
 import { CalendarLegend, legendFlagsForDays } from './CalendarLegend';
@@ -191,20 +191,6 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
 
-  // Calculer statistiques annuelles
-  const yearStats = useMemo(() => {
-    let totalWorking = 0;
-    let totalSundays = 0;
-
-    for (let month = 0; month < 12; month++) {
-      const days = computeMonthCalendar(cycleConfig, year, month);
-      totalWorking += days.filter((d) => d.isWorking).length;
-      totalSundays += days.filter((d) => d.isWorking && d.isSunday).length;
-    }
-
-    return { working: totalWorking, sundays: totalSundays };
-  }, [year, cycleConfig]);
-
   // Les événements ne sont pas dessinés sur la vue annuelle (cases trop petites) :
   // ils ne figurent donc pas dans sa légende.
   const legendFlags = useMemo(() => {
@@ -219,30 +205,17 @@ export const CalendarYear = memo(function CalendarYear({ cycleConfig, dateRange,
   const goToThisYear = () => setYear(today.getFullYear());
 
   return (
-    <Card className="glass h-full flex flex-col">
-      <CardHeader className="pb-2 shrink-0">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CalendarRange className="w-5 h-5 text-blue-600" />
-            Année
-          </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border border-blue-200">
-              {yearStats.working}j travaillés
+    <Card className="glass h-full flex flex-col gap-1 pt-2.5 pb-4">
+      {/* Jours sélectionnés : affiché seulement pendant une sélection */}
+      {dateRange.workingDaysCount > 0 && (
+        <CardHeader className="pb-1 shrink-0">
+          <div className="flex justify-center">
+            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border border-emerald-200">
+              {dateRange.workingDaysCount}j sélectionnés
             </Badge>
-            {yearStats.sundays > 0 && (
-              <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
-                {yearStats.sundays} dim
-              </Badge>
-            )}
-            {dateRange.workingDaysCount > 0 && (
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border border-emerald-200">
-                {dateRange.workingDaysCount}j sélectionnés
-              </Badge>
-            )}
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
       <CardContent className="flex-1 flex flex-col">
         {/* Navigation */}
         <nav className="flex items-center justify-between mb-3" aria-label="Navigation du calendrier annuel">

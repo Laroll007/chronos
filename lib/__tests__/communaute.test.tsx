@@ -24,12 +24,12 @@ describe('Communauté Discord', () => {
   it('l’encart ouvre Discord, et la croix le masque définitivement', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const { unmount } = render(<CommunauteBanner />);
-    fireEvent.click(screen.getByText('Rejoindre le Discord'));
+    fireEvent.click(screen.getByText('Rejoindre'));
     expect(open).toHaveBeenCalledWith(LIEN_COMMUNAUTE, '_blank', 'noopener,noreferrer');
     fireEvent.click(screen.getByLabelText('Ne plus afficher'));
-    expect(screen.queryByText('Rejoindre le Discord')).toBeNull();
+    expect(screen.queryByText('Rejoindre')).toBeNull();
     unmount();
     render(<CommunauteBanner />);
-    expect(screen.queryByText('Rejoindre le Discord')).toBeNull();
+    expect(screen.queryByText('Rejoindre')).toBeNull();
   });
 });

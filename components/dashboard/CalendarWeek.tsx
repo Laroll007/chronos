@@ -4,13 +4,13 @@
 'use client';
 
 import { useState, useMemo, memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CycleConfig, HistoryEntry, JourModifie, PersonalEvent } from '@/lib/types';
 import { jourModifieDu } from '@/lib/journees';
 import { estFerie } from '@/lib/feries';
-import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DateRangeSelection } from './DateRangePicker';
 import { EventChip } from './EventChip';
@@ -79,7 +79,7 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
 
   const legendFlags = useMemo(
     () => legendFlagsForDays(weekDays, history, events, dateRange.selectedStart !== null, joursModifies, cycleConfig.type === 'hebdo', cycleConfig.zone),
-    [weekDays, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type]
+    [weekDays, history, events, dateRange.selectedStart, joursModifies, cycleConfig.type, cycleConfig.zone]
   );
 
   const goToPrevWeek = () => {
@@ -120,8 +120,6 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
     return `${startStr} - ${endStr}`;
   }, [currentWeekStart]);
 
-  const workingDaysCount = weekDays.filter((d) => d.isWorking).length;
-  const sundaysCount = weekDays.filter((d) => d.isSunday).length;
 
   // Formater la date pour l'affichage
   const formatDateShort = (date: Date) => {
@@ -129,28 +127,11 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
   };
 
   return (
-    <Card className="glass h-full flex flex-col">
+    <Card className="glass h-full flex flex-col gap-1 pt-2.5 pb-4">
+      {/* Barre de sélection (en-tête seulement pendant une sélection) */}
+      {dateRange.selectedStart ? (
       <CardHeader className="pb-2 shrink-0">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-blue-600" />
-            Semaine
-          </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 border border-blue-200">
-              {workingDaysCount}j travaillés
-            </Badge>
-            {sundaysCount > 0 && (
-              <Badge variant="secondary" className="bg-rose-100 text-rose-700 border border-rose-200">
-                {sundaysCount} dim
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Barre de sélection style Booking */}
-        {dateRange.selectedStart ? (
-        <div className="mt-3">
+        <div className="mt-1">
           {dateRange.isSelecting ? (
             // Mode sélection en cours
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 animate-in fade-in-0 slide-in-from-top-2 duration-200">
@@ -210,8 +191,8 @@ export const CalendarWeek = memo(function CalendarWeek({ cycleConfig, dateRange,
             </div>
           ) : null}
         </div>
-        ) : null}
       </CardHeader>
+      ) : null}
 
       <CardContent className="flex-1 flex flex-col">
         {/* Navigation */}
