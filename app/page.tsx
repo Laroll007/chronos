@@ -3,12 +3,12 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "My Chronos — Gestion optimisée des congés policiers (APORTT)",
+  title: "My Chronos — Gestion optimisée des congés APORTT",
   description:
     "Application libre et gratuite pour les agents APORTT : calcul de CA, CA HP, RTC, CET, CF, simulation de congés, optimisation de combinaisons et planning. 100% local, sans compte ni tracking.",
   alternates: { canonical: "https://mychronos.fr/" },
   openGraph: {
-    title: "My Chronos — Gestion optimisée des congés policiers",
+    title: "My Chronos — Gestion optimisée des congés APORTT",
     description:
       "Planifier, simuler, optimiser ses congés APORTT. Application 100% locale, gratuite, sans compte.",
     url: "https://mychronos.fr/",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "My Chronos — Gestion optimisée des congés policiers",
+    title: "My Chronos — Gestion optimisée des congés APORTT",
     description:
       "Planifier, simuler, optimiser ses congés APORTT. 100% local, gratuit, sans compte.",
   },

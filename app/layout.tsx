@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://mychronos.fr"),
   title: {
-    default: "My Chronos — Gestion optimisée des congés policiers",
+    default: "My Chronos — Gestion optimisée des congés APORTT",
     template: "%s · My Chronos",
   },
   description:
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "fr_FR",
     siteName: "My Chronos",
-    title: "My Chronos — Gestion optimisée des congés policiers",
+    title: "My Chronos — Gestion optimisée des congés APORTT",
     description:
       "Planifier, simuler, optimiser ses congés APORTT. 100% local, gratuit, sans compte.",
   },

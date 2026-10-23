@@ -1,7 +1,7 @@
 {
   "name": "My Chronos - Gestion des Congés",
   "short_name": "My Chronos",
-  "description": "Application de gestion et d'optimisation des congés pour les policiers (règles APORTT)",
+  "description": "Application de gestion et d'optimisation des congés (règles APORTT)",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f8f9fc",
