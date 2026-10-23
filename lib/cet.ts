@@ -40,11 +40,12 @@ export function isPeriodeAlimentationCET(date: Date = new Date()): boolean {
 
 /**
  * Nombre de jours de congés annuels à avoir pris dans l'année pour pouvoir
- * épargner des CA. Arrondi au jour supérieur : les congés se posent par journées
- * entières, et « au moins 4/5e » de 18 jours (14,4) impose donc d'en avoir pris 15.
+ * épargner des CA (« 4 semaines »). Arrondi au jour INFÉRIEUR, comme le tableau
+ * du guide CET 2026 du ministère (déc. 2025, p. 7) : 14 pour 18 CA (2/2, 3/3,
+ * 2/2/3), 18 pour 23 CA (4/2), 16 pour 20 CA (vacation forte), 20 pour 25 CA.
  */
 export function getSeuilCAPourEpargne(cycleConfig: CycleConfig): number {
-  return Math.ceil(getCATotalForCycle(cycleConfig) * CET_FRACTION_CA_REQUISE);
+  return Math.floor(getCATotalForCycle(cycleConfig) * CET_FRACTION_CA_REQUISE);
 }
 
 /**

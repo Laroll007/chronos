@@ -67,8 +67,8 @@ describe('Fenêtre d’alimentation', () => {
 });
 
 describe('Seuil de congés pris', () => {
-  it('vaut 4/5 de la dotation, arrondi au jour supérieur', () => {
-    expect(getSeuilCAPourEpargne(CYCLIQUE)).toBe(15); // 4/5 × 18 = 14,4
+  it('vaut 4/5 de la dotation, arrondi au jour inférieur (guide CET 2026, p. 7)', () => {
+    expect(getSeuilCAPourEpargne(CYCLIQUE)).toBe(14); // 4/5 × 18 = 14,4 → 14
     expect(getSeuilCAPourEpargne(HEBDO)).toBe(20); // 4/5 × 25 = 20, la valeur du texte
   });
 
@@ -76,8 +76,8 @@ describe('Seuil de congés pris', () => {
     const v = canEpargnerCA(CYCLIQUE, poses(10), JANVIER);
     expect(v.ok).toBe(false);
     expect(v.poses).toBe(10);
-    expect(v.seuil).toBe(15);
-    expect(v.raison).toContain('15 jours');
+    expect(v.seuil).toBe(14);
+    expect(v.raison).toContain('14 jours');
   });
 
   it('autorise l’épargne au seuil exact', () => {

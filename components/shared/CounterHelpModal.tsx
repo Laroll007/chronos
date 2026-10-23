@@ -16,7 +16,7 @@ export const HELP_CONTENT: Record<string, HelpEntry> = {
     title: 'Compte Épargne Temps (CET)',
     bullets: [
       'Versement en janvier, au titre de l\'année écoulée.',
-      'Sources : tous les RTC restants (8h21 le jour), tous les ARTT ou RTT, CA (max 5j, si 15 CA pris dans l\'année), CA Hors Période (max 2j), Heures Sup (max 5j).',
+      'Sources : tous les RTC restants (8h21 le jour), tous les ARTT ou RTT, CA (max 5j, si 4 semaines de CA prises dans l\'année : 14 en 2/2, 3/3 et 2/2/3, 18 en 4/2, 20 en hebdo), CA Hors Période (max 2j), Heures Sup (max 5j).',
       'Le CET garde jusqu\'à 15 jours, puis 10 jours de plus par an au maximum, dans la limite de 60 jours.',
       'Au-delà, les jours versés sont payés (forfait par jour selon votre catégorie) ou versés à la RAFP — d\'office sans choix de votre part.',
       'CET au-delà de 60 jours (relèvements COVID/JOP, jusqu\'à 80) : jours conservés, mais compte gelé.',

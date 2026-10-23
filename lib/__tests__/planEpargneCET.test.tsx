@@ -10,7 +10,7 @@ import { useCounters } from '@/hooks/useCounters';
 
 const h = (hh: number, mm = 0) => hh * 60 + mm;
 
-/** 15 CA posés en 2026 : seuil de 4/5 × 18 atteint. */
+/** 15 CA posés en 2026 : seuil de 14 (4/5 × 18, arrondi inférieur) atteint. */
 const posesCA2026: HistoryEntry[] = [
   { id: 'p', date: new Date(2026, 5, 10).toISOString(), action: 'pose', type: 'ca', amount: 15, countersSnapshot: {} },
 ];
@@ -73,13 +73,13 @@ describe('Plan d’épargne CET', () => {
     expect(plan.apport).toMatchObject({ rtc: 2, caHP: 2, ca: 3, hs: 0, total: 7 });
   });
 
-  it('janvier : sans 15 CA pris en 2026, ni CA ni CA HP', () => {
+  it('janvier : sans 14 CA pris en 2026, ni CA ni CA HP', () => {
     const d = data(
       { history: [], reliquatCET: { annee: 2026, rtc: h(20), caReserves: 0 } },
       { caAnterieur: 3, caHPAnterieur: 2 }
     );
     const plan = planEpargneCET(d, new Date(2027, 0, 15));
-    expect(plan.conditionCA).toMatchObject({ ok: false, poses: 0, seuil: 15 });
+    expect(plan.conditionCA).toMatchObject({ ok: false, poses: 0, seuil: 14 });
     expect(plan.apport).toMatchObject({ rtc: 2, ca: 0, caHP: 0, total: 2 });
   });
 
