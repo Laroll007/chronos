@@ -90,7 +90,7 @@ export function PlanningPartage() {
         Le planning est dans le lien lui-même : rien n’est stocké sur un serveur.
       </p>
       <p className="mt-4 text-center text-sm">
-        <a href="/telecharger?source=partage" className="font-semibold text-[#0055A4]">Toi aussi tu es policier ? Découvre My Chronos →</a>
+        <a href="/telecharger?source=partage" className="font-semibold text-[#0055A4]">Découvre My Chronos →</a>
       </p>
     </div>
   );
