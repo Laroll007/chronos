@@ -9,6 +9,7 @@
 import { Capacitor } from '@capacitor/core';
 import { detectPlatform, track } from './analytics';
 import type { HistoryEntry } from './types';
+import { contenuPartageNatif } from './partageEnvoi';
 
 /** Lien unique : renvoie vers l'App Store ou le Play Store selon le téléphone. */
 export const LIEN_TELECHARGER = 'https://mychronos.fr/telecharger';
@@ -36,7 +37,8 @@ export async function partagerApp(): Promise<boolean> {
   try {
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import('@capacitor/share');
-      await Share.share({ ...contenu, dialogTitle: 'Recommander My Chronos' });
+      const natif = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
+      await Share.share({ ...contenuPartageNatif(natif, contenu), dialogTitle: 'Recommander My Chronos' });
       track('partage_envoye');
       return true;
     }

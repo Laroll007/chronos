@@ -46,13 +46,28 @@ export async function partagerImage(image: Blob, nomFichier: string, titre: stri
   return 'telecharge';
 }
 
+/**
+ * Contenu du partage natif d'un lien. Sur iPhone, un texte et un lien séparés
+ * restent bloqués dans WhatsApp (envoi en attente plusieurs minutes) : le lien
+ * part donc DANS le texte, comme un message tapé à la main. Android réunit déjà
+ * texte et lien en un seul message.
+ */
+export function contenuPartageNatif(
+  plateforme: 'ios' | 'android',
+  contenu: { title: string; text: string; url: string }
+): { title: string; text: string; url?: string } {
+  if (plateforme === 'ios') return { title: contenu.title, text: `${contenu.text}\n${contenu.url}` };
+  return contenu;
+}
+
 /** Lien : partage natif ou web ; à défaut, copié dans le presse-papiers. */
 export async function partagerLien(url: string, titre: string): Promise<ResultatPartage> {
   const texte = `${titre} (My Chronos)`;
-  if (plateformeNative()) {
+  const natif = plateformeNative();
+  if (natif) {
     const { Share } = await import('@capacitor/share');
     try {
-      await Share.share({ title: titre, text: texte, url, dialogTitle: 'Partager mon planning' });
+      await Share.share({ ...contenuPartageNatif(natif, { title: titre, text: texte, url }), dialogTitle: 'Partager mon planning' });
       return 'ok';
     } catch {
       return 'annule';

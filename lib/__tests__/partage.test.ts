@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { joursDuMois, lienPartage, lirePartage, periodePartage, photoPlanning } from '../partage';
+import { contenuPartageNatif } from '../partageEnvoi';
 import type { CycleConfig, HistoryEntry } from '../types';
 
 const h = (a: number, b = 0) => a * 60 + b;
@@ -78,5 +79,15 @@ describe('Lien de partage', () => {
   it('lien abîmé : illisible, sans plantage', async () => {
     expect(await lirePartage('#p=g1.nimportequoi')).toBeNull();
     expect(await lirePartage('')).toBeNull();
+  });
+});
+
+describe('Partage natif d’un lien', () => {
+  const c = { title: 'Planning', text: 'Planning de Marc (My Chronos)', url: 'https://mychronos.fr/planning#p=g1.abc' };
+  it('iPhone : le lien part dans le texte (sinon WhatsApp le bloque)', () => {
+    expect(contenuPartageNatif('ios', c)).toEqual({ title: 'Planning', text: 'Planning de Marc (My Chronos)\nhttps://mychronos.fr/planning#p=g1.abc' });
+  });
+  it('Android : inchangé', () => {
+    expect(contenuPartageNatif('android', c)).toEqual(c);
   });
 });
