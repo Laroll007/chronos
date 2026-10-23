@@ -1,9 +1,11 @@
 // Envoi du planning partagé par la fenêtre de partage du téléphone
 // (WhatsApp, Signal, Telegram, Mail…). L'app ne sait pas à qui il est envoyé.
+// Le planning ne part plus qu'en image ; `contenuPartageNatif` sert à la
+// recommandation de l'app.
 
 import { plateformeNative } from './api';
 
-export type ResultatPartage = 'ok' | 'annule' | 'copie' | 'telecharge';
+export type ResultatPartage = 'ok' | 'annule' | 'telecharge';
 
 async function blobEnBase64(blob: Blob): Promise<string> {
   const octets = new Uint8Array(await blob.arrayBuffer());
@@ -58,29 +60,4 @@ export function contenuPartageNatif(
 ): { title: string; text: string; url?: string } {
   if (plateforme === 'ios') return { title: contenu.title, text: `${contenu.text}\n${contenu.url}` };
   return contenu;
-}
-
-/** Lien : partage natif ou web ; à défaut, copié dans le presse-papiers. */
-export async function partagerLien(url: string, titre: string): Promise<ResultatPartage> {
-  const texte = `${titre} (My Chronos)`;
-  const natif = plateformeNative();
-  if (natif) {
-    const { Share } = await import('@capacitor/share');
-    try {
-      await Share.share({ ...contenuPartageNatif(natif, { title: titre, text: texte, url }), dialogTitle: 'Partager mon planning' });
-      return 'ok';
-    } catch {
-      return 'annule';
-    }
-  }
-  if (typeof navigator.share === 'function') {
-    try {
-      await navigator.share({ title: titre, text: texte, url });
-      return 'ok';
-    } catch {
-      return 'annule';
-    }
-  }
-  await navigator.clipboard.writeText(url);
-  return 'copie';
 }

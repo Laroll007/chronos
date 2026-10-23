@@ -33,7 +33,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         emoji: '📤',
         title: 'Partage ton planning',
-        text: 'Sous le planning, « Partager mon planning » l’envoie en image ou en lien par WhatsApp, Signal, Telegram, mail… sur 1, 3 ou 6 mois. Par défaut, il affiche « Congé » ou « Absent » sans préciser CA, RTC ou CMO. Tes compteurs ne sont jamais partagés.',
+        text: 'Sous le planning, « Partager mon planning » l’envoie en image par WhatsApp, Signal, Telegram, mail… sur 1, 3 ou 6 mois. Par défaut, il affiche « Congé » ou « Absent » sans préciser CA, RTC ou CMO. Tes compteurs ne sont jamais partagés.',
         action: { label: 'Partager mon planning', target: 'partage' },
       },
       {

@@ -1,17 +1,16 @@
 'use client';
 
-// « Partager mon planning » : image ou lien, sur 1, 3 ou 6 mois, envoyé par la
-// fenêtre de partage du téléphone. Jamais de compteurs.
+// « Partager mon planning » : image sur 1, 3 ou 6 mois, envoyée par la fenêtre
+// de partage du téléphone. Jamais de compteurs. (Le partage par lien a été
+// retiré : WhatsApp sur iPhone le gardait en attente jusqu'à son ouverture.)
 
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import type { CycleConfig, HistoryEntry } from '@/lib/types';
-import { lienPartage, periodePartage, photoPlanning, type OptionsPartage } from '@/lib/partage';
-import { partagerImage, partagerLien } from '@/lib/partageEnvoi';
+import { periodePartage, photoPlanning, type OptionsPartage } from '@/lib/partage';
+import { partagerImage } from '@/lib/partageEnvoi';
 import { track } from '@/lib/analytics';
-
-type Format = 'image' | 'lien';
 
 export function PartagePlanningModal({
   cycleConfig,
@@ -22,7 +21,6 @@ export function PartagePlanningModal({
   history: HistoryEntry[];
   onClose: () => void;
 }) {
-  const [format, setFormat] = useState<Format>('image');
   const [mois, setMois] = useState<OptionsPartage['mois']>(1);
   const [titre, setTitre] = useState('');
   const [masquerTypes, setMasquerTypes] = useState(true);
@@ -35,16 +33,10 @@ export function PartagePlanningModal({
       const photo = photoPlanning(cycleConfig, history, new Date(), { mois, titre, masquerTypes, horaires });
       const nom = titre.trim() || 'Mon planning';
       const libelle = `${nom} — ${periodePartage(photo)}`;
-      let res;
-      if (format === 'image') {
-        const { imagePlanning } = await import('@/lib/partageImage');
-        res = await partagerImage(await imagePlanning(photo), `planning-${photo.du}.png`, libelle);
-      } else {
-        res = await partagerLien(await lienPartage(photo), libelle);
-      }
+      const { imagePlanning } = await import('@/lib/partageImage');
+      const res = await partagerImage(await imagePlanning(photo), `planning-${photo.du}.png`, libelle);
       if (res === 'annule') return;
-      track(format === 'image' ? 'partage_image' : 'partage_lien');
-      if (res === 'copie') toast.success('Lien copié', { description: 'Collez-le dans WhatsApp, Signal, un mail…' });
+      track('partage_image');
       if (res === 'telecharge') toast.success('Image enregistrée', { description: 'Envoyez-la depuis vos téléchargements.' });
       onClose();
     } catch {
@@ -53,9 +45,6 @@ export function PartagePlanningModal({
       setEnvoi(false);
     }
   };
-
-  const opt = (actif: boolean) =>
-    `rounded-xl border-2 px-2 py-2 text-center text-xs font-semibold transition-colors ${actif ? 'border-[#0055A4] bg-blue-50 text-[#0055A4]' : 'border-slate-200 text-slate-600'}`;
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -66,17 +55,6 @@ export function PartagePlanningModal({
           <div className="mt-3 h-[3px] rounded-full" style={{ background: 'linear-gradient(90deg, #0055A4 33%, #ffffff 33%, #ffffff 66%, #EF4135 66%)' }} />
         </div>
         <div className="px-5 py-4 bg-white space-y-3 text-sm text-slate-700">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Format</p>
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Format">
-              <button type="button" role="radio" aria-checked={format === 'image'} onClick={() => setFormat('image')} className={opt(format === 'image')}>
-                <span className="block text-lg" aria-hidden="true">🖼️</span>Image<span className="block text-[10px] font-medium text-slate-500">lisible partout</span>
-              </button>
-              <button type="button" role="radio" aria-checked={format === 'lien'} onClick={() => setFormat('lien')} className={opt(format === 'lien')}>
-                <span className="block text-lg" aria-hidden="true">🔗</span>Lien<span className="block text-[10px] font-medium text-slate-500">ouvert dans le navigateur</span>
-              </button>
-            </div>
-          </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Période</p>
             <div className="flex rounded-xl border-2 border-slate-200 overflow-hidden" role="radiogroup" aria-label="Période">
@@ -103,7 +81,7 @@ export function PartagePlanningModal({
               <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#0055A4]" checked={horaires} onChange={(e) => setHoraires(e.target.checked)} />
               <span>Afficher les horaires des jours travaillés</span>
             </label>
-            <p className="text-[11px] text-slate-500">Tes compteurs ne sont jamais partagés. {format === 'lien' && 'Le planning est dans le lien lui-même : rien n’est stocké sur un serveur.'}</p>
+            <p className="text-[11px] text-slate-500">Tes compteurs ne sont jamais partagés.</p>
           </div>
           <button type="button" onClick={partager} disabled={envoi}
             className="w-full h-12 rounded-xl text-white font-semibold shadow-md disabled:opacity-60"
